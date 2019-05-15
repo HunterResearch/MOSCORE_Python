@@ -6,4 +6,11 @@
 @author: nathangeldner
 """
 
-#Want to make sure I still know how to use git
+import time
+
+import numpy as np
+
+from brute_force_allocation import calc_bf_allocation
+
+
+moop = calc_bf_allocation(shoop)
