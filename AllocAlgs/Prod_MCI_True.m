@@ -74,7 +74,7 @@ for j=1:numnpar
                     idxcnt=idxcnt-1;
                 end
             end
- 
+        
             % any way to speed up the vector extraction?
             objJ = objVal_j(phidx);
             covJ = cov_j(phidx,phidx);
@@ -119,6 +119,12 @@ for j=1:numnpar
             MFGrads(numobj+2,:) = [z_ind  i+cnt 1.0] ;
         end
 
+%         pRate=RateMF;
+%         kap1=PHobjs(1);
+%         kap2=PHobjs(2);
+%         kap3=PHobjs(3);
+%         fprintf('Phantom [%d %d %d]: %5.10f \n',kap1,kap2,kap3,pRate);
+        
         MCIRates(i) = z - RateMF;
         MCI_grad_indices(numobj*(i-1)+2*i-1:numobj*i+2*i,:)=MFGrads;
     end

@@ -53,9 +53,17 @@ for j=1:numnpar
         end
         objidx=unique(objidx);
 
+        
+%         test_rate = test_old_bf(objValJ,covJ,alphJ,PHalphs,PHvars,PHobjs,objidx,num_par,kap);
+        
         % reduce non-Pareto info to only objectives that are 'playing'
-        objVal_j = objValJ(objidx);
-        cov_j = covJ(objidx,objidx);
+        % 05/22 - NO, keep full j objectives and matrix, anything that
+        % doesn't match an objective in a kappa vector will be
+        % unconstrained
+        objVal_j = objValJ;
+        cov_j = covJ;
+%         objVal_j = objValJ(objidx);
+%         cov_j = covJ(objidx,objidx);
         qpnumobj=size(objVal_j,1);
         invcov_j = cov_j\eye(qpnumobj);
         aI = alphJ;
@@ -71,8 +79,8 @@ for j=1:numnpar
             f = [f; -1*PHalphs(p)*(PHvars(p))^(-1)*PHobjs(p)];
             Avec=zeros(qpnumobj+num_par,1)';
             obj=kap(p);
-            oidx=find(objidx==obj);
-            Avec(oidx)=1; %#ok<FNDSB>
+%             oidx=find(objidx==obj);
+            Avec(obj)=1;
             Avec(qpnumobj+p)=-1;
             A = [A; Avec];                
         end 
@@ -93,6 +101,11 @@ for j=1:numnpar
         end 
         Grads(num_par+2,:)=[z_ind  i+cnt 1.0] ;
 
+        % testing
+%         if abs(test_rate-Rate)>1e-8
+%             [test_rate Rate]
+%         end
+        
         MCIRates(i) = z - Rate;
         MCI_grad_indices(num_par*(i-1)+2*i-1:num_par*i+2*i,:)=Grads;
         

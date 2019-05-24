@@ -47,8 +47,13 @@ for j=1:numnpar
         objidx=unique(objidx);
 
         % reduce non-Pareto info to only objectives that are 'playing'
-        objVal_j = objValJ(objidx);
-        cov_j = covJ(objidx,objidx);
+        % 05/22 - NO, keep full j objectives and matrix, anything that
+        % doesn't match an objective in a kappa vector will be
+        % unconstrained
+        objVal_j = objValJ;
+        cov_j = covJ;
+%         objVal_j = objValJ(objidx);
+%         cov_j = covJ(objidx,objidx);
         qpnumobj=size(objVal_j,1);
         invcov_j = cov_j\eye(qpnumobj);
         aI = alphJ;
@@ -64,8 +69,8 @@ for j=1:numnpar
             f = [f; -1*PHalphs(p)*(PHvars(p))^(-1)*PHobjs(p)];
             Avec=zeros(qpnumobj+num_par,1)';
             obj=kap(p);
-            oidx=find(objidx==obj);
-            Avec(oidx)=1; %#ok<FNDSB>
+%             oidx=find(objidx==obj);
+            Avec(obj)=1;
             Avec(qpnumobj+p)=-1;
             A = [A; Avec];                
         end 
@@ -84,8 +89,21 @@ for j=1:numnpar
             Rate = Rate + 0.5*PHalphs(o)*transpose(x_star(qpnumobj+o)-PHobjs(o))*(PHvars(o))^(-1)*(x_star(qpnumobj+o)-PHobjs(o));
         end 
         Rate = z - Rate;
+        
+%         pRate=-Rate;
+%         kap1=kap(1);
+%         kap2=kap(2);
+%         fprintf('Kappa [%d %d]: %5.10f \n',kap1,kap2,pRate);
+        
+%         if j==2 
+%             if kap == [2 2 1 1 1]
+%                 fprintf('RATE at 22111: %3.20f \n',-Rate);
+%             end
+%         end
+        
         if -Rate<=minRate
             minRate=-Rate;
+%             fprintf('New Min Rate: %3.20f, at non-Pareto %d and kappa vector \n',minRate,j);
 %             minRate
 %             kap
 %             objValJ
