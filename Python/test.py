@@ -13,4 +13,7 @@ import numpy as np
 from brute_force_allocation import calc_bf_allocation
 
 
-moop = calc_bf_allocation(shoop)
+#moop = calc_bf_allocation(shoop)
+
+def try_this():
+    return 42, 24

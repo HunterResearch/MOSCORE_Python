@@ -20,6 +20,14 @@ def create_allocation_problem(obj_vals,obj_vars):
     
     pareto_indices = list(utils.get_nondom(obj_vals))
     
+    #I'm not sure if this is necessary, but it was a huge help in debugging so as to keep the pareto_indices
+    #in line with the indices used in the matlab code
+    pareto_indices.sort(key = lambda x: obj_vals[x][0])
+    
+    non_pareto_indices = [system for system in range(len(obj_vals)) if system not in pareto_indices]
+    #same here
+    non_pareto_indices.sort(key = lambda x: obj_vals[x][0])
+    
     inv_vars = {}
     
     for i in range(len(obj_vals)):
@@ -30,10 +38,10 @@ def create_allocation_problem(obj_vals,obj_vars):
         
     #for i in range(len(obj_vals)):
     #    obj_vals[i] = obj_vals[i].transpose()
-    systems = {"obj": obj_vals, "var": obj_vars, "inv_var": inv_vars, "pareto_indices": pareto_indices}
+    systems = {"obj": obj_vals, "var": obj_vars, "inv_var": inv_vars, "pareto_indices": pareto_indices, "non_pareto_indices": non_pareto_indices}
     
-    systems["non_pareto_indices"] = np.array([system for system in range(len(systems['obj'])) if system not in systems["pareto_indices"]])
-    systems["pareto_indices"] = np.array(systems.pareto_indices)
+
+    
     
     return systems
     
@@ -42,15 +50,10 @@ def dummy_allocation_problem():
     """This is just for testing, I'm using the 3d example but adding a 4th objective
     that's always zero"""
     
-    obj_vals = {0: [8.0, 36.0, 60.0, 0.0], 1: [12.0, 32.0, 52.0, 0.0], 2: [14.0, 38.0, 54.0, 0.0],\
-                3: [16.0, 46.0, 48.0, 0.0], 4: [4.0, 42.0, 56.0, 0.0], 5: [18.0, 40.0, 62.0, 0.0], \
-             6: [10.0, 44.0, 58.0, 0.0], 7: [20.0, 34.0, 64.0, 0.0], 8: [22.0, 28.0, 68.0, 0.0],\
-             9: [24.0, 40.0, 62.0, 0.0], 10: [26.0, 38.0, 64.0, 0.0], 11: [28.0, 40.0, 66.0, 0.0], \
-             12: [30.0, 42.0, 62.0, 0.0], 13: [32.0, 44.0, 64.0, 0.0], 14: [26.0, 40.0, 66.0, 0.0],\
-             15: [28.0, 42.0, 64.0, 0.0], 16: [32.0, 38.0, 66.0, 0.0], 17: [30.0, 40.0, 62.0, 0.0], \
-             18: [34.0, 42.0, 64.0, 0.0], 19: [26.0, 44.0, 60.0, 0.0], 20: [28.0, 38.0, 66.0, 0.0],\
-             21: [32.0, 40.0, 62.0, 0.0], 22: [30.0, 46.0, 64.0, 0.0], 23: [32.0, 44.0, 66.0, 0.0],\
-             24: [30.0, 40.0, 64.0, 0.0]}
+    obj_vals = {0: [8.0, 36.0, 60.0], 1: [12.0, 32.0, 52.0], 2: [14.0, 38.0, 54.0],\
+                3: [16.0, 46.0, 48.0], 4: [4.0, 42.0, 56.0], 5: [18.0, 40.0, 62.0], \
+             6: [10.0, 44.0, 58.0], 7: [20.0, 34.0, 64.0], 8: [22.0, 28.0, 68.0],\
+             }
   
     n_objs = len(obj_vals[0])
     
