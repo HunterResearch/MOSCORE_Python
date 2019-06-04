@@ -21,6 +21,12 @@ from phantom_allocation import MCI_four_d_plus
 solvers.options['show_progress'] = False
 
 def score_allocation(systems,warm_start = None):
+    """takes in systems, a dictionary with features described in create_allocation_problem in test_problem_small
+    with optional parameter warm_start, which is an initial guess at the optimal allocation. Specifically, warm_start
+    contains values for pareto alphas ordered as phantom_pareto_indices, with the second to last element
+    being the allocation for all non-pareto indices, and the last element being z. Note that warm_start
+    may need to be feasible with respect to all constraints (definitely  needs to be feasible with respect to bounds,
+    not sure about the rest)"""
     
     n_obj = len(systems['obj'][0])
     
@@ -101,7 +107,7 @@ def score_allocation(systems,warm_start = None):
     print(res.message)
     
     out_alphas = res.x
-
+    #sort output by system number
     alloc = np.zeros(n_systems)
     alloc[systems['pareto_indices']] = out_alphas[0:num_par]
     

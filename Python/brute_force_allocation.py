@@ -15,6 +15,11 @@ from cvxopt import matrix, solvers
 solvers.options['show_progress'] = False
 
 def calc_bf_allocation(systems, warm_start = None):
+    """takes in systems, a dictionary with features described in create_allocation_problem in test_problem_small
+    with optional parameter warm_start, which is an initial guess at the optimal allocation with an additional element z
+    . Note that warm_start
+    may need to be feasible with respect to all constraints (definitely  needs to be feasible with respect to bounds,
+    not sure about the rest)"""
     
     #extract number of objectives
     n_obj = len(systems["obj"][0])

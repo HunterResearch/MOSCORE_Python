@@ -18,6 +18,10 @@ from brute_force_allocation import MCE_brute_force_rates, objective_function, he
 solvers.options['show_progress'] = False
 
 def calc_phantom_allocation(systems, warm_start=None):
+    """takes in systems, a dictionary with features described in create_allocation_problem in test_problem_small
+    with optional parameter warm_start, which is an initial guess at the optimal allocation with the last element z. Note that warm_start
+    may need to be feasible with respect to all constraints (definitely  needs to be feasible with respect to bounds,
+    not sure about the rest)"""
     #every comment from the brute_force_allocation top level function applies here, but I'm too tired right now to copy them over
     n_obj = len(systems["obj"][0])
     
@@ -169,6 +173,7 @@ def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
                 alpha_zeros = 0
                 
                 
+                #extract objective and variance values for the phantom pareto system
                 
                 for b in range(n_obj):
                     if phantom_indices[b]<np.inf:
@@ -186,7 +191,7 @@ def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
                     else:
                         phantom_objective_count -=1
                         
-                
+                #keeps track of which objectives are included in phantom
                 phantom_objectives = phantom_objectives[phantom_indices<np.inf]
                 
                     
@@ -196,11 +201,12 @@ def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
                 cov_j = systems['var'][j][np.ix_(phantom_objectives,phantom_objectives)]
                 
                 
-                
+                #remove unassigned objective indices for phantom variances and objectives
                 phantom_obj = phantom_obj[phantom_objectives]
                 phantom_var = phantom_var[phantom_objectives]
                 phantom_alphas = phantom_alphas[phantom_objectives]
                 
+                #if all of the alphas corresponding to the phantom objectives are zero:
                 if alpha_zeros == phantom_objective_count:
                     rate = 0
                     grad_j = 0
@@ -311,8 +317,7 @@ def find_phantoms(paretos,n_obj,num_par):
             
             temp_paretos = np.unique(temp_paretos,axis=0)
             
-            
-            
+
             #only want points which are paretos in our b dimensional subspace
             temp_paretos = temp_paretos[is_pareto_efficient(temp_paretos,return_mask = False),:]
             

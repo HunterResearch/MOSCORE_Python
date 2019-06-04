@@ -12,9 +12,12 @@ import pymoso.chnutils as utils
 
 def create_allocation_problem(obj_vals,obj_vars):
     """Takes in obj_vals, a dictionary of tuples of objective values (other functionsa assume equal length)
-    keyed by system number and obj_vars, a dictionary of covariance matrices (numpy matrices) keyed by system number with number
+    keyed by system number and obj_vars, a dictionary of covariance  (numpy 2d arrays) keyed by system number with number
     of rows and columns equal to the number of objectives. returns a dictionary
-    with keys "obj" and "var" pointing to obj_vals and obj_var respectively"""
+    with keys "obj" and "var" pointing to obj_vals and obj_var respectively, and with keys
+    pareto_indices and non_pareto_indices pointing to the system numbers of the pareto and non_pareto
+    systems respectively, sorted by their value on the first objective (the sortedness may not be necessary
+    but is useful for debugging while comparing results to the matlab code)"""
     
     #TODO check for positive semidefinite?
     
@@ -47,8 +50,7 @@ def create_allocation_problem(obj_vals,obj_vars):
     
     
 def dummy_allocation_problem():
-    """This is just for testing, I'm using the 3d example but adding a 4th objective
-    that's always zero"""
+    """This is just for testing, I'm using the 3d example with several non-pareto systems removed"""
     
     obj_vals = {0: [8.0, 36.0, 60.0], 1: [12.0, 32.0, 52.0], 2: [14.0, 38.0, 54.0],\
                 3: [16.0, 46.0, 48.0], 4: [4.0, 42.0, 56.0], 5: [18.0, 40.0, 62.0], \
