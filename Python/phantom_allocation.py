@@ -13,6 +13,8 @@ import scipy.optimize as opt
 import scipy.linalg as linalg
 from cvxopt import matrix, solvers
 from brute_force_allocation import MCE_brute_force_rates, objective_function, hessian_zero
+from MCI_hard_coded import MCI_1d, MCI_2d, MCI_3d, MCI_four_d_plus
+from utils import is_pareto_efficient
 
 
 solvers.options['show_progress'] = False
@@ -72,9 +74,11 @@ def calc_phantom_allocation(systems, warm_start=None):
     
     if warm_start is None:
         warm_start = np.array([1.0/n_systems]*n_systems +[0.0])
+    else:
+        warm_start = np.append(warm_start, 0)
     
     
-    obj_function = lambda x: objective_function(x,n_systems)
+    obj_function = lambda x: objective_function(x)
     
     
     equality_constraint_array =np.ones(n_systems + 1)
@@ -94,14 +98,28 @@ def calc_phantom_allocation(systems, warm_start=None):
                                       nonlinear_constraint]\
                        )
     
-    print(res.constr_violation)
-    print(res.message)
+    stop_flag = 1
+    if res.status ==0:
+        stop_flag = 0
+        
+    while stop_flag == 0:
+        print("cycling")
+        res = opt.minimize(objective_function,res.x, method='trust-constr', jac=True, hess = hessian_zero,\
+                       bounds = my_bounds,\
+                       constraints = [equality_constraint,\
+                                      nonlinear_constraint]\
+                                      )
+        if res.status !=0:
+            stop_flag = 1
+    
+    #print(res.constr_violation)
+    #print(res.message)
     
 
     
 
-    
-    return res.x
+    #res.x includes alphas and z. to return only alphas, subset with res.x[0:-1]
+    return res.x[0:-1], res.x[-1]
 
 
 def phantom_constraints_wrapper(alphas, systems, phantoms, num_par,n_obj, n_systems):
@@ -219,9 +237,20 @@ def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
                     MCI_rates[count] = alphas[-1]-rate
                     
                 else:
-                    #TODO hard code solutions for 1-3 objectives
-                    rate, grad_j, phantom_grads = MCI_four_d_plus(alphas[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                    
+                    length = len(phantom_objectives)
+                    if length ==1:
+                        rate, grad_j, phantom_grads = MCI_1d(alphas[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                    elif length ==2:
+                        rate, grad_j, phantom_grads = MCI_2d(alphas[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                    elif length ==3:
+                        rate, grad_j, phantom_grads = MCI_3d(alphas[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                    else:
+                        rate, grad_j, phantom_grads = MCI_four_d_plus(alphas[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
 
+                        
+                    #TODO hard code solutions for 1-3 objectives
+                    
 
                     MCI_grads[count,phantom_indices[phantom_indices<np.inf].astype(int)] = -1.0*phantom_grads
                     MCI_grads[count, -1] = 1
@@ -235,64 +264,7 @@ def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
     return MCI_rates, MCI_grads
                 
     
-def MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var):
-    
-    #zero var could break the optimizer, replace with tiny var
-    phantom_var[phantom_var==0] = 10**-100
-    
-    n_obj = len(obj_j)
-    
-    inv_cov_j = np.linalg.inv(cov_j)
-    
-    #TODO vectorize?
-    
-    P =  alpha_j*inv_cov_j
-    
-    q = -1*alpha_j*inv_cov_j @ obj_j
-    
-    G = np.identity(n_obj)
-    
-    h = np.ones(n_obj)*np.inf
-    
-    #add phantom data, looping through objectives
-    
-    indices = []
-    
-    for p in range(n_obj):
-        G_vector = np.zeros([n_obj,1])
-        if phantom_obj[p]< np.inf:
-            indices = indices + [p]
-            G_vector[p] = -1.0
-            P = linalg.block_diag(P, phantom_alphas[p]*phantom_var[p]**-1)
-            q = np.append(q, -1*phantom_alphas[p]*(phantom_var[p]**-1)*phantom_obj[p])
-            G = np.append(G,G_vector,axis=1)
-            h[p] = 0
-    
-    P = matrix( (P + P.transpose())/2)
-    
-    q = matrix(q)
-    
-    G = matrix(G)
-    
-    h = matrix(h)
-    
-    x_star = np.array(solvers.qp(P,q,G,h)['x']).flatten()
-    
-    rate = 0.5*alpha_j*(obj_j - x_star[0:n_obj]).transpose() @ inv_cov_j @ (obj_j - x_star[0:n_obj])
-    
-    grad_j = 0.5*( x_star[0:n_obj]-obj_j).transpose() @ inv_cov_j @ ( x_star[0:n_obj]-obj_j)
-    
 
-    phantom_grads = np.zeros(n_obj)
-    
-      
-    
-    for o in range(len(indices)):
-        ind = indices[o]
-        rate =  rate + 0.5*phantom_alphas[ind]*(x_star[n_obj + o] - phantom_obj[ind]).transpose() * (phantom_var[ind]**-1) *(x_star[n_obj + o] - phantom_obj[ind])
-        phantom_grads[o] = 0.5*(x_star[n_obj + o] - phantom_obj[ind]).transpose() * (phantom_var[ind]**-1) *(x_star[n_obj + o] - phantom_obj[ind])
-        
-    return rate, grad_j, phantom_grads
         
 def find_phantoms(paretos,n_obj,num_par):
     
@@ -380,36 +352,7 @@ def sweep(paretos):
         
         
         
-def is_pareto_efficient(costs, return_mask = True):
-    """
-    PyMOSO's pareto finder works with dictionaries, which is great for the rest
-    of the code here but not great for finding phantom paretos. We use this instead
-    from stackexchange thread https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
-    user 851699, Peter
-    Thanks Peter.
-    As with all code posted to stackexchange since Feb 2016, this funciton is covered under the MIT open source license
-    Find the pareto-efficient points
-    :param costs: An (n_points, n_costs) array
-    :param return_mask: True to return a mask
-    :return: An array of indices of pareto-efficient points.
-        If return_mask is True, this will be an (n_points, ) boolean array
-        Otherwise it will be a (n_efficient_points, ) integer array of indices.
-    """
-    is_efficient = np.arange(costs.shape[0])
-    n_points = costs.shape[0]
-    next_point_index = 0  # Next index in the is_efficient array to search for
-    while next_point_index<len(costs):
-        nondominated_point_mask = np.any(costs<costs[next_point_index], axis=1)
-        nondominated_point_mask[next_point_index] = True
-        is_efficient = is_efficient[nondominated_point_mask]  # Remove dominated points
-        costs = costs[nondominated_point_mask]
-        next_point_index = np.sum(nondominated_point_mask[:next_point_index])+1
-    if return_mask:
-        is_efficient_mask = np.zeros(n_points, dtype = bool)
-        is_efficient_mask[is_efficient] = True
-        return is_efficient_mask
-    else:
-        return is_efficient
+
         
     
             

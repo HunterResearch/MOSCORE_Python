@@ -40,11 +40,13 @@ def iscore_allocation(systems,warm_start = None):
     phantom_values = find_phantoms(pareto_array,n_obj,num_par)
     
     
+    
    #sort the phantoms. the commented part doesn't give different results, but this
     #makes the constraint ordering identical to that of the matlab code, which you'll want for debugging
     for i in range(n_obj):
         phantom_values = phantom_values[(phantom_values[:,n_obj-1-i]).argsort(kind='mergesort')]
     #phantom_values = phantom_values[(phantom_values[:,0]).argsort()]
+    
     
     
     
@@ -66,9 +68,12 @@ def iscore_allocation(systems,warm_start = None):
             for k in range(num_par):
                 if pareto_array[k,j] == phantom_values[i,j]:
                     phantoms[i,j] = k
+    
                     
     j_star, lambdas = calc_iSCORE(phantoms, systems, n_systems, num_par, n_obj, n_phantoms)  
+    
     m_star = calc_iSCORE_MCE(systems,num_par,n_obj)
+    
     
     
     
@@ -97,18 +102,22 @@ def iscore_allocation(systems,warm_start = None):
     equality_constraint = opt.LinearConstraint(equality_constraint_array, \
                                                equality_constraint_bound, \
                                                equality_constraint_bound)
+    
+    #print(len(constraint_jacobian(warm_start)))
                 
     #print(systems)
     res = opt.minimize(objective_function,warm_start, method='trust-constr', jac=True, hess = hessian_zero,\
                        bounds = my_bounds,\
                        constraints = [equality_constraint,\
-                                      nonlinear_constraint]\
-                       )
+                                      nonlinear_constraint],\
+                       options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000})
+    
     stop_flag = 1
     if res.status ==0:
         stop_flag = 0
         
     while stop_flag == 0:
+        print("looping")
         
         res = opt.minimize(objective_function,res.x, method='trust-constr', jac=True, hess = hessian_zero,\
                        bounds = my_bounds,\
@@ -276,7 +285,7 @@ def iscore_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star
 
 def objective_function(alphas):
     gradient = np.zeros(len(alphas))
-    gradient[-1] = -1
+    gradient[-1] = -1.0
     return -1.0*alphas[-1],gradient
     
 def calc_iSCORE_MCE(systems, num_par, n_obj):

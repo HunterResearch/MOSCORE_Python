@@ -11,6 +11,7 @@ import itertools as it
 import scipy.optimize as opt
 import scipy.linalg as linalg
 from cvxopt import matrix, solvers
+from MCE_hard_coded import MCE_2d, MCE_3d, MCE_four_d_plus
 
 solvers.options['show_progress'] = False
 
@@ -55,10 +56,12 @@ def calc_bf_allocation(systems, warm_start = None):
     
     if warm_start is None:
         warm_start = np.array([1.0/n_systems]*n_systems +[0])
+    else:
+        warm_start = np.append(warm_start, 0)
     
     
     #The objective is -z, and its derivative wrt z is -1
-    obj_function = lambda x: objective_function(x,n_systems)
+    obj_function = lambda x: objective_function(x)
     
     #set sum of alphas (not z) to 1
     equality_constraint_array =np.ones(n_systems + 1)
@@ -80,22 +83,36 @@ def calc_bf_allocation(systems, warm_start = None):
                                       nonlinear_constraint]\
                        )
     
-    print(res.constr_violation)
-    print(res.message)
+    stop_flag = 1
+    if res.status ==0:
+        stop_flag = 0
+        
+    while stop_flag == 0:
+        print('cycling')
+        res = opt.minimize(objective_function,res.x, method='trust-constr', jac=True, hess = hessian_zero,\
+                       bounds = my_bounds,\
+                       constraints = [equality_constraint,\
+                                      nonlinear_constraint]\
+                                      )
+        if res.status !=0:
+            stop_flag = 1
+    
+    #print(res.constr_violation)
+    #print(res.message)
     
 
     
 
-    #this returns alphas and z. to return only alphas, subset with res.x[0:-1]
-    return res.x
+    #res.x includes alphas and z. to return only alphas, subset with res.x[0:-1]
+    return res.x[0:-1], res.x[-1]
 #hessian of the objective function is just a matrix of zeros
 def hessian_zero(alphas):
     return np.zeros([len(alphas),len(alphas)])
 
     
 
-def objective_function(alphas,n_systems):
-    gradient = np.zeros(n_systems+1)
+def objective_function(alphas):
+    gradient = np.zeros(len(alphas))
     gradient[-1] = -1
     return -1*alphas[-1],gradient
 
@@ -166,11 +183,21 @@ def MCE_brute_force_rates(alphas, systems, num_par,n_systems, n_obj):
                     d_rate_d_j = 0
                     
                 else:
-                    
-                    rate, d_rate_d_i, d_rate_d_j = MCE_four_d_plus(alphas[i],alphas[j],systems["obj"][i],\
+                    if n_obj == 2:
+                        rate, d_rate_d_i, d_rate_d_j = MCE_2d(alphas[i],alphas[j],systems["obj"][i],systems["var"][i]\
+                                                              ,systems["obj"][j],systems["var"][j], systems["inv_var"][i]\
+                                                              , systems["inv_var"][j])
+                    elif n_obj ==3:
+                        rate, d_rate_d_i, d_rate_d_j = MCE_3d(alphas[i],alphas[j],systems["obj"][i],systems["var"][i]\
+                                                              ,systems["obj"][j],systems["var"][j], systems["inv_var"][i]\
+                                                              , systems["inv_var"][j])
+                    else:
+                        rate, d_rate_d_i, d_rate_d_j = MCE_four_d_plus(alphas[i],alphas[j],systems["obj"][i],\
                                                                    systems["inv_var"][i] ,systems['obj'][j],\
                                                                    systems['inv_var'][j],n_obj)
-                    #TODO implement hard-coded gradients for less than four dimensions
+                        
+                    
+                    
                     rate = alphas[-1] - rate
                 
 
@@ -186,44 +213,7 @@ def MCE_brute_force_rates(alphas, systems, num_par,n_systems, n_obj):
     return MCE_rates, MCE_grads
                 
             
-def MCE_four_d_plus(alpha_i, alpha_j, obj_i, inv_var_i, obj_j, inv_var_j, n_obj):
-    
-    #this comes almost straight from the 
-    P = linalg.block_diag(alpha_i*inv_var_i, alpha_j*inv_var_j)
-    
-    
-    
-    q = matrix(-1*np.append(alpha_i * inv_var_i @ obj_i, alpha_j * inv_var_j@ obj_j))
-    
-    G = matrix(np.append(-1*np.identity(n_obj),np.identity(n_obj),axis=1))
-    
-    
-    h = matrix(np.zeros(n_obj))
-    
-    
 
-    P = matrix((P + P.transpose())/2)
-    
-    
-    
-
-    
-    x_star = np.array(solvers.qp(P,q,G,h)['x']).flatten()
-    
-
-    
-
-    
-    rate = 0.5*alpha_i*np.transpose(x_star[0:n_obj] - obj_i) @ inv_var_i @(x_star[0:n_obj]-obj_i) +\
-    0.5*alpha_j*(x_star[n_obj:] - obj_j) @ inv_var_j @(x_star[n_obj:]-obj_j)
-    
-    grad_i = 0.5*(x_star[0:n_obj] - obj_i) @ inv_var_i @ (x_star[0:n_obj] - obj_i)
-    
-    grad_j = 0.5*(x_star[n_obj:] - obj_j) @ inv_var_j @ (x_star[n_obj:]-obj_j)
-    
-
-    
-    return rate, grad_i, grad_j
     
     
         
@@ -321,10 +311,8 @@ def MCI_brute_force_rates(alphas, systems, kappa, num_par, n_systems, n_obj):
             
     return MCI_rates, MCI_grad
             
-            
 
-            
-        
+
     
         
         

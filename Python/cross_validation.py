@@ -11,15 +11,15 @@ import numpy as np
 from allocate import allocate
 from utils import create_allocation_problem
 
-size_ind = 0
+size_ind = 1
 
 
 data = io.loadmat('FixedProblems3D10.mat')
 corrs = data['corrs']
 objs = data['objs']
 z_vec = []
-for prob_ind in range(10):
-    if prob_ind not in [5]:
+for prob_ind in [7]:
+    if prob_ind not in []:
         my_objs = {}
         for i in range(len(objs[prob_ind,size_ind])):
             my_objs[i] = list(objs[prob_ind,size_ind][i])
@@ -31,8 +31,9 @@ for prob_ind in range(10):
         for i in range(n_sys):
             covs[i] = cov
         problem = create_allocation_problem(my_objs, covs)
-        allocation, z = allocate('Brute Force', problem)
+        allocation, z = allocate('iSCORE', problem)
         print(z)
+        print(allocation)
         #print(allocation)
-        z_vec.append(z)
+        #z_vec.append(z)
     
