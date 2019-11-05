@@ -29,6 +29,34 @@ class MyPool(Pool):
     def Process(self, *args, **kwds):
         return NoDaemonProcess(*args, **kwds)
 
+
+def _mp_objmethod(instance, name, args=(), kwargs=None):
+    """
+    Wraps an instance method with arguments for use in multiprocessing
+    functions.
+    Parameters
+    ----------
+    instance : Oracle
+    name : str
+		The name of the 'instance' method to execute in a
+		multiprocessing routine.
+	args : tuple, optional
+		Positional arguments requiredby 'instance.name'
+	kwargs : dict, optional
+		Keyword arguments used by 'instance.name'
+	Returns
+	-------
+	instance.name
+		A callable method.
+	See also
+	--------
+	getattr
+    #from deprecated version of pymoso by Kyle Cooper
+    """
+
+    if kwargs is None:
+        kwargs = {}
+    return getattr(instance, name)(*args, **kwargs)
         
 
         

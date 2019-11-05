@@ -13,11 +13,11 @@ import pymoso.chnutils as utils
 
 from allocate import allocate
 import time
-from utils import calc_phantom_rate, create_allocation_problem
+from utils import calc_phantom_rate, create_allocation_problem, _mp_objmethod
 
 import copy
 import multiprocessing as mp
-from pymoso.chnbase import _mp_objmethod
+
 
 
 
