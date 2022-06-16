@@ -13,7 +13,7 @@ import pymoso.chnutils as utils
 
 from allocate import allocate
 import time
-from utils import calc_phantom_rate, create_allocation_problem, _mp_objmethod
+from utils import calc_phantom_rate, create_allocation_problem, _mp_objmethod, is_pareto_efficient
 
 import copy
 import multiprocessing as mp
@@ -549,3 +549,34 @@ class MORS_solver(object):
         else:
             return outs
         
+class MORS_Problem(object):
+    """Class for multi-objective ranking-and-selection problem.
+
+    Parameters
+    ---------
+    n_obj: int
+        number of objectives
+    systems: list
+        list of systems with associated x's (if applicable)
+    n_systems : int
+        number of systems    
+    true_means : list
+        true perfomances of all systems
+    true_covs : list
+        true covariance matrices of all systems
+    true_pareto_systems : list
+        a mask indicating whether each system is a Pareto system or not
+    n_pareto_systems : 
+        number of Pareto systems
+
+    Returns
+    -------
+    None
+    """
+    def __init__(self):
+        self.n_systems = len(self.systems)
+        # If performances are known, determine which systems are Pareto efficient.
+        if self.true_means is not None:
+            self.true_pareto_systems = is_pareto_efficient(costs=np.array(self.true_means), return_mask=True)
+            self.n_pareto_systems = sum(self.true_pareto_systems)
+        return

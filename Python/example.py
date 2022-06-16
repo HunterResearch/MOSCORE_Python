@@ -6,7 +6,7 @@ Created on Sun Sep 15 19:15:42 2019
 @author: nathangeldner
 """
 
-from base import Oracle
+from base import Oracle, MORS_Problem
 
 class MyProblem(Oracle):
     """Example implementation of a user-defined MOSO problem."""
@@ -33,4 +33,14 @@ class MyProblem(Oracle):
         
         return obj
 
-        
+class TestProblem(MORS_Problem):
+    """Example implementation of a user-defined MORS problem."""
+    def __init__(self):
+        self.n_obj = 2
+        self.systems = [(5, 0), (4, 1), (3, 2), (2, 3), (1, 4), (0, 5), \
+                        (6, 3), (5, 2), (4, 3), (3, 4), (2, 5), (1, 6), \
+                        (7, 1), (6, 2), (5, 3), (4, 4), (3, 5), (2, 6)]
+        self.n_systems = len(self.systems)
+        self.true_means = [list(self.systems[idx]) for idx in range(self.n_systems)]
+        self.true_covs = [[[1, 0], [0, 1]] for _ in range(self.n_systems)]
+        super().__init__()

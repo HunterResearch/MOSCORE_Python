@@ -5,9 +5,9 @@ Created on Tue Jul 23 13:59:12 2019
 
 @author: nathangeldner
 """
-from example import MyProblem
+from example import MyProblem, TestProblem
 
-from base import MORS_solver
+from base import MORS_Problem, MORS_solver
 
 from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
 
@@ -16,9 +16,10 @@ from test_problems import rand_problem_fixed, RandomSequentialProblem
 from allocate import allocate
 
 
-from base import MORS_Tester, solve, solve2
-from utils import testsolve
+# from base import MORS_Tester, solve, solve2
+# from utils import testsolve
 
+myproblem = TestProblem()
 
 
 
@@ -33,7 +34,7 @@ from utils import testsolve
 # Here is a minimum reproduceable example of solve:
 
     
-moop = solve(MyProblem, MORS_Tester, 20, 500, "iSCORE")
+# moop = solve(MyProblem, MORS_Tester, 20, 500, "iSCORE")
 
 # MyProblem here is an example oracle, like in pymoso.
 

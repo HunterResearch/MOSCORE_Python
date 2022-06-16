@@ -393,7 +393,7 @@ def is_pareto_efficient(costs, return_mask = True):
     from stackexchange thread https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
     user 851699, Peter
     Thanks Peter.
-    As with all code posted to stackexchange since Feb 2016, this funciton is covered under the MIT open source license
+    As with all code posted to stackexchange since Feb 2016, this function is covered under the MIT open source license
     Find the pareto-efficient points
     :param costs: An (n_points, n_costs) array
     :param return_mask: True to return a mask
