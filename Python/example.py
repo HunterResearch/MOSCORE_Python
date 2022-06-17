@@ -44,3 +44,25 @@ class TestProblem(MORS_Problem):
         self.true_means = [list(self.systems[idx]) for idx in range(self.n_systems)]
         self.true_covs = [[[1, 0], [0, 1]] for _ in range(self.n_systems)]
         super().__init__()
+
+    def g(self, x, rng):
+        """Perform a single replication at a given system.
+        Obtain a noisy estimate of its objectives.
+        
+        Parameters
+        ----------
+        x : tuple
+            tuple of values (possibly non-numerical) of inputs
+            characterizing the simulatable system
+        rng : MRG32k3a object
+            random number generator to use for simulating a replication
+        
+        Returns
+        -------
+        obj : tuple
+            tuple of estimates of the objectives
+        """
+        obj1 = x[0] + rng.normalvariate(0, 1)
+        obj2 = x[1] + rng.normalvariate(0, 1)
+        obj = (obj1, obj2)
+        return obj

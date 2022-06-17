@@ -566,8 +566,18 @@ class MORS_Problem(object):
         true covariance matrices of all systems
     true_pareto_systems : list
         a mask indicating whether each system is a Pareto system or not
-    n_pareto_systems : 
+    n_pareto_systems : int 
         number of Pareto systems
+    sample_sizes : list
+        sample sizes for each system
+    sample_means : list
+        sample means of objectives for each system
+    sample_covs : list
+        sample variance-covariance matrices of objectives for each system
+    sums : list
+        sums of observed objectives
+    sums_of_squares : list
+        sums of squares of observed objectives
 
     Returns
     -------
@@ -579,4 +589,42 @@ class MORS_Problem(object):
         if self.true_means is not None:
             self.true_pareto_systems = is_pareto_efficient(costs=np.array(self.true_means), return_mask=True)
             self.n_pareto_systems = sum(self.true_pareto_systems)
-        return
+        # Initialize sample statistics.
+        self.reset_statistics()
+
+    def g(self, x, rng):
+        """ Perform a single replication at a given system.
+        Obtain a noisy estimate of its objectives.
+        
+        Parameters
+        ----------
+        x : tuple
+            tuple of values (possibly non-numerical) of inputs
+            characterizing the simulatable system
+        rng : MRG32k3a object
+            random number generator to use for simulating a replication
+        
+        Returns
+        -------
+        obj : tuple
+            tuple of estimates of the objectives
+        """
+        raise NotImplementedError
+
+    def reset_statistics(self):
+        """
+        Reset sample statistics for all systems.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        self.sample_sizes = [0] * self.n_systems
+        self.sample_means = [[] * self.n_obj] * self.n_systems
+        self.sample_covs = [[[0] * self.n_obj] * self.n_obj] * self.n_systems
+        self.sums = [[0] * self.n_obj] * self.n_systems
+        self.sums_of_squares = [[0] * self.n_obj] * self.n_systems
