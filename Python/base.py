@@ -577,8 +577,8 @@ class MORS_Problem(object):
         sample variance-covariance matrices of objectives for each system
     sums : list
         sums of observed objectives
-    sums_of_squares : list
-        sums of squares of observed objectives
+    sums_of_products : list
+        sums of products of pairs of observed objectives
     rng : MRG32k3a object
         random number generator to use for simulating replications
     rng_states : list
@@ -596,6 +596,9 @@ class MORS_Problem(object):
             self.n_pareto_systems = sum(self.true_pareto_systems)
         # Initialize sample statistics.
         self.reset_statistics()
+        # Create a random number generator with the default seed and record state.
+        self.rng = MRG32k3a()
+        self.rng_states = [self.rng._current_state] * self.n_systems
 
     def reset_statistics(self):
         """
@@ -613,10 +616,41 @@ class MORS_Problem(object):
         self.sample_means = [[] * self.n_obj] * self.n_systems
         self.sample_covs = [[[0] * self.n_obj] * self.n_obj] * self.n_systems
         self.sums = [[0] * self.n_obj] * self.n_systems
-        self.sums_of_squares = [[0] * self.n_obj] * self.n_systems
+        self.sums_of_products = [[[0] * self.n_obj] * self.n_obj] * self.n_systems
+
+    def update_statistics(self, system_indices, objs):
+        """Update statistics for systems given a new batch of simulation outputs.
+
+        Parameters
+        ----------
+        system_indices : list
+            list of indices of systems to simulate (allows repetition)
+        objs: list
+            list of estimates of objectives returned by reach replication
+        """
+        if len(system_indices) != len(objs):
+            print("Length of results must equal length of list of simulated systems.")
+            return
+        for idx in range(len(system_indices)):
+            system_idx = system_indices[idx]
+            # Increase sample size.
+            self.sample_sizes[system_idx] += 1
+            # Add outputs to running sums and recompute sample means.
+            for obj_idx in range(self.n_obj):
+                self.sums[system_idx][obj_idx] += objs[idx][obj_idx]
+                self.sample_means[system_idx][obj_idx] = self.sums[system_idx][obj_idx] / self.sample_sizes[system_idx]
+            # Add outputs to running sums of products and recompute sample variance-covariance matrix.
+            for obj_idx1 in range(self.n_obj):
+                for obj_idx2 in range(self.n_obj):
+                    self.sums_of_products[system_idx][obj_idx1][obj_idx2] += objs[idx][obj_idx1] * objs[idx][obj_idx2]
+                    # From https://www.randomservices.org/random/sample/Covariance.html,
+                    #   sample cov (x, y) = n / (n-1) * [sample mean (x*y) - sample mean (x) * sample mean (y)]
+                    self.sample_covs[system_idx][obj_idx1][obj_idx2] = self.sample_sizes[system_idx] / (self.sample_sizes[system_idx] - 1) * \
+                        (self.sums_of_products[system_idx][obj_idx1][obj_idx2] / self.sample_sizes[system_idx] - self.sample_means[system_idx][obj_idx1] * self.sample_means[system_idx][obj_idx2])
+        # TO DO: Make more efficient by only recomputing stats outside the for loop.
 
     def g(self, x):
-        """ Perform a single replication at a given system.
+        """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 
         Parameters
@@ -655,6 +689,5 @@ class MORS_Problem(object):
             self.rng.advance_subsubstream()
             self.rng_states[system_idx] = self.rng._current_state
         return objs
-
 
 # TO DO: Initialize rngs in solver.solve() using crn_flag. Create problem.rng and problem.rng_states attribute.
