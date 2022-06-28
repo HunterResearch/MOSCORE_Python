@@ -548,7 +548,8 @@ class MORS_solver(object):
             return outs, metrics_out
         else:
             return outs
-        
+
+
 class MORS_Problem(object):
     """Class for multi-objective ranking-and-selection problem.
 
@@ -559,14 +560,14 @@ class MORS_Problem(object):
     systems: list
         list of systems with associated x's (if applicable)
     n_systems : int
-        number of systems    
+        number of systems
     true_means : list
         true perfomances of all systems
     true_covs : list
         true covariance matrices of all systems
     true_pareto_systems : list
         a mask indicating whether each system is a Pareto system or not
-    n_pareto_systems : int 
+    n_pareto_systems : int
         number of Pareto systems
     sample_sizes : list
         sample sizes for each system
@@ -578,6 +579,10 @@ class MORS_Problem(object):
         sums of observed objectives
     sums_of_squares : list
         sums of squares of observed objectives
+    rng : MRG32k3a object
+        random number generator to use for simulating replications
+    rng_states : list
+        states of random number generators (i.e., substream) for each system
 
     Returns
     -------
@@ -591,25 +596,6 @@ class MORS_Problem(object):
             self.n_pareto_systems = sum(self.true_pareto_systems)
         # Initialize sample statistics.
         self.reset_statistics()
-
-    def g(self, x, rng):
-        """ Perform a single replication at a given system.
-        Obtain a noisy estimate of its objectives.
-        
-        Parameters
-        ----------
-        x : tuple
-            tuple of values (possibly non-numerical) of inputs
-            characterizing the simulatable system
-        rng : MRG32k3a object
-            random number generator to use for simulating a replication
-        
-        Returns
-        -------
-        obj : tuple
-            tuple of estimates of the objectives
-        """
-        raise NotImplementedError
 
     def reset_statistics(self):
         """
@@ -628,3 +614,47 @@ class MORS_Problem(object):
         self.sample_covs = [[[0] * self.n_obj] * self.n_obj] * self.n_systems
         self.sums = [[0] * self.n_obj] * self.n_systems
         self.sums_of_squares = [[0] * self.n_obj] * self.n_systems
+
+    def g(self, x):
+        """ Perform a single replication at a given system.
+        Obtain a noisy estimate of its objectives.
+
+        Parameters
+        ----------
+        x : tuple
+            tuple of values (possibly non-numerical) of inputs
+            characterizing the simulatable system
+
+        Returns
+        -------
+        obj : tuple
+            tuple of estimates of the objectives
+        """
+        raise NotImplementedError
+
+    def bump(self, system_indices):
+        """Obtain replications from a list of systems.
+
+        Parameters
+        ----------
+        system_indices : list
+            list of indices of systems to simulate (allows repetition)
+
+        Returns
+        -------
+        objs: list
+            list of estimates of objectives returned by reach replication
+        """
+        objs = []
+        for system_idx in system_indices:
+            # Re-seed random number generator.
+            self.rng.seed(self.rng_states[system_idx])
+            # Simulate a replication and record outputs.
+            objs.append(self.g(x=self.system[system_idx]))
+            # Advance rng to start of next subsubstream and record new state.
+            self.rng.advance_subsubstream()
+            self.rng_states[system_idx] = self.rng._current_state
+        return objs
+
+
+# TO DO: Initialize rngs in solver.solve() using crn_flag. Create problem.rng and problem.rng_states attribute.
