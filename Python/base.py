@@ -774,7 +774,83 @@ class MORS_Solver(object):
             metrics['percent_misclassification']: list of float, the portion of systems which are
                 misclassified at each step in the solver
         """
-        return None, None
+        if self.n0 < problem.n_obj + 1:
+            raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
+                  sample variance-covariance matrices.")
+        warm_start = None
+        # Simulate n0 replications at each system. Initial allocation is equal.
+        alpha_hat = [1 / problem.n_systems for _ in range(problem.n_systems)]
+        system_indices = list(range(problem.n_systems)) * self.n_0
+        objs = problem.bump(system_indices=system_indices)
+        problem.update_statistics(system_indices=system_indices, objs=objs)
+        budget_expended = self.n0 * problem.n_systems
+
+        # Expend rest of the budget in batches of size delta.
+        while budget_expended < self.budget:
+
+            # Get distribution for sampling allocation
+            allocation_problem = create_allocation_problem(problem.sample_means, problem.sample_covs)
+            alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
+            warm_start = alpha_hat
+
+            # Sequentially choose systems to simulate by drawing independently from allocation distribution.
+            systems_to_sample = self.solver.rng.choices(population=range(problem.n_systems),
+                                                        weights=alpha_hat,
+                                                        k=self.delta
+                                                        )
+            # Repeated systems are possible.
+
+            # Simulate selected systems.
+            objs = problem.bump(system_indices=systems_to_sample)
+            problem.update_statistics(system_indices=systems_to_sample, objs=objs)
+            budget_expended = sum(problem.sample_sizes)
+
+        # Identify systems that look Pareto efficient
+        est_pareto = list(utils.get_nondom(problem.sample_means))
+        # est_pareto = is_pareto_efficient(costs=np.array(problem.sample_means), return_mask=True)
+
+        # Record temporary metrics.
+        metrics = {'alpha_hats': [alpha_hat],
+                   'alpha_bars': [[size / sum(problem.sample_sizes) for size in problem.sample_sizes]],
+                   'paretos': [est_pareto]
+                   }
+
+        # If true objectives are known, compute MCI/MCE statistics.
+        if problem.true_means is not None:
+
+            # Indices of true Pareto solutions.
+            true_pareto = [idx for idx in range(problem.n_systems) if problem.true_pareto_systems[idx]]
+
+            MCI_bool = [any([est_pareto_system not in true_pareto for est_pareto_system in est_pareto])]
+            MCE_bool = [any([true_pareto_system not in est_pareto for true_pareto_system in true_pareto])]
+            metrics['MCI_bool'] = [MCI_bool]
+            metrics['MCE_bool'] = [MCE_bool]
+            metrics['MC_bool'] = [MCI_bool or MCE_bool]
+
+            n_correct_select = sum([est_pareto_system in true_pareto for est_pareto_system in est_pareto])
+            n_false_select = sum([est_pareto_system not in true_pareto for est_pareto_system in est_pareto])
+            metrics['percent_false_exclusion'] = [(problem.n_pareto_systems - n_correct_select) / problem.n_pareto_systems]
+            metrics['percent_false_inclusion'] = [n_false_select / (problem.n_systems - problem.n_pareto_systems)]
+            metrics['percent_misclassification'] = [((problem.n_pareto_systems - n_correct_select) + n_false_select) / problem.n_systems]
+
+            # if phantom_rates == True:
+            #     if alloc_prob_true is None:
+            #         raise ValueError("alloc_prob_true argument is required for calculation of phantom rates")
+            #     else:
+            #         metrics['phantom_rate'] = [calc_phantom_rate([size/sum(problem.sample_size) for size in problem.sample_size],
+            #                                                          alloc_prob_true)]
+
+        # if phantom_rates == True and alloc_prob_true is not None and pareto_true is None:
+        #     pareto_true = alloc_prob_true['pareto_indices']
+
+        outputs = {}
+        outputs['paretos'] = est_pareto
+        outputs['objectives'] = problem.sample_means
+        outputs['variances'] = problem.sample_covs
+        outputs['alpha_hat'] = alpha_hat
+        outputs['sample_sizes'] = problem.sample_sizes
+
+        return outputs, metrics
 
 
 class MORS_Tester(object):
@@ -823,6 +899,10 @@ class MORS_Tester(object):
         ----------
         n_macroreps : int
             number of macroreplications run
+
+        Returns
+        -------
+        None
         """
         self.n_macroreps = n_macroreps
         # Create, initialize, and attach random number generators.
@@ -830,15 +910,17 @@ class MORS_Tester(object):
         #       Streams 1, 2, ...: sampling on macroreplication 1, 2, ...
         #           Substreams 0, 1, 2: sampling at system 1, 2, ...
         #               Subsubstreams 0, 1, 2: sampling replication 1, 2, ...
-        solver_rng = MRG32k3a()
+        solver_rng = MRG32k3a()  # Stream 0
         self.solver.attach_rng(solver_rng)
-        problem_rng = MRG32k3a(s_ss_sss_index=[1, 0, 0])
+        problem_rng = MRG32k3a(s_ss_sss_index=[1, 0, 0])  # Stream 1
         self.problem.attach_rng(problem_rng)
         self.setup_rng_states()
         # Run n_macroreps of the solver on the problem and record results.
         for mrep in range(self.n_macroreps):
             print(f"Running macroreplication {mrep + 1} of {self.n_macroreps}.")
             outputs, metrics = self.solver.solve(problem=self.problem)
+            # Reset sample statistics
+            self.problem.reset_statistics()
             # Advance random number generators in preparation for next macroreplication.
             self.solver.rng.advance_substream()  # Not strictly necessary.
             self.problem.rng.advance_stream()
