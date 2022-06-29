@@ -571,14 +571,14 @@ class MORS_Problem(object):
         number of Pareto systems
     sample_sizes : list
         sample sizes for each system
-    sample_means : list
-        sample means of objectives for each system
-    sample_covs : list
-        sample variance-covariance matrices of objectives for each system
     sums : list
         sums of observed objectives
     sums_of_products : list
         sums of products of pairs of observed objectives
+    sample_means : list
+        sample means of objectives for each system
+    sample_covs : list
+        sample variance-covariance matrices of objectives for each system
     rng : MRG32k3a object
         random number generator to use for simulating replications
     rng_states : list
@@ -596,13 +596,27 @@ class MORS_Problem(object):
             self.n_pareto_systems = sum(self.true_pareto_systems)
         # Initialize sample statistics.
         self.reset_statistics()
+        # TO DO: Move the following to __init__() for MORS_Tester where CRN setup is done.
         # Create a random number generator with the default seed and record state.
-        self.rng = MRG32k3a()
-        self.rng_states = [self.rng._current_state] * self.n_systems
+        # self.rng = MRG32k3a()
+        # self.rng_states = [self.rng._current_state] * self.n_systems
+
+    def attach_rng(self, rng):
+        """Attach random number generator to MORS_Problem object.
+
+        Parameters
+        ----------
+        rng : MRG32k3a object
+            random number generator to use for simulating replications
+        
+        Returns
+        -------
+        None
+        """
+        self.rng = rng
 
     def reset_statistics(self):
-        """
-        Reset sample statistics for all systems.
+        """Reset sample statistics for all systems.
 
         Parameters
         ----------
@@ -612,11 +626,11 @@ class MORS_Problem(object):
         -------
         None
         """
-        self.sample_sizes = [0] * self.n_systems
-        self.sample_means = [[] * self.n_obj] * self.n_systems
-        self.sample_covs = [[[0] * self.n_obj] * self.n_obj] * self.n_systems
-        self.sums = [[0] * self.n_obj] * self.n_systems
-        self.sums_of_products = [[[0] * self.n_obj] * self.n_obj] * self.n_systems
+        self.sample_sizes = [0 for _ in range(self.n_systems)]
+        self.sums = [[0 for _ in range(self.n_obj)] for _ in range(self.n_systems)]
+        self.sums_of_products = [[[0 for _ in range(self.n_obj)] for _ in range(self.n_obj)] for _ in range(self.n_systems)]
+        self.sample_means = [[None for _ in range(self.n_obj)] for _ in range(self.n_systems)]
+        self.sample_covs = [[[None for _ in range(self.n_obj)] for _ in range(self.n_obj)] for _ in range(self.n_systems)]
 
     def update_statistics(self, system_indices, objs):
         """Update statistics for systems given a new batch of simulation outputs.
@@ -643,10 +657,11 @@ class MORS_Problem(object):
             for obj_idx1 in range(self.n_obj):
                 for obj_idx2 in range(self.n_obj):
                     self.sums_of_products[system_idx][obj_idx1][obj_idx2] += objs[idx][obj_idx1] * objs[idx][obj_idx2]
-                    # From https://www.randomservices.org/random/sample/Covariance.html,
-                    #   sample cov (x, y) = n / (n-1) * [sample mean (x*y) - sample mean (x) * sample mean (y)]
-                    self.sample_covs[system_idx][obj_idx1][obj_idx2] = self.sample_sizes[system_idx] / (self.sample_sizes[system_idx] - 1) * \
-                        (self.sums_of_products[system_idx][obj_idx1][obj_idx2] / self.sample_sizes[system_idx] - self.sample_means[system_idx][obj_idx1] * self.sample_means[system_idx][obj_idx2])
+                    if self.sample_sizes[system_idx] > 1:
+                        # From https://www.randomservices.org/random/sample/Covariance.html,
+                        #   sample cov (x, y) = n / (n-1) * [sample mean (x*y) - sample mean (x) * sample mean (y)]
+                        self.sample_covs[system_idx][obj_idx1][obj_idx2] = self.sample_sizes[system_idx] / (self.sample_sizes[system_idx] - 1) * \
+                            (self.sums_of_products[system_idx][obj_idx1][obj_idx2] / self.sample_sizes[system_idx] - self.sample_means[system_idx][obj_idx1] * self.sample_means[system_idx][obj_idx2])
         # TO DO: Make more efficient by only recomputing stats outside the for loop.
 
     def g(self, x):
@@ -684,7 +699,7 @@ class MORS_Problem(object):
             # Re-seed random number generator.
             self.rng.seed(self.rng_states[system_idx])
             # Simulate a replication and record outputs.
-            objs.append(self.g(x=self.system[system_idx]))
+            objs.append(self.g(x=self.systems[system_idx]))
             # Advance rng to start of next subsubstream and record new state.
             self.rng.advance_subsubstream()
             self.rng_states[system_idx] = self.rng._current_state

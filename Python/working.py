@@ -9,7 +9,8 @@ from example import MyProblem, TestProblem
 
 from base import MORS_Problem, MORS_solver
 
-from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
+#from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
+from mrg32k3a import MRG32k3a
 
 from test_problems import rand_problem_fixed, RandomSequentialProblem
 
@@ -21,7 +22,15 @@ from allocate import allocate
 
 myproblem = TestProblem()
 
+myrng = MRG32k3a()
+myproblem.attach_rng(myrng)
 
+myproblem.rng_states = [myrng._current_state] * myproblem.n_systems
+
+system_indices = [0, 0]
+objs = myproblem.bump(system_indices = system_indices)
+
+myproblem.update_statistics(system_indices = system_indices, objs=objs)
 
 # Here is a minimum reproduceable example of testsolve:
     
