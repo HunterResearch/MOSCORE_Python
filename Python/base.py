@@ -553,7 +553,7 @@ class MORS_solver(object):
 class MORS_Problem(object):
     """Class for multi-objective ranking-and-selection problem.
 
-    Parameters
+    Attributes
     ---------
     n_obj: int
         number of objectives
@@ -583,10 +583,6 @@ class MORS_Problem(object):
         random number generator to use for simulating replications
     rng_states : list
         states of random number generators (i.e., substream) for each system
-
-    Returns
-    -------
-    None
     """
     def __init__(self):
         self.n_systems = len(self.systems)
@@ -705,4 +701,84 @@ class MORS_Problem(object):
             self.rng_states[system_idx] = self.rng._current_state
         return objs
 
-# TO DO: Initialize rngs in solver.solve() using crn_flag. Create problem.rng and problem.rng_states attribute.
+
+class MORS_Solver(object):
+    """Class for multi-objective ranking-and-selection solver.
+    
+    Attributes
+    ----------
+    rng : mrg32k3a.MRG32k3a object
+        random number generator to use for allocating samples across systems   
+    budget : int
+        total budgeted number of simulation replications.
+    n0 : int
+        common initial sample size for each system. Necessary to make an initial estimate
+        of the objective values and variance-covariance matrix. Must be greater
+        than or equal to the number of objectives plus 1 to guarantee positive-definite
+        sample variance-covariance matrix
+    delta : int
+        incremental number of simulation replications taken before re-optimizing the allocation
+    allocation_rule : str
+        chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", and "Brute Force"
+    crn_across_solns : bool
+        indicates whether CRN are used when sampling across systems (True) or not (False)
+    """
+    def __init__(self, budget, n0, delta, allocation_rule, crn_across_solns):
+        self.budget = budget
+        self.n0 = n0
+        self.delta = delta
+        self.allocation_rule = allocation_rule
+        self.crn_across_solns = crn_across_solns
+
+    def attach_rng(self, rng):
+        """Attach random number generator to MORS_Solver object.
+
+        Parameters
+        ----------
+        rng : MRG32k3a object
+            random number generator to use for simulating replications
+        
+        Returns
+        -------
+        None
+        """
+        self.rng = rng
+
+    def solve(self, problem):
+        """Solve a given MORS problem - one macroreplication.
+
+        Parameters
+        ----------
+        problem : base.MORS_Problem object
+            multi-objective R&S problem to solve
+
+        Returns
+        -------
+        outputs: dict
+            outputs['paretos']: list of indices of pareto systems
+            outputs['objectives']: dictionary, keyed by system index, of lists containing objective values
+            outputs['variances']: dictionary, keyed by system index, of covariance matrices as numpy arrays
+            outputs['alpha_hat']: list of float, final simulation allocation by system
+            outputs['sample_sizes']: list of int, final sample size for each system
+            
+        metrics: dict (optional)
+            metrics['alpha_hats']: list of lists of float, the simulation allocation selected at each step in the solver
+            metrics['alpha_bars']: list of lists of float, the portion of the simulation budget that has been allocated
+                to each system at each step in the solver
+            metrics['paretos']: list of lists of int, the estimated pareto frontier at each step in the solver
+            metrics['MCI_bool']: list of Bool, indicating whether an misclassification by inclusion
+                occured at each step in the solver
+            metrics['MCE_bool']: list of Bool, indicating whether an misclassification by exclusion
+                occured at each step in the solver
+            metrics['MC_bool']: list of Bool, indicating whether an misclassification
+                occured at each step in the solver
+            metrics['percent_false_exclusion']: list of float, the portion of true pareto systems 
+                which are falsely excluded at each step in the solver
+            metrics['percent_false_inclusion']: list of float, the portion of true non-pareto systems
+                which are falsely included at each step in the solver
+            metrics['percent_misclassification']: list of float, the portion of systems which are
+                misclassified at each step in the solver
+        """
+        return None, None
+
+# TO DO: Initialize rngs in Tester and reset in solver.solve() using crn_flag. Create problem.rng and problem.rng_states attribute.
