@@ -220,7 +220,7 @@ class Oracle(object):
 
 
     
-class MORS_Tester(object):
+class MORS_tester(object):
     """
     Stores data for testing MORS algorithms.
     
@@ -592,10 +592,6 @@ class MORS_Problem(object):
             self.n_pareto_systems = sum(self.true_pareto_systems)
         # Initialize sample statistics.
         self.reset_statistics()
-        # TO DO: Move the following to __init__() for MORS_Tester where CRN setup is done.
-        # Create a random number generator with the default seed and record state.
-        # self.rng = MRG32k3a()
-        # self.rng_states = [self.rng._current_state] * self.n_systems
 
     def attach_rng(self, rng):
         """Attach random number generator to MORS_Problem object.
@@ -704,11 +700,11 @@ class MORS_Problem(object):
 
 class MORS_Solver(object):
     """Class for multi-objective ranking-and-selection solver.
-    
+
     Attributes
     ----------
     rng : mrg32k3a.MRG32k3a object
-        random number generator to use for allocating samples across systems   
+        random number generator to use for allocating samples across systems
     budget : int
         total budgeted number of simulation replications.
     n0 : int
@@ -737,7 +733,7 @@ class MORS_Solver(object):
         ----------
         rng : MRG32k3a object
             random number generator to use for simulating replications
-        
+
         Returns
         -------
         None
@@ -760,7 +756,6 @@ class MORS_Solver(object):
             outputs['variances']: dictionary, keyed by system index, of covariance matrices as numpy arrays
             outputs['alpha_hat']: list of float, final simulation allocation by system
             outputs['sample_sizes']: list of int, final sample size for each system
-            
         metrics: dict (optional)
             metrics['alpha_hats']: list of lists of float, the simulation allocation selected at each step in the solver
             metrics['alpha_bars']: list of lists of float, the portion of the simulation budget that has been allocated
@@ -772,7 +767,7 @@ class MORS_Solver(object):
                 occured at each step in the solver
             metrics['MC_bool']: list of Bool, indicating whether an misclassification
                 occured at each step in the solver
-            metrics['percent_false_exclusion']: list of float, the portion of true pareto systems 
+            metrics['percent_false_exclusion']: list of float, the portion of true pareto systems
                 which are falsely excluded at each step in the solver
             metrics['percent_false_inclusion']: list of float, the portion of true non-pareto systems
                 which are falsely included at each step in the solver
@@ -781,4 +776,70 @@ class MORS_Solver(object):
         """
         return None, None
 
-# TO DO: Initialize rngs in Tester and reset in solver.solve() using crn_flag. Create problem.rng and problem.rng_states attribute.
+
+class MORS_Tester(object):
+    """
+    A pairing of a MORS solver and problem for running experiments
+
+    Attributes
+    ----------
+    solver : base.MORS_Solver object
+        multi-objective RS solver
+    problem : base.MORS_Problem object
+        multi-objective RS problem
+    n_macroreps : int
+        number of macroreplications run
+    """
+    def __init__(self, solver, problem):
+        self.problem = problem
+        self.solver = solver
+
+    def setup_rng_states(self):
+        """Setup rng states for each system based on whether solver uses CRN.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        if self.solver.crn_across_solns:
+            # Using CRN --> all systems based on common substream
+            rng_states = [self.problem.rng._current_state for _ in range(self.problem.n_systems)]
+        else:
+            # Not using CRN --> each system uses different substream
+            rng_states = []
+            for _ in range(self.problem.n_systems):
+                rng_states.append(self.problem.rng._current_state)
+                self.problem.rng.advance_substream()
+        self.problem.rng_states = rng_states
+
+    def run(self, n_macroreps):
+        """Run n_macroreps of the solver on the problem.
+
+        Parameters
+        ----------
+        n_macroreps : int
+            number of macroreplications run
+        """
+        self.n_macroreps = n_macroreps
+        # Create, initialize, and attach random number generators.
+        #       Stream 0: solver rng
+        #       Streams 1, 2, ...: sampling on macroreplication 1, 2, ...
+        #           Substreams 0, 1, 2: sampling at system 1, 2, ...
+        #               Subsubstreams 0, 1, 2: sampling replication 1, 2, ...
+        solver_rng = MRG32k3a()
+        self.solver.attach_rng(solver_rng)
+        problem_rng = MRG32k3a(s_ss_sss_index=[1, 0, 0])
+        self.problem.attach_rng(problem_rng)
+        self.setup_rng_states()
+        # Run n_macroreps of the solver on the problem and record results.
+        for mrep in range(self.n_macroreps):
+            print(f"Running macroreplication {mrep + 1} of {self.n_macroreps}.")
+            outputs, metrics = self.solver.solve(problem=self.problem)
+            # Advance random number generators in preparation for next macroreplication.
+            self.solver.rng.advance_substream()  # Not strictly necessary.
+            self.problem.rng.advance_stream()
+            self.setup_rng_states()
