@@ -6,7 +6,8 @@ Created on Sun Sep 15 18:08:02 2019
 @author: nathangeldner
 """
 import numpy as np
-from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream, bsm, mrg32k3a, jump_substream
+#from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream, bsm, mrg32k3a, jump_substream
+from mrg32k3a import MRG32k3a
 import pymoso.chnutils as utils
 
 
@@ -780,7 +781,7 @@ class MORS_Solver(object):
         warm_start = None
         # Simulate n0 replications at each system. Initial allocation is equal.
         alpha_hat = [1 / problem.n_systems for _ in range(problem.n_systems)]
-        system_indices = list(range(problem.n_systems)) * self.n_0
+        system_indices = list(range(problem.n_systems)) * self.n0
         objs = problem.bump(system_indices=system_indices)
         problem.update_statistics(system_indices=system_indices, objs=objs)
         budget_expended = self.n0 * problem.n_systems
@@ -789,12 +790,14 @@ class MORS_Solver(object):
         while budget_expended < self.budget:
 
             # Get distribution for sampling allocation
-            allocation_problem = create_allocation_problem(problem.sample_means, problem.sample_covs)
+            obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
+            obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
+            allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
             alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
             warm_start = alpha_hat
 
             # Sequentially choose systems to simulate by drawing independently from allocation distribution.
-            systems_to_sample = self.solver.rng.choices(population=range(problem.n_systems),
+            systems_to_sample = self.rng.choices(population=range(problem.n_systems),
                                                         weights=alpha_hat,
                                                         k=self.delta
                                                         )
@@ -808,6 +811,7 @@ class MORS_Solver(object):
         # Identify systems that look Pareto efficient
         est_pareto = list(utils.get_nondom(problem.sample_means))
         # est_pareto = is_pareto_efficient(costs=np.array(problem.sample_means), return_mask=True)
+        # est_pareto = [idx for idx in range(problem.n_systems) if est_pareto]
 
         # Record temporary metrics.
         metrics = {'alpha_hats': [alpha_hat],

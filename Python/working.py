@@ -7,7 +7,7 @@ Created on Tue Jul 23 13:59:12 2019
 """
 from example import MyProblem, TestProblem
 
-from base import MORS_Problem, MORS_solver
+from base import MORS_Problem, MORS_Solver, MORS_Tester
 
 #from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
 from mrg32k3a import MRG32k3a
@@ -22,15 +22,25 @@ from allocate import allocate
 
 myproblem = TestProblem()
 
-myrng = MRG32k3a()
-myproblem.attach_rng(myrng)
+# myrng = MRG32k3a()
+# myproblem.attach_rng(myrng)
 
-myproblem.rng_states = [myrng._current_state] * myproblem.n_systems
+# myproblem.rng_states = [myrng._current_state] * myproblem.n_systems
 
-system_indices = [0, 0]
-objs = myproblem.bump(system_indices = system_indices)
+# system_indices = [0, 0]
+# objs = myproblem.bump(system_indices = system_indices)
 
-myproblem.update_statistics(system_indices = system_indices, objs=objs)
+# myproblem.update_statistics(system_indices = system_indices, objs=objs)
+
+mysolver = MORS_Solver(budget = 200,
+                       n0=10,
+                       delta=10,
+                       allocation_rule="Phantom",
+                       crn_across_solns=False
+                       )
+
+mytester = MORS_Tester(solver=mysolver, problem=myproblem)
+mytester.run(n_macroreps=1)
 
 # Here is a minimum reproduceable example of testsolve:
     
