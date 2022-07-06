@@ -1,24 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 23 13:59:12 2019
-
-@author: nathangeldner
+Summary
+-------
+A script for interacting with the MORS Problem, Solver, and Tester classes.
 """
-from example import MyProblem, TestProblem
-
-from base import MORS_Problem, MORS_Solver, MORS_Tester
 
 #from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
 from mrg32k3a import MRG32k3a
 
-from test_problems import rand_problem_fixed, RandomSequentialProblem
-
+from base import MORS_Problem, MORS_Solver, MORS_Tester
+from example import TestProblem
 from allocate import allocate
-
-
-# from base import MORS_Tester, solve, solve2
-# from utils import testsolve
 
 myproblem = TestProblem()
 
@@ -41,6 +34,18 @@ mysolver = MORS_Solver(budget = 200,
 
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
 mytester.run(n_macroreps=5)
+
+# START OF OLD CODE.
+# """
+# Created on Tue Jul 23 13:59:12 2019
+
+# @author: nathangeldner
+# """
+
+# from base import MORS_Tester, solve, solve2
+# from utils import testsolve
+# from example import MyProblem
+# from test_problems import rand_problem_fixed, RandomSequentialProblem, allocation_to_sequential
 
 # Here is a minimum reproduceable example of testsolve:
     
