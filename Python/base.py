@@ -872,21 +872,21 @@ def record_metrics(metrics, problem, alpha_hat):
     Returns
     -------
     metrics : dict
-            metrics['alpha_hats']: list of np arrays of float, the simulation allocation selected at each step in the solver
-            metrics['alpha_bars']: list of np arrays of float, the portion of the simulation budget that has been allocated
+            metrics['alpha_hats'] : list of np arrays of float, the simulation allocation selected at each step in the solver
+            metrics['alpha_bars'] : list of np arrays of float, the portion of the simulation budget that has been allocated
                 to each system at each step in the solver
-            metrics['paretos']: list of lists of int, the estimated pareto frontier at each step in the solver
-            metrics['MCI_bool']: list of Bool, indicating whether an misclassification by inclusion
+            metrics['paretos'] : list of lists of int, the estimated pareto frontier at each step in the solver
+            metrics['MCI_bool'] : list of Bool, indicating whether an misclassification by inclusion
                 occured at each step in the solver
-            metrics['MCE_bool']: list of Bool, indicating whether an misclassification by exclusion
+            metrics['MCE_bool'] : list of Bool, indicating whether an misclassification by exclusion
                 occured at each step in the solver
-            metrics['MC_bool']: list of Bool, indicating whether an misclassification
+            metrics['MC_bool'] : list of Bool, indicating whether an misclassification
                 occured at each step in the solver
-            metrics['percent_false_exclusion']: list of float, the portion of true pareto systems
+            metrics['percent_false_exclusion'] : list of float, the portion of true pareto systems
                 which are falsely excluded at each step in the solver
-            metrics['percent_false_inclusion']: list of float, the portion of true non-pareto systems
+            metrics['percent_false_inclusion'] : list of float, the portion of true non-pareto systems
                 which are falsely included at each step in the solver
-            metrics['percent_misclassification']: list of float, the portion of systems which are
+            metrics['percent_misclassification'] : list of float, the portion of systems which are
                 misclassified at each step in the solver
     """
     # Record recommended and empirical allocation proportions.
@@ -930,10 +930,30 @@ class MORS_Tester(object):
         multi-objective RS problem
     n_macroreps : int
         number of macroreplications run
+    all_outputs : list of dict
+        list of terminal statistics from each macroreplication
+    all_metrics : list of dict
+        list of statistics over time from each macroreplication
+    rates : dict
+        rates['MCI_rate'] : list of float
+            empirical MCI rate at a given point across sequential solver macroreplications
+        rates['MCE_rate'] : list of float
+            empirical MCE rate at a given point across sequential solver macroreplications
+        rates['MC_rate'] : list of float
+            empirical MC rate at a given point across sequential solver macroreplications
+        rates['avg_percent_false_exclusion'] : list of float
+            the average proportion of true pareto systems that are falsely excluded at each step in the solver
+        rates['avg_percent_false_inclusion'] : list of float
+            the average proportion of true non-pareto systems that are falsely included at each step in the solver
+        rates['avg_percent_misclassification'] : list of float
+            the proportion of systems that are misclassified at each step in the solver
     """
     def __init__(self, solver, problem):
         self.problem = problem
         self.solver = solver
+        # Initialize tracking of statistics for each macroreplication.
+        self.all_outputs = []
+        self.all_metrics = []
 
     def setup_rng_states(self):
         """Setup rng states for each system based on whether solver uses CRN.
@@ -984,9 +1004,44 @@ class MORS_Tester(object):
         for mrep in range(self.n_macroreps):
             print(f"Running macroreplication {mrep + 1} of {self.n_macroreps}.")
             outputs, metrics = self.solver.solve(problem=self.problem)
+            self.all_outputs.append(outputs)
+            self.all_metrics.append(metrics)
             # Reset sample statistics
             self.problem.reset_statistics()
             # Advance random number generators in preparation for next macroreplication.
             self.solver.rng.advance_substream()  # Not strictly necessary.
             self.problem.rng.advance_stream()
             self.setup_rng_states()
+        # Aggregate metrics across macroreplications.
+        self.aggregate_metrics()
+
+    def aggregate_metrics(self):
+        """Aggregate run-time statistics over macroreplications, e.g., calculate
+        empirical misclassification rates.
+
+        Arguments
+        ---------
+        None
+
+        Returns
+        -------
+        None
+        """
+        # Number of budget times at which statistics are recorded.
+        n_budgets = len(self.all_metrics[0]["MCI_bool"])
+        # TODO: Write helper function that does the double list comprehension and takes
+        # the key as an argument.
+        # Calculate misclassification rates over time (aggregated over macroreplications).
+        MCI_rate = [np.mean([self.all_metrics[macro_idx]["MCI_bool"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
+        MCE_rate = [np.mean([self.all_metrics[macro_idx]["MCE_bool"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
+        MC_rate = [np.mean([self.all_metrics[macro_idx]["MC_bool"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
+        avg_percent_false_exclusion = [np.mean([self.all_metrics[macro_idx]["percent_false_exclusion"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
+        avg_percent_false_inclusion = [np.mean([self.all_metrics[macro_idx]["percent_false_inclusion"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
+        avg_percent_misclassification = [np.mean([self.all_metrics[macro_idx]["percent_misclassification"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
+        self.rates = {'MCI_rate': MCI_rate,
+                      'MCE_rate': MCE_rate,
+                      'MC_rate': MC_rate,
+                      'avg_percent_false_exclusion': avg_percent_false_exclusion,
+                      'avg_percent_false_inclusion': avg_percent_false_inclusion,
+                      'avg_percent_misclassification': avg_percent_misclassification
+                      }

@@ -40,7 +40,7 @@ mysolver = MORS_Solver(budget = 200,
                        )
 
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
-mytester.run(n_macroreps=1)
+mytester.run(n_macroreps=5)
 
 # Here is a minimum reproduceable example of testsolve:
     
