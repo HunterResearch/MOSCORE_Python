@@ -566,8 +566,10 @@ class MORS_Problem(object):
         true perfomances of all systems
     true_covs : list
         true covariance matrices of all systems
-    true_pareto_systems : list
+    true_paretos_mask : list
         a mask indicating whether each system is a Pareto system or not
+    true_paretos : list
+        list of indicies of true Pareto systems
     n_pareto_systems : int
         number of Pareto systems
     sample_sizes : list
@@ -589,8 +591,9 @@ class MORS_Problem(object):
         self.n_systems = len(self.systems)
         # If performances are known, determine which systems are Pareto efficient.
         if self.true_means is not None:
-            self.true_pareto_systems = is_pareto_efficient(costs=np.array(self.true_means), return_mask=True)
-            self.n_pareto_systems = sum(self.true_pareto_systems)
+            self.true_paretos_mask = is_pareto_efficient(costs=np.array(self.true_means), return_mask=True)
+            self.true_paretos = [idx for idx in range(self.n_systems) if self.true_paretos_mask[idx]]
+            self.n_pareto_systems = len(self.true_paretos)
         # Initialize sample statistics.
         self.reset_statistics()
 
@@ -601,7 +604,7 @@ class MORS_Problem(object):
         ----------
         rng : MRG32k3a object
             random number generator to use for simulating replications
-        
+
         Returns
         -------
         None
@@ -751,13 +754,13 @@ class MORS_Solver(object):
 
         Returns
         -------
-        outputs: dict
-            outputs['paretos']: list of indices of pareto systems
-            outputs['objectives']: dictionary, keyed by system index, of lists containing objective values
-            outputs['variances']: dictionary, keyed by system index, of covariance matrices as numpy arrays
+        outputs : dict
             outputs['alpha_hat']: list of float, final simulation allocation by system
+            outputs['paretos']: list of indices of estimated pareto systems at termination
+            outputs['objectives']: dictionary, keyed by system index, of lists containing estimated objective values at termination
+            outputs['variances']: dictionary, keyed by system index, of estimated covariance matrices as numpy arrays at termination
             outputs['sample_sizes']: list of int, final sample size for each system
-        metrics: dict (optional)
+        metrics : dict (optional)
             metrics['alpha_hats']: list of lists of float, the simulation allocation selected at each step in the solver
             metrics['alpha_bars']: list of lists of float, the portion of the simulation budget that has been allocated
                 to each system at each step in the solver
@@ -779,12 +782,28 @@ class MORS_Solver(object):
             raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
                   sample variance-covariance matrices.")
         warm_start = None
+
+        # Initialize summary statistics tracked over time:
+        metrics = {'alpha_hats': [],
+                   'alpha_bars': [],
+                   'paretos': [],
+                   'MCI_bool': [],
+                   'MCE_bool': [],
+                   'MC_bool': [],
+                   'percent_false_exclusion': [],
+                   'percent_false_inclusion': [],
+                   'percent_misclassification': []
+                   }
+
         # Simulate n0 replications at each system. Initial allocation is equal.
-        alpha_hat = [1 / problem.n_systems for _ in range(problem.n_systems)]
+        alpha_hat = np.array([1 / problem.n_systems for _ in range(problem.n_systems)])
         system_indices = list(range(problem.n_systems)) * self.n0
         objs = problem.bump(system_indices=system_indices)
         problem.update_statistics(system_indices=system_indices, objs=objs)
         budget_expended = self.n0 * problem.n_systems
+
+        # Record summary statistics tracked over time.
+        record_metrics(metrics, problem, alpha_hat)
 
         # Expend rest of the budget in batches of size delta.
         while budget_expended < self.budget:
@@ -798,9 +817,9 @@ class MORS_Solver(object):
 
             # Sequentially choose systems to simulate by drawing independently from allocation distribution.
             systems_to_sample = self.rng.choices(population=range(problem.n_systems),
-                                                        weights=alpha_hat,
-                                                        k=self.delta
-                                                        )
+                                                 weights=alpha_hat,
+                                                 k=self.delta
+                                                 )
             # Repeated systems are possible.
 
             # Simulate selected systems.
@@ -808,53 +827,95 @@ class MORS_Solver(object):
             problem.update_statistics(system_indices=systems_to_sample, objs=objs)
             budget_expended = sum(problem.sample_sizes)
 
-        # Identify systems that look Pareto efficient
-        est_pareto = list(utils.get_nondom(problem.sample_means))
-        # est_pareto = is_pareto_efficient(costs=np.array(problem.sample_means), return_mask=True)
-        # est_pareto = [idx for idx in range(problem.n_systems) if est_pareto]
+            # Record summary statistics tracked over time.
+            record_metrics(metrics, problem, alpha_hat)
 
-        # Record temporary metrics.
-        metrics = {'alpha_hats': [alpha_hat],
-                   'alpha_bars': [[size / sum(problem.sample_sizes) for size in problem.sample_sizes]],
-                   'paretos': [est_pareto]
-                   }
-
-        # If true objectives are known, compute MCI/MCE statistics.
-        if problem.true_means is not None:
-
-            # Indices of true Pareto solutions.
-            true_pareto = [idx for idx in range(problem.n_systems) if problem.true_pareto_systems[idx]]
-
-            MCI_bool = [any([est_pareto_system not in true_pareto for est_pareto_system in est_pareto])]
-            MCE_bool = [any([true_pareto_system not in est_pareto for true_pareto_system in true_pareto])]
-            metrics['MCI_bool'] = [MCI_bool]
-            metrics['MCE_bool'] = [MCE_bool]
-            metrics['MC_bool'] = [MCI_bool or MCE_bool]
-
-            n_correct_select = sum([est_pareto_system in true_pareto for est_pareto_system in est_pareto])
-            n_false_select = sum([est_pareto_system not in true_pareto for est_pareto_system in est_pareto])
-            metrics['percent_false_exclusion'] = [(problem.n_pareto_systems - n_correct_select) / problem.n_pareto_systems]
-            metrics['percent_false_inclusion'] = [n_false_select / (problem.n_systems - problem.n_pareto_systems)]
-            metrics['percent_misclassification'] = [((problem.n_pareto_systems - n_correct_select) + n_false_select) / problem.n_systems]
-
-            # if phantom_rates == True:
-            #     if alloc_prob_true is None:
-            #         raise ValueError("alloc_prob_true argument is required for calculation of phantom rates")
-            #     else:
-            #         metrics['phantom_rate'] = [calc_phantom_rate([size/sum(problem.sample_size) for size in problem.sample_size],
-            #                                                          alloc_prob_true)]
-
-        # if phantom_rates == True and alloc_prob_true is not None and pareto_true is None:
-        #     pareto_true = alloc_prob_true['pareto_indices']
-
+        # Record summary statistics upon termination.
         outputs = {}
-        outputs['paretos'] = est_pareto
+        outputs['alpha_hat'] = alpha_hat
+        outputs['paretos'] = metrics['paretos'][-1]  # -1 corresponds to termination.
         outputs['objectives'] = problem.sample_means
         outputs['variances'] = problem.sample_covs
-        outputs['alpha_hat'] = alpha_hat
         outputs['sample_sizes'] = problem.sample_sizes
 
         return outputs, metrics
+
+
+def record_metrics(metrics, problem, alpha_hat):
+    """
+    Record summary statistics tracked over time.
+
+    Parameters
+    ----------
+    metrics : dict
+            metrics['alpha_hats']: list of lists of float, the simulation allocation selected at each step in the solver
+            metrics['alpha_bars']: list of lists of float, the portion of the simulation budget that has been allocated
+                to each system at each step in the solver
+            metrics['paretos']: list of lists of int, the estimated pareto frontier at each step in the solver
+            metrics['MCI_bool']: list of Bool, indicating whether an misclassification by inclusion
+                occured at each step in the solver
+            metrics['MCE_bool']: list of Bool, indicating whether an misclassification by exclusion
+                occured at each step in the solver
+            metrics['MC_bool']: list of Bool, indicating whether an misclassification
+                occured at each step in the solver
+            metrics['percent_false_exclusion']: list of float, the portion of true pareto systems
+                which are falsely excluded at each step in the solver
+            metrics['percent_false_inclusion']: list of float, the portion of true non-pareto systems
+                which are falsely included at each step in the solver
+            metrics['percent_misclassification']: list of float, the portion of systems which are
+                misclassified at each step in the solver
+    problem : base.MORS_Problem object
+        multi-objective R&S problem to solve
+    alpha_hat : list
+        allocation recommended by allocation rule
+
+    Returns
+    -------
+    metrics : dict
+            metrics['alpha_hats']: list of np arrays of float, the simulation allocation selected at each step in the solver
+            metrics['alpha_bars']: list of np arrays of float, the portion of the simulation budget that has been allocated
+                to each system at each step in the solver
+            metrics['paretos']: list of lists of int, the estimated pareto frontier at each step in the solver
+            metrics['MCI_bool']: list of Bool, indicating whether an misclassification by inclusion
+                occured at each step in the solver
+            metrics['MCE_bool']: list of Bool, indicating whether an misclassification by exclusion
+                occured at each step in the solver
+            metrics['MC_bool']: list of Bool, indicating whether an misclassification
+                occured at each step in the solver
+            metrics['percent_false_exclusion']: list of float, the portion of true pareto systems
+                which are falsely excluded at each step in the solver
+            metrics['percent_false_inclusion']: list of float, the portion of true non-pareto systems
+                which are falsely included at each step in the solver
+            metrics['percent_misclassification']: list of float, the portion of systems which are
+                misclassified at each step in the solver
+    """
+    # Record recommended and empirical allocation proportions.
+    metrics['alpha_hats'].append(alpha_hat)
+    metrics['alpha_bars'].append(np.array([size / sum(problem.sample_sizes) for size in problem.sample_sizes]))
+
+    # Record systems that look Pareto efficient.
+    est_obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
+    est_pareto = list(utils.get_nondom(est_obj_vals))
+    metrics['paretos'].append(est_pareto)
+
+    # If true objectives are known, compute error statistics.
+    if problem.true_means is not None:
+
+        # Compute and record booleans for MCI, MCE, MC.
+        MCI_bool = any([est_pareto_system not in problem.true_paretos for est_pareto_system in est_pareto])
+        MCE_bool = any([true_pareto_system not in est_pareto for true_pareto_system in problem.true_paretos])
+        metrics['MCI_bool'].append(MCI_bool)
+        metrics['MCE_bool'].append(MCE_bool)
+        metrics['MC_bool'].append(MCI_bool or MCE_bool)
+
+        # Compute and record proportions of systems misclassified in different ways.
+        n_correct_select = sum([est_pareto_system in problem.true_paretos for est_pareto_system in est_pareto])
+        n_false_select = sum([est_pareto_system not in problem.true_paretos for est_pareto_system in est_pareto])
+        metrics['percent_false_exclusion'].append((problem.n_pareto_systems - n_correct_select) / problem.n_pareto_systems)
+        metrics['percent_false_inclusion'].append(n_false_select / (problem.n_systems - problem.n_pareto_systems))
+        metrics['percent_misclassification'].append(((problem.n_pareto_systems - n_correct_select) + n_false_select) / problem.n_systems)
+
+    return metrics
 
 
 class MORS_Tester(object):

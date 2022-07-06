@@ -35,7 +35,7 @@ myproblem = TestProblem()
 mysolver = MORS_Solver(budget = 200,
                        n0=10,
                        delta=10,
-                       allocation_rule="Phantom",
+                       allocation_rule="Equal",
                        crn_across_solns=False
                        )
 
