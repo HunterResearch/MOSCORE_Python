@@ -269,13 +269,13 @@ def get_testsolve_streams(macroreps, seed, crn):
     return oracle_generators, solver_generators, seed
 
 
+# START OF CODE BEING USED (W/O PARALLELISM)
 
 def calc_phantom_rate(alphas, problem):
-    """Calculates the phantom rate of an allocation given a MORS problem
+    """Calculate the phantom rate of an allocation given a MORS problem.
 
-    Arguments
-    ---------
-
+    Parameters
+    ----------
     alphas: list of float
         an initial simulation allocation which sets the starting point for determining the optimal allocation.
         Length must be equal to the number of systems.
@@ -291,6 +291,9 @@ def calc_phantom_rate(alphas, problem):
             alloc_prob_true['pareto_indices'] is a list of pareto systems ordered by the first objective
             alloc_prob_true['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
 
+    Returns
+    -------
+    float
     """
     from phantom_allocation import find_phantoms, MCI_phantom_rates
     from brute_force_allocation import MCE_brute_force_rates

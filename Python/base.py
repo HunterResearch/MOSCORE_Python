@@ -195,14 +195,17 @@ class MORS_Solver(object):
         incremental number of simulation replications taken before re-optimizing the allocation
     allocation_rule : str
         chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", and "Brute Force"
+    alpha_epsilon : float
+        lower threshold for enforcing a minimum required sample size
     crn_across_solns : bool
         indicates whether CRN are used when sampling across systems (True) or not (False)
     """
-    def __init__(self, budget, n0, delta, allocation_rule, crn_across_solns):
+    def __init__(self, budget, n0, delta, allocation_rule, alpha_epsilon, crn_across_solns):
         self.budget = budget
         self.n0 = n0
         self.delta = delta
         self.allocation_rule = allocation_rule
+        self.alpha_epsilon = alpha_epsilon
         self.crn_across_solns = crn_across_solns
 
     def attach_rng(self, rng):
@@ -283,19 +286,41 @@ class MORS_Solver(object):
         # Expend rest of the budget in batches of size delta.
         while budget_expended < self.budget:
 
-            # Get distribution for sampling allocation
-            obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
-            obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
-            allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
-            alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
-            warm_start = alpha_hat
+            # Enforce minimum sampling requirement.
+            # ["alpha_bars"][-1] refers to current sampling proportions for all systems.
+            undersampled_systems = [idx for idx in range(problem.n_systems) if metrics["alpha_bars"][-1][idx] < self.alpha_epsilon]
 
-            # Sequentially choose systems to simulate by drawing independently from allocation distribution.
-            systems_to_sample = self.rng.choices(population=range(problem.n_systems),
-                                                 weights=alpha_hat,
-                                                 k=self.delta
-                                                 )
-            # Repeated systems are possible.
+            cardinality_S_epsilon = len(undersampled_systems)
+            if cardinality_S_epsilon > self.delta:  # If too many systems are undersampled...
+                systems_to_sample = self.rng.choices(population=undersampled_systems,
+                                                     weights=[1 / cardinality_S_epsilon for _ in range(cardinality_S_epsilon)],
+                                                     k=self.delta
+                                                     )
+            else:
+                # Force sample undersampled systems.
+                delta_epsilon = self.delta - cardinality_S_epsilon
+                if cardinality_S_epsilon > 1:
+                    systems_to_sample = undersampled_systems
+                else:
+                    systems_to_sample = []
+
+                # Use remaining samples (if any) to sample according to allocation distribution.
+                # Note: If |S_epsilon| = delta, all sampling is compulsory --> no need to compute allocation.
+                if delta_epsilon > 0:
+                    # Get distribution for sampling allocation.
+                    obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
+                    obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
+                    allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
+                    alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
+                    warm_start = alpha_hat
+
+                    # Sequentially choose systems to simulate by drawing independently from allocation distribution.
+                    # Append to list of systems that require sampling (if any).
+                    systems_to_sample += self.rng.choices(population=range(problem.n_systems),
+                                                          weights=alpha_hat,
+                                                          k=delta_epsilon
+                                                          )
+                    # Repeated systems are possible.
 
             # Simulate selected systems.
             objs = problem.bump(system_indices=systems_to_sample)
@@ -405,6 +430,8 @@ class MORS_Tester(object):
         multi-objective RS problem
     n_macroreps : int
         number of macroreplications run
+    intermediate_budgets : list
+        intermediate budgets at which statistics are reported
     all_outputs : list of dict
         list of terminal statistics from each macroreplication
     all_metrics : list of dict
@@ -427,6 +454,7 @@ class MORS_Tester(object):
         self.problem = problem
         self.solver = solver
         # Initialize tracking of statistics for each macroreplication.
+        self.intermediate_budgets = [solver.n0 * problem.n_systems + i * solver.delta for i in range(int(np.ceil((solver.budget - solver.n0 * problem.n_systems) / solver.delta) + 1))]
         self.all_outputs = []
         self.all_metrics = []
 

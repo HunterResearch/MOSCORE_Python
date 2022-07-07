@@ -28,12 +28,13 @@ myproblem = TestProblem()
 mysolver = MORS_Solver(budget = 200,
                        n0=10,
                        delta=10,
-                       allocation_rule="Equal",
+                       allocation_rule="SCORE",
+                       alpha_epsilon=1e-8,
                        crn_across_solns=False
                        )
 
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
-mytester.run(n_macroreps=5)
+mytester.run(n_macroreps=2)
 
 # START OF OLD CODE.
 # """
