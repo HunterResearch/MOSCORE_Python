@@ -9,11 +9,11 @@ A script for interacting with the MORS Problem, Solver, and Tester classes.
 #from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
 from mrg32k3a import MRG32k3a
 
-from base import MORS_Problem, MORS_Solver, MORS_Tester
-from example import TestProblem
+from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots
+from example import TestProblem, TestProblem2
 from allocate import allocate
 
-myproblem = TestProblem()
+myproblem = TestProblem2()
 
 # myrng = MRG32k3a()
 # myproblem.attach_rng(myrng)
@@ -28,13 +28,26 @@ myproblem = TestProblem()
 mysolver = MORS_Solver(budget = 200,
                        n0=10,
                        delta=10,
-                       allocation_rule="SCORE",
+                       allocation_rule="Phantom",
                        alpha_epsilon=1e-8,
                        crn_across_solns=False
                        )
 
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
-mytester.run(n_macroreps=2)
+mytester.run(n_macroreps=10)
+
+mysolver2 = MORS_Solver(budget = 200,
+                       n0=10,
+                       delta=10,
+                       allocation_rule="Equal",
+                       alpha_epsilon=1e-8,
+                       crn_across_solns=False
+                       )
+mytester2 = MORS_Tester(solver=mysolver2, problem=myproblem)
+mytester2.run(n_macroreps=10)
+
+
+make_rate_plots(testers=[mytester, mytester2])
 
 # START OF OLD CODE.
 # """

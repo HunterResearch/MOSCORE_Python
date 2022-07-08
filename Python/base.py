@@ -14,6 +14,7 @@ MORS_Tester : class
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 # import time
 # import copy
 # import multiprocessing as mp
@@ -296,6 +297,7 @@ class MORS_Solver(object):
                                                      weights=[1 / cardinality_S_epsilon for _ in range(cardinality_S_epsilon)],
                                                      k=self.delta
                                                      )
+                alpha_hat = None
             else:
                 # Force sample undersampled systems.
                 delta_epsilon = self.delta - cardinality_S_epsilon
@@ -321,7 +323,8 @@ class MORS_Solver(object):
                                                           k=delta_epsilon
                                                           )
                     # Repeated systems are possible.
-
+                else:
+                    alpha_hat = None
             # Simulate selected systems.
             objs = problem.bump(system_indices=systems_to_sample)
             problem.update_statistics(system_indices=systems_to_sample, objs=objs)
@@ -548,6 +551,63 @@ class MORS_Tester(object):
                       'avg_percent_false_inclusion': avg_percent_false_inclusion,
                       'avg_percent_misclassification': avg_percent_misclassification
                       }
+
+
+def make_rate_plots(testers):
+    """Make plots of MCI/MCE/MC and average percentage misclassification rates.
+
+    Parameters
+    ----------
+    testers : `list` [`MORS_Tester`]
+        list of testers for comparison
+
+    Returns
+    -------
+    None
+    """
+    plot_types = ['MCI_rate',
+                  'MCE_rate',
+                  'MC_rate',
+                  'avg_percent_false_exclusion',
+                  'avg_percent_false_inclusion',
+                  'avg_percent_misclassification'
+                  ]
+    y_axis_labels = [r"$\hat{P}$(MCI)",
+                     r"$\hat{P}$(MCE)",
+                     r"$\hat{P}$(MC)",
+                     r"Avg $\%$ False Exclusion",
+                     r"Avg $\%$ False Inclusion",
+                     r"Avg $\%$ Misclassification"
+                     ]
+    marker_list = ["o", "v", "s", "*", "P", "X", "D", "V", ">", "<"]
+    # Assume the solvers have all been run on the same problem.
+    for plot_idx in range(len(plot_types)):
+        # Set up a new plot.
+        plot_type = plot_types[plot_idx]
+        plt.figure()
+        # plt.ylim((-0.05, 1.05))
+        plt.xlim((0, testers[0].solver.budget))
+        plt.xlabel(r"Sample Size $n$", size=14)
+        plt.ylabel(y_axis_labels[plot_idx], size=14)
+        solver_curve_handles = []
+        # Plot rate curve for each solver.
+        for tester_idx in range(len(testers)):
+            tester = testers[tester_idx]
+            solver_curve_handle, = plt.plot(tester.intermediate_budgets,
+                                            tester.rates[plot_type],
+                                            color="C" + str(tester_idx),
+                                            marker=marker_list[tester_idx],
+                                            linestyle="-",
+                                            linewidth=2
+                                            )
+            solver_curve_handles.append(solver_curve_handle)
+        # Add a legend.
+        # Assume solver allocation rules are unique.
+        solver_names = [tester.solver.allocation_rule for tester in testers]
+        plt.legend(handles=solver_curve_handles, labels=solver_names, loc="upper right")
+        # Save the plot.
+        path_name = f"plots/{plot_type}_rates.png"
+        plt.savefig(path_name, bbox_inches="tight")
 
 # START OLD CODE
 # """
