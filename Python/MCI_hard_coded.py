@@ -11,6 +11,22 @@ import numpy as np
 
 
 def MCI_1d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
+    """calculates phantom MCI rates
+    parameters:
+            aI: float, allocation to system I
+            Iobj: numpy arra, objectives of system I (yes I know there's no need for the matrix in 1d, but this way it's consistent across cases - Nathan)
+            Isig: 2d numpy array, covariance matrix of objectives for system i
+            alphs: numpy array of allocations of the paretos from which the phantom pareto at hand is derived
+            Lobjs: numpy array, phantom pareto objectives
+            Lsigs: numpy array, phantom pareto variances (phantom objectives are treated as independent)
+            
+    returns:
+            curr_rate:MCI event decay rate (phantom approximation) given aI and alphs
+            gradI: gradient of curr_rate wrt system I
+            Grads: gradient of curr_rate wrt alphs"""
+            
+        
+        
     a1=alphs[0]
     i1=Iobj[0]
     l1=Lobjs[0]

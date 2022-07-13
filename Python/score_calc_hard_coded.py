@@ -15,6 +15,15 @@ import numpy as np
 
 
 def SCORE_1d(Gobj,Jobj, CovJ):
+    """parameters:
+                Gobj: numpy array, objective vals of a pareto system or a phantom
+                Jobj: numpy array, objective vals of a pareto system or a non-pareto
+                CovJ: 2d numpy array, covariance matrix of J
+        output: 
+            curr_rate: float (not sure what it represents, the score calcs confused me 3 years ago - Nathan)
+            Binds: numpy array (ditto - Nathan)"""
+                
+                
     g1=Gobj[0]
     j1=Jobj[0]
     covj11=CovJ[0,0]

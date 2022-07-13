@@ -16,11 +16,25 @@ from MCE_hard_coded import MCE_2d, MCE_3d, MCE_four_d_plus
 solvers.options['show_progress'] = False
 
 def calc_bf_allocation(systems, warm_start = None):
-    """takes in systems, a dictionary with features described in create_allocation_problem in test_problem_small
-    with optional parameter warm_start, which is an initial guess at the optimal allocation with an additional element z
-    . Note that warm_start
-    may need to be feasible with respect to all constraints (definitely  needs to be feasible with respect to bounds,
-    not sure about the rest)"""
+    """Calculates Brute Force Allocation given a set of systems and optional warm start
+    
+    Parameters:
+        
+        Systems: Dictionary with following keys and values
+            'obj': a dictionary of objective value (float) tuples  keyed by system number
+            'var': a dictionary of objective covariance matrices (numpy matrices) keyed by system number
+            'pareto_indices': a list of integer system numbers of estimated pareto systems ordered by first objective value
+            'non_pareto_indices': a list o finteger system numbers of estimated non-parety systems ordered by first objective value
+            
+        warm_start: numpy array of length equal to the number of system, which sums to 1
+        
+        
+    Returns:
+        
+        out_tuple:
+            out_tuple[0]: the estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true
+            out_tuple[1]: the estimated convergence rate associatedc with the optimal allocation
+            """
     
     #extract number of objectives
     n_obj = len(systems["obj"][0])
@@ -107,11 +121,14 @@ def calc_bf_allocation(systems, warm_start = None):
     return res.x[0:-1], res.x[-1]
 #hessian of the objective function is just a matrix of zeros
 def hessian_zero(alphas):
+    """returns a square matrix of zeros with len(alpha) rows and columns"""
     return np.zeros([len(alphas),len(alphas)])
 
     
 
 def objective_function(alphas):
+    """We want to maximize the convergence rate, so the objective function is -1 times the convergence rate
+    and the gradient thereof is zero with respect to alphas and -1 with respect to the convergence rate"""
     gradient = np.zeros(len(alphas))
     gradient[-1] = -1
     return -1*alphas[-1],gradient
@@ -121,7 +138,21 @@ def brute_force_constraints_wrapper(alphas, systems, kappa, num_par,n_obj, n_sys
     """scipy optimization methods don't directly support simultaneous computation
     of constraint values and their gradients. Additionally, it only considers one constraint and its gradient
     at a time, as separate functions. Thus we check whether we're looking at the same alphas
-    as the last call, and if so return the same output"""
+    as the last call, and if so return the same output
+    
+    parameters:
+            alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            systems: dict, as described under calc_bf_allocation()
+            kappa: numpy list (length n_obj^num_par) of tuples (length num_par), such that each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
+            num_par: integer, number of estimated pareto systems
+            n_obj: integer, number of objectives
+            n_systems: integer, number of total systems
+            
+    output:
+            rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint
+            jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
+            
+    """
     if all(alphas == brute_force_constraints_wrapper.last_alphas):
         return brute_force_constraints_wrapper.last_outputs
     else:
@@ -134,6 +165,21 @@ def brute_force_constraints_wrapper(alphas, systems, kappa, num_par,n_obj, n_sys
         return rates, jacobian
     
 def brute_force_constraints(alphas, systems, kappa, num_par,n_obj, n_systems):
+    """calculates MCE constraints and MCI constraints on the convergence rate and appends them together, where the value of each constraint is equal to z, the total rate estimator, minus the rate associated with each possible MCI and MCE event, each of which serves as an upper bound on the total rate
+    
+    parameters:
+            alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            systems: dict, as described under calc_bf_allocation()
+            kappa: numpy list (length n_obj^num_par) of tuples (length num_par), such that each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
+            num_par: integer, number of estimated pareto systems
+            n_obj: integer, number of objectives
+            n_systems: integer, number of total systems
+            
+    output:
+            rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint
+            jacobian: 2d numy array, giving the jacobian of the constraint values with respect to the vector alpha (including the final element z)
+            
+    """
       
     #get MCE constraint values and gradients
     MCE_rates, MCE_grads = MCE_brute_force_rates(alphas, systems, num_par,n_systems, n_obj)
@@ -149,8 +195,19 @@ def brute_force_constraints(alphas, systems, kappa, num_par,n_obj, n_systems):
         
         
 def MCE_brute_force_rates(alphas, systems, num_par,n_systems, n_obj):
+    """calculates the MCE brute force rate constraint values and jacobian
     
-
+    parameters:
+            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            systems: dict, as described under calc_bf_allocation()
+            num_par: integer, number of estimated pareto systems
+            n_systems: integer, number of total systems
+            n_obj: integer, number of objectives
+    output:
+            MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
+            MCE_grads: 2d numy array, giving the jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
+            """
+    
     
     #negative alphas break the quadratic optimizer called below, and alphas that
     #are too small may give us numerical precision issues
@@ -220,6 +277,19 @@ def MCE_brute_force_rates(alphas, systems, num_par,n_systems, n_obj):
         
         
 def MCI_brute_force_rates(alphas, systems, kappa, num_par, n_systems, n_obj):
+    """calculates the MCE brute force rate constraint values and jacobian
+    
+    parameters:
+            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            systems: dict, as described under calc_bf_allocation()
+            kappa: numpy list (length n_obj^num_par) of tuples (length num_par), such that each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
+            num_par: integer, number of estimated pareto systems
+            n_systems: integer, number of total systems
+            n_obj: integer, number of objectives
+    output:
+            MCI_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
+            MCI_grads: 2d numy array, giving the jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
+            """
 
     
     tol = 10**-12

@@ -19,12 +19,24 @@ from brute_force_allocation import hessian_zero
 solvers.options['show_progress'] = False
 
 def iscore_allocation(systems,warm_start = None):
-    """takes in systems, a dictionary with features described in create_allocation_problem in test_problem_small
-    with optional parameter warm_start, which is an initial guess at the optimal allocation. Specifically, warm_start
-    contains values for pareto alphas ordered as phantom_pareto_indices, with the second to last element
-    being the allocation for all non-pareto indices, and the last element being z. Note that warm_start
-    may need to be feasible with respect to all constraints (definitely  needs to be feasible with respect to bounds,
-    not sure about the rest)"""
+    """Calculates ISCORE Allocation given a set of systems and optional warm start
+    
+    Parameters:
+        
+        Systems: Dictionary with following keys and values
+            'obj': a dictionary of objective value (float) tuples  keyed by system number
+            'var': a dictionary of objective covariance matrices (numpy matrices) keyed by system number
+            'pareto_indices': a list of integer system numbers of estimated pareto systems ordered by first objective value
+            'non_pareto_indices': a list o finteger system numbers of estimated non-parety systems ordered by first objective value
+            
+        warm_start: numpy array of length equal to the number of system, which sums to 1
+        
+        
+    Returns:
+        
+        out_tuple:
+            out_tuple[0]: the estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true
+            out_tuple[1]: the estimated convergence rate associatedc with the optimal allocation"""
     
     n_obj = len(systems['obj'][0])
     
