@@ -15,6 +15,7 @@ MORS_Tester : class
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 # import time
 # import copy
 # import multiprocessing as mp
@@ -297,7 +298,8 @@ class MORS_Solver(object):
                                                      weights=[1 / cardinality_S_epsilon for _ in range(cardinality_S_epsilon)],
                                                      k=self.delta
                                                      )
-                alpha_hat = None
+                # Previous value of alpha_hat will be recorded.
+                # alpha_hat = None
             else:
                 # Force sample undersampled systems.
                 delta_epsilon = self.delta - cardinality_S_epsilon
@@ -506,6 +508,7 @@ class MORS_Tester(object):
         problem_rng = MRG32k3a(s_ss_sss_index=[1, 0, 0])  # Stream 1
         self.problem.attach_rng(problem_rng)
         self.setup_rng_states()
+        print(f"Running MORS Solver with allocation rule {self.solver.allocation_rule} with budget={self.solver.budget}, n0={self.solver.n0}, and delta={self.solver.delta}.")
         # Run n_macroreps of the solver on the problem and record results.
         for mrep in range(self.n_macroreps):
             print(f"Running macroreplication {mrep + 1} of {self.n_macroreps}.")
@@ -520,6 +523,8 @@ class MORS_Tester(object):
             self.setup_rng_states()
         # Aggregate metrics across macroreplications.
         self.aggregate_metrics()
+        # Record results to .txt file and save MORS_Tester object in .pickle file.
+        self.record_tester_results()
 
     def aggregate_metrics(self):
         """Aggregate run-time statistics over macroreplications, e.g., calculate
@@ -551,6 +556,30 @@ class MORS_Tester(object):
                       'avg_percent_false_inclusion': avg_percent_false_inclusion,
                       'avg_percent_misclassification': avg_percent_misclassification
                       }
+
+    def record_tester_results(self):
+        """
+        Write summary to .txt and save base.MORS_Tester object to .pickle file.
+        """
+        # Common file name for .txt and .pickle files.
+        file_name_path = f"outputs/{self.solver.allocation_rule}_with_budget={self.solver.budget}_n0={self.solver.n0}_delta={self.solver.delta}_mreps={self.n_macroreps}"
+        # Write summary to .txt file.
+        with open(file_name_path + ".txt", "w") as file:
+            file.write("The file " + file_name_path + ".pickle contains the MORS Tester object for the following experiment: \n")
+            file.write("\nMORS Problem:\n")
+            file.write("")
+            file.write(f"\tnumber of objectives = {self.problem.n_obj}\n")
+            file.write(f"\tnumber of systems = {self.problem.n_systems}\n")
+            file.write(f"\ttrue_means = {self.problem.true_means}\n")
+            file.write(f"\ttrue covariances = {self.problem.true_covs}\n")
+            file.write("\nMORS Solver:\n")
+            file.write(f"\tallocation rule = {self.solver.allocation_rule}\n")
+            file.write(f"\tbudget = {self.solver.budget}\n")
+            file.write(f"\tn0 = {self.solver.n0}\n")
+            file.write(f"\tdelta = {self.solver.delta}")
+        # Save MORS_Tester object to .pickle file.
+        with open(file_name_path + ".pickle", "wb") as file:
+            pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
 
 
 def make_rate_plots(testers):
