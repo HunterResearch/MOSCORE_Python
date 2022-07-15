@@ -13,3 +13,10 @@ MORS Solver:
 	budget = 200
 	n0 = 10
 	delta = 10
+
+5 macroreplications were run:
+	macroreplication 0: avg time per allocation call = 0.000011 s
+	macroreplication 1: avg time per allocation call = 0.000014 s
+	macroreplication 2: avg time per allocation call = 0.000013 s
+	macroreplication 3: avg time per allocation call = 0.000008 s
+	macroreplication 4: avg time per allocation call = 0.000011 s

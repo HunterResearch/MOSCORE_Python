@@ -16,7 +16,7 @@ MORS_Tester : class
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-# import time
+import time
 # import copy
 # import multiprocessing as mp
 
@@ -257,6 +257,8 @@ class MORS_Solver(object):
                 that are falsely included at each step in the solver
             metrics['percent_misclassification'] : list of float, the portion of systems that are
                 misclassified at each step in the solver
+            metrics['timings'] : list of float, the time spent calculating the allocation distribution
+                at each step in the solver
         """
         if self.n0 < problem.n_obj + 1:
             raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
@@ -272,7 +274,8 @@ class MORS_Solver(object):
                    'MC_bool': [],
                    'percent_false_exclusion': [],
                    'percent_false_inclusion': [],
-                   'percent_misclassification': []
+                   'percent_misclassification': [],
+                   'timings': []
                    }
 
         # Simulate n0 replications at each system. Initial allocation is equal.
@@ -298,6 +301,8 @@ class MORS_Solver(object):
                                                      weights=[1 / cardinality_S_epsilon for _ in range(cardinality_S_epsilon)],
                                                      k=self.delta
                                                      )
+                # Record timing of zero.
+                metrics["timings"].append(0.0)
                 # Previous value of alpha_hat will be recorded.
                 # alpha_hat = None
             else:
@@ -315,9 +320,12 @@ class MORS_Solver(object):
                     obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
                     obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
                     allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
+                    tic = time.perf_counter()
                     alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
+                    toc = time.perf_counter()
                     warm_start = alpha_hat
-
+                    # Record timing.
+                    metrics["timings"].append(toc - tic)
                     # Sequentially choose systems to simulate by drawing independently from allocation distribution.
                     # Append to list of systems that require sampling (if any).
                     systems_to_sample += self.rng.choices(population=range(problem.n_systems),
@@ -326,7 +334,11 @@ class MORS_Solver(object):
                                                           )
                     # Repeated systems are possible.
                 else:
-                    alpha_hat = None
+                    # Record timing of zero.
+                    metrics["timings"].append(0.0)
+                    # Previous value of alpha_hat will be recorded.
+                    # alpha_hat = None
+
             # Simulate selected systems.
             objs = problem.bump(system_indices=systems_to_sample)
             problem.update_statistics(system_indices=systems_to_sample, objs=objs)
@@ -584,7 +596,11 @@ class MORS_Tester(object):
             file.write(f"\tallocation rule = {self.solver.allocation_rule}\n")
             file.write(f"\tbudget = {self.solver.budget}\n")
             file.write(f"\tn0 = {self.solver.n0}\n")
-            file.write(f"\tdelta = {self.solver.delta}")
+            file.write(f"\tdelta = {self.solver.delta}\n")
+            file.write(f"\n{self.n_macroreps} macroreplications were run:\n")
+            for mrep in range(self.n_macroreps):
+                avg_timing = np.mean(self.all_metrics[mrep]["timings"])
+                file.write(f"\tmacroreplication {mrep}: avg time per allocation call = {avg_timing:.6f} s\n")
         # Save MORS_Tester object to .pickle file.
         with open(self.file_name_path + ".pickle", "wb") as file:
             pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
@@ -672,12 +688,12 @@ def make_phantom_rate_plots(testers):
     for tester in testers:
         phantom_rate_of_empirical_alloc_curves = []
         for mrep in range(tester.n_macroreps):
-            z_phantom_alpha_bar_curve = [calc_phantom_rate(alphas=tester.all_metrics[mrep]["alpha_bars"][time_idx], problem=true_allocation_problem) for time_idx in range(len(tester.intermediate_budgets))]
+            z_phantom_alpha_bar_curve = [calc_phantom_rate(alphas=tester.all_metrics[mrep]["alpha_bars"][budget_idx], problem=true_allocation_problem) for budget_idx in range(len(tester.intermediate_budgets))]
             # print(z_phantom_alpha_bar_curve)
             phantom_rate_of_empirical_alloc_curves.append(z_phantom_alpha_bar_curve)
-        tester.rates["phantom_rate_25pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][time_idx] for mrep in range(tester.n_macroreps)], q=0.25) for time_idx in range(len(tester.intermediate_budgets))]
-        tester.rates["phantom_rate_50pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][time_idx] for mrep in range(tester.n_macroreps)], q=0.50) for time_idx in range(len(tester.intermediate_budgets))]
-        tester.rates["phantom_rate_75pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][time_idx] for mrep in range(tester.n_macroreps)], q=0.75) for time_idx in range(len(tester.intermediate_budgets))]
+        tester.rates["phantom_rate_25pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][budget_idx] for mrep in range(tester.n_macroreps)], q=0.25) for budget_idx in range(len(tester.intermediate_budgets))]
+        tester.rates["phantom_rate_50pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][budget_idx] for mrep in range(tester.n_macroreps)], q=0.50) for budget_idx in range(len(tester.intermediate_budgets))]
+        tester.rates["phantom_rate_75pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][budget_idx] for mrep in range(tester.n_macroreps)], q=0.75) for budget_idx in range(len(tester.intermediate_budgets))]
 
         # Save updated MORS_Tester object to .pickle file.
         with open(tester.file_name_path + ".pickle", "wb") as file:
