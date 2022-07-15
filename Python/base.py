@@ -575,11 +575,11 @@ class MORS_Tester(object):
         with open(self.file_name_path + ".txt", "w+") as file:
             file.write("The file " + self.file_name_path + ".pickle contains the MORS Tester object for the following experiment: \n")
             file.write("\nMORS Problem:\n")
-            file.write("")
             file.write(f"\tnumber of objectives = {self.problem.n_obj}\n")
             file.write(f"\tnumber of systems = {self.problem.n_systems}\n")
-            file.write(f"\ttrue_means = {self.problem.true_means}\n")
-            file.write(f"\ttrue covariances = {self.problem.true_covs}\n")
+            file.write("\n")
+            for system_idx in range(self.problem.n_systems):
+                file.write(f"\tsystem {system_idx} has true means {self.problem.true_means[system_idx]} and covariance matrix {self.problem.true_covs[system_idx]}\n")
             file.write("\nMORS Solver:\n")
             file.write(f"\tallocation rule = {self.solver.allocation_rule}\n")
             file.write(f"\tbudget = {self.solver.budget}\n")

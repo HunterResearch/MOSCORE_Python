@@ -1,0 +1,15 @@
+The file outputs/Equal_with_budget=200_n0=10_delta=10_mreps=5.pickle contains the MORS Tester object for the following experiment: 
+
+MORS Problem:
+	number of objectives = 2
+	number of systems = 3
+
+	system 0 has true means [1, 0] and covariance matrix [[1, 0], [0, 1]]
+	system 1 has true means [0, 1] and covariance matrix [[1, 0], [0, 1]]
+	system 2 has true means [1, 1] and covariance matrix [[1, 0], [0, 1]]
+
+MORS Solver:
+	allocation rule = Equal
+	budget = 200
+	n0 = 10
+	delta = 10
