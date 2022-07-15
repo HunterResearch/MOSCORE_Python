@@ -9,7 +9,7 @@ A script for interacting with the MORS Problem, Solver, and Tester classes.
 #from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
 from mrg32k3a import MRG32k3a
 
-from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots
+from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots, make_phantom_rate_plots
 from example import TestProblem, TestProblem2
 from allocate import allocate
 
@@ -34,7 +34,7 @@ mysolver = MORS_Solver(budget = 200,
                        )
 
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
-mytester.run(n_macroreps=10)
+mytester.run(n_macroreps=5)
 
 mysolver2 = MORS_Solver(budget = 200,
                        n0=10,
@@ -44,10 +44,12 @@ mysolver2 = MORS_Solver(budget = 200,
                        crn_across_solns=False
                        )
 mytester2 = MORS_Tester(solver=mysolver2, problem=myproblem)
-mytester2.run(n_macroreps=10)
+mytester2.run(n_macroreps=5)
 
 
-make_rate_plots(testers=[mytester, mytester2])
+# make_rate_plots(testers=[mytester, mytester2])
+
+make_phantom_rate_plots(testers=[mytester, mytester2])
 
 # START OF OLD CODE.
 # """

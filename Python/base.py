@@ -25,7 +25,7 @@ import pymoso.chnutils as utils
 from mrg32k3a import MRG32k3a
 
 from allocate import allocate
-from utils import create_allocation_problem, is_pareto_efficient  # calc_phantom_rate, _mp_objmethod
+from utils import create_allocation_problem, is_pareto_efficient, calc_phantom_rate  # _mp_objmethod
 
 
 class MORS_Problem(object):
@@ -454,6 +454,14 @@ class MORS_Tester(object):
             the average proportion of true non-pareto systems that are falsely included at each step in the solver
         rates['avg_percent_misclassification'] : list of float
             the proportion of systems that are misclassified at each step in the solver
+        rates['phantom_rate_25pct'] : list of float
+            25-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
+        rates['phantom_rate_50pct'] : list of float
+            50-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
+        rates['phantom_rate_75pct'] : list of float
+            75-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
+    file_name_path : str
+        name of files for saving results
     """
     def __init__(self, solver, problem):
         self.problem = problem
@@ -562,10 +570,10 @@ class MORS_Tester(object):
         Write summary to .txt and save base.MORS_Tester object to .pickle file.
         """
         # Common file name for .txt and .pickle files.
-        file_name_path = f"outputs/{self.solver.allocation_rule}_with_budget={self.solver.budget}_n0={self.solver.n0}_delta={self.solver.delta}_mreps={self.n_macroreps}"
+        self.file_name_path = f"outputs/{self.solver.allocation_rule}_with_budget={self.solver.budget}_n0={self.solver.n0}_delta={self.solver.delta}_mreps={self.n_macroreps}"
         # Write summary to .txt file.
-        with open(file_name_path + ".txt", "w") as file:
-            file.write("The file " + file_name_path + ".pickle contains the MORS Tester object for the following experiment: \n")
+        with open(self.file_name_path + ".txt", "w+") as file:
+            file.write("The file " + self.file_name_path + ".pickle contains the MORS Tester object for the following experiment: \n")
             file.write("\nMORS Problem:\n")
             file.write("")
             file.write(f"\tnumber of objectives = {self.problem.n_obj}\n")
@@ -578,7 +586,7 @@ class MORS_Tester(object):
             file.write(f"\tn0 = {self.solver.n0}\n")
             file.write(f"\tdelta = {self.solver.delta}")
         # Save MORS_Tester object to .pickle file.
-        with open(file_name_path + ".pickle", "wb") as file:
+        with open(self.file_name_path + ".pickle", "wb") as file:
             pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
 
 
@@ -637,6 +645,87 @@ def make_rate_plots(testers):
         # Save the plot.
         path_name = f"plots/{plot_type}_rates.png"
         plt.savefig(path_name, bbox_inches="tight")
+
+
+def make_phantom_rate_plots(testers):
+    """Make plots of MCI/MCE/MC and average percentage misclassification rates.
+
+    Parameters
+    ----------
+    testers : `list` [`MORS_Tester`]
+        list of testers for comparison
+
+    Returns
+    -------
+    None
+    """
+    # Assume all testers have the same problem.
+    common_problem = testers[0].problem
+    # Calculate phantom rate of phantom allocation for true problem.
+    true_obj_vals = {idx: common_problem.true_means[idx] for idx in range(common_problem.n_systems)}
+    true_obj_vars = {idx: np.array(common_problem.true_covs[idx]) for idx in range(common_problem.n_systems)}
+    true_allocation_problem = create_allocation_problem(obj_vals=true_obj_vals, obj_vars=true_obj_vars)
+    _, phantom_rate_of_phantom_alloc = allocate(method="Phantom", systems=true_allocation_problem)
+    # print(phantom_rate_of_phantom_alloc)
+
+    # Calculate phantom rates for each tester.
+    for tester in testers:
+        phantom_rate_of_empirical_alloc_curves = []
+        for mrep in range(tester.n_macroreps):
+            z_phantom_alpha_bar_curve = [calc_phantom_rate(alphas=tester.all_metrics[mrep]["alpha_bars"][time_idx], problem=true_allocation_problem) for time_idx in range(len(tester.intermediate_budgets))]
+            # print(z_phantom_alpha_bar_curve)
+            phantom_rate_of_empirical_alloc_curves.append(z_phantom_alpha_bar_curve)
+        tester.rates["phantom_rate_25pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][time_idx] for mrep in range(tester.n_macroreps)], q=0.25) for time_idx in range(len(tester.intermediate_budgets))]
+        tester.rates["phantom_rate_50pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][time_idx] for mrep in range(tester.n_macroreps)], q=0.50) for time_idx in range(len(tester.intermediate_budgets))]
+        tester.rates["phantom_rate_75pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][time_idx] for mrep in range(tester.n_macroreps)], q=0.75) for time_idx in range(len(tester.intermediate_budgets))]
+
+        # Save updated MORS_Tester object to .pickle file.
+        with open(tester.file_name_path + ".pickle", "wb") as file:
+            pickle.dump(tester, file, pickle.HIGHEST_PROTOCOL)
+
+    # Set up a new plot.
+    plt.figure()
+    # plt.ylim((-0.05, 1.05))
+    # Assume all solvers have same budget.
+    plt.xlim((0, testers[0].solver.budget))
+    plt.xlabel(r"Sample Size $n$", size=14)
+    plt.ylabel(r"$z^{ph}(\alpha^{ph}) - z^{ph}(\bar{\alpha}_n)$", size=14)
+    marker_list = ["o", "v", "s", "*", "P", "X", "D", "V", ">", "<"]
+    solver_curve_handles = []
+    # Plot rate curve for each solver.
+    for tester_idx in range(len(testers)):
+        tester = testers[tester_idx]
+        # Plot 25%, 50%, and 75% quantiles.
+        solver_curve_handle, = plt.plot(tester.intermediate_budgets,
+                                        tester.rates["phantom_rate_50pct"],
+                                        color="C" + str(tester_idx),
+                                        marker=marker_list[tester_idx],
+                                        linestyle="-",
+                                        linewidth=2
+                                        )
+        solver_curve_handles.append(solver_curve_handle)
+        plt.plot(tester.intermediate_budgets,
+                 tester.rates["phantom_rate_25pct"],
+                 color="C" + str(tester_idx),
+                 marker=marker_list[tester_idx],
+                 linestyle="-",
+                 linewidth=2
+                 )
+        plt.plot(tester.intermediate_budgets,
+                 tester.rates["phantom_rate_75pct"],
+                 color="C" + str(tester_idx),
+                 marker=marker_list[tester_idx],
+                 linestyle="-",
+                 linewidth=2
+                 )
+    # Add a legend.
+    # Assume solver allocation rules are unique.
+    solver_names = [tester.solver.allocation_rule for tester in testers]
+    plt.legend(handles=solver_curve_handles, labels=solver_names, loc="upper right")
+    # Save the plot.
+    path_name = "plots/phantom_rates.png"
+    plt.savefig(path_name, bbox_inches="tight")
+
 
 # START OLD CODE
 # """

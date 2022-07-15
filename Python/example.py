@@ -46,7 +46,7 @@ class TestProblem2(MORS_Problem):
     """Example implementation of a user-defined MORS problem."""
     def __init__(self):
         self.n_obj = 2
-        self.systems = [(0.5, 0), (0, 0.5), (0.5, 0.5)]
+        self.systems = [(1, 0), (0, 1), (1, 1)]
         self.n_systems = len(self.systems)
         self.true_means = [list(self.systems[idx]) for idx in range(self.n_systems)]
         self.true_covs = [[[1, 0], [0, 1]] for _ in range(self.n_systems)]
