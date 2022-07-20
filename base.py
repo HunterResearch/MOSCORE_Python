@@ -11,6 +11,8 @@ MORS_Problem : class
 MORS_Solver : class
 record_metrics : function
 MORS_Tester : class
+make_rate_plots : function
+make_phantom_rate_plots : function
 """
 
 import numpy as np
