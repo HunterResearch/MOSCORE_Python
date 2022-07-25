@@ -18,7 +18,6 @@ MCI_brute_force_rates : function
 """
 
 import numpy as np
-import pymoso.chnutils as utils
 import itertools as it
 import scipy.optimize as opt
 import scipy.linalg as linalg
@@ -64,10 +63,16 @@ def calc_bf_allocation(systems, warm_start=None):
     # This is to help with our workaround for that. Described under brute_force_constraints_wrapper.
     brute_force_constraints_wrapper.last_alphas = None
 
-    # lambda is for function handles.
     # We define a callable for the constraint values and another for the constraint jacobian.
-    constraint_values = lambda x: brute_force_constraints_wrapper(x, systems, kappa, num_par, n_obj, n_systems)[0]
-    constraint_jacobian = lambda x: brute_force_constraints_wrapper(x, systems, kappa, num_par, n_obj, n_systems)[1]
+    def constraint_values(x):
+        return brute_force_constraints_wrapper(x, systems, kappa, num_par, n_obj, n_systems)[0]
+
+    def constraint_jacobian(x):
+        return brute_force_constraints_wrapper(x, systems, kappa, num_par, n_obj, n_systems)[1]
+
+    # lambda is for function handles.
+    # constraint_values = lambda x: brute_force_constraints_wrapper(x, systems, kappa, num_par, n_obj, n_systems)[0]
+    # constraint_jacobian = lambda x: brute_force_constraints_wrapper(x, systems, kappa, num_par, n_obj, n_systems)[1]
 
     # Define nonlinear constraint object for the optimizer.
     # Will not work if we switch away from trust_constr, but the syntax isn't that different if we do.
@@ -87,7 +92,9 @@ def calc_bf_allocation(systems, warm_start=None):
         warm_start = np.append(warm_start, 0)
 
     # The objective is -z and its derivative wrt z is -1.
-    obj_function = lambda x: objective_function(x)
+    def obj_function(x):
+        return objective_function(x)
+    # obj_function = lambda x: objective_function(x)
 
     # Set sum of alphas (not z) to 1.
     equality_constraint_array = np.ones(n_systems + 1)
