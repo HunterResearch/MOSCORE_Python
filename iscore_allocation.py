@@ -16,7 +16,7 @@ from phantom_allocation import find_phantoms
 from brute_force_allocation import hessian_zero
 
 
-solvers.options['show_progress'] = False
+# solvers.options['show_progress'] = False
 
 def iscore_allocation(systems,warm_start = None):
     """Calculates ISCORE Allocation given a set of systems and optional warm start

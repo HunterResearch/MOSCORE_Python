@@ -83,23 +83,11 @@ class MORS_Problem(object):
         ----------
         rng : MRG32k3a object
             random number generator to use for simulating replications
-
-        Returns
-        -------
-        None
         """
         self.rng = rng
 
     def reset_statistics(self):
         """Reset sample statistics for all systems.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
         self.sample_sizes = [0 for _ in range(self.n_systems)]
         self.sums = [[0 for _ in range(self.n_obj)] for _ in range(self.n_systems)]
@@ -219,10 +207,6 @@ class MORS_Solver(object):
         ----------
         rng : MRG32k3a object
             random number generator to use for simulating replications
-
-        Returns
-        -------
-        None
         """
         self.rng = rng
 
@@ -487,14 +471,6 @@ class MORS_Tester(object):
 
     def setup_rng_states(self):
         """Setup rng states for each system based on whether solver uses CRN.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
         if self.solver.crn_across_solns:
             # Using CRN --> all systems based on common substream
@@ -514,10 +490,6 @@ class MORS_Tester(object):
         ----------
         n_macroreps : int
             number of macroreplications run
-
-        Returns
-        -------
-        None
         """
         self.n_macroreps = n_macroreps
         # Create, initialize, and attach random number generators.
@@ -551,14 +523,6 @@ class MORS_Tester(object):
     def aggregate_metrics(self):
         """Aggregate run-time statistics over macroreplications, e.g., calculate
         empirical misclassification rates.
-
-        Arguments
-        ---------
-        None
-
-        Returns
-        -------
-        None
         """
         # Number of budget times at which statistics are recorded.
         n_budgets = len(self.all_metrics[0]["MCI_bool"])
@@ -615,10 +579,6 @@ def make_rate_plots(testers):
     ----------
     testers : `list` [`MORS_Tester`]
         list of testers for comparison
-
-    Returns
-    -------
-    None
     """
     plot_types = ['MCI_rate',
                   'MCE_rate',
@@ -672,10 +632,6 @@ def make_phantom_rate_plots(testers):
     ----------
     testers : `list` [`MORS_Tester`]
         list of testers for comparison
-
-    Returns
-    -------
-    None
     """
     # Assume all testers have the same problem.
     common_problem = testers[0].problem

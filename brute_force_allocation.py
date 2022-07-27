@@ -25,7 +25,7 @@ from cvxopt import matrix, solvers
 
 from MCE_hard_coded import MCE_2d, MCE_3d, MCE_four_d_plus
 
-solvers.options['show_progress'] = False
+# solvers.options['show_progress'] = False
 
 
 def calc_bf_allocation(systems, warm_start=None):
