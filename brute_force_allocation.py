@@ -75,7 +75,7 @@ def calc_bf_allocation(systems, warm_start=None):
     # constraint_jacobian = lambda x: brute_force_constraints_wrapper(x, systems, kappa, num_par, n_obj, n_systems)[1]
 
     # Define nonlinear constraint object for the optimizer.
-    # Will not work if we switch away from trust_constr, but the syntax isn't that different if we do.
+    # Will not work if we switch away from trust-constr, but the syntax isn't that different if we do.
     nonlinear_constraint = opt.NonlinearConstraint(constraint_values,
                                                    lb=-np.inf,
                                                    ub=0.0,
@@ -99,12 +99,13 @@ def calc_bf_allocation(systems, warm_start=None):
     # Set sum of alphas (not z) to 1.
     equality_constraint_array = np.ones(n_systems + 1)
     equality_constraint_array[-1] = 0.0
-
     equality_constraint_bound = 1.0
     equality_constraint = opt.LinearConstraint(equality_constraint_array,
                                                equality_constraint_bound,
                                                equality_constraint_bound
                                                )
+    
+    # Solve optimization problem.
     res = opt.minimize(fun=obj_function,
                        x0=warm_start,
                        method='trust-constr',
@@ -117,8 +118,15 @@ def calc_bf_allocation(systems, warm_start=None):
     stop_flag = 1
     if res.status == 0:
         stop_flag = 0
+        print(systems["obj"])
+        print(systems["var"])
+    # If latest attempt to optimize terminated improperly, warm-start at
+    # final solution and try again.
     while stop_flag == 0:
         print('cycling')
+        print(res.message)
+        print(res.status)
+        print(res.x[-1])
         res = opt.minimize(fun=objective_function,
                            x0=res.x,
                            method='trust-constr',
