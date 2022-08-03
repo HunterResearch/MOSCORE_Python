@@ -249,6 +249,8 @@ class MORS_Solver(object):
         if self.n0 < problem.n_obj + 1:
             raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
                   sample variance-covariance matrices.")
+
+        # No warm start solution for first call to allocate().
         warm_start = None
 
         # Initialize summary statistics tracked over time:
@@ -309,6 +311,7 @@ class MORS_Solver(object):
                     tic = time.perf_counter()
                     alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
                     toc = time.perf_counter()
+                    # In subsequent iterations, use previous alpha_hat as warm start
                     warm_start = alpha_hat
                     # Record timing.
                     metrics["timings"].append(toc - tic)

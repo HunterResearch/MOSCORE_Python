@@ -24,7 +24,7 @@ from phantom_allocation import calc_phantom_allocation
 from brute_force_allocation import calc_bf_allocation
 
 
-def allocate(method, systems, WSFlag=False, warm_start=None):
+def allocate(method, systems, warm_start=None):
     """Generate a non-sequential simulation allocation for the MORS problem.
 
     Parameters
@@ -40,8 +40,6 @@ def allocate(method, systems, WSFlag=False, warm_start=None):
                 each of which corresponds to the inverse covariance matrix of a system
             systems['pareto_indices'] is a list of pareto systems ordered by the first objective
             systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
-    WSFlag : bool
-        True if warm-start is to be done, otherwise False.
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.
         Length must be equal to the number of systems.
@@ -61,13 +59,13 @@ def allocate(method, systems, WSFlag=False, warm_start=None):
     elif method == "iSCORE":
         return iscore_allocation(systems, warm_start=warm_start)
     elif method == "SCORE":
-        return score_allocation_smart(systems, WSFlag=WSFlag, warm_start=warm_start)
+        return score_allocation_smart(systems, warm_start=warm_start)
     elif method == "Phantom":
-        return phantom_allocation_smart(systems, WSFlag=WSFlag, warm_start=warm_start)
+        return phantom_allocation_smart(systems, warm_start=warm_start)
     elif method == "Brute Force":
-        return bf_allocation_smart(systems, WSFlag=WSFlag, warm_start=warm_start)
+        return bf_allocation_smart(systems, warm_start=warm_start)
     elif method == "Brute Force Ind":
-        return bfind_allocation_smart(systems, WSFlag=WSFlag, warm_start=warm_start)
+        return bfind_allocation_smart(systems, warm_start=warm_start)
     else:
         raise ValueError("Invalid method selected. Valid methods are 'Equal', 'iSCORE', 'SCORE', 'Phantom', 'Brute Force', and 'Brute Force Ind'.")
 
@@ -102,7 +100,7 @@ def equal_allocation(systems):
     return alloc, zval
 
 
-def score_allocation_smart(systems, WSFlag=False, warm_start=None):
+def score_allocation_smart(systems, warm_start=None):
     """Generate a non-sequential simulation allocation for the MORS problem
     using the SCORE method.
 
@@ -117,8 +115,6 @@ def score_allocation_smart(systems, WSFlag=False, warm_start=None):
             each of which corresponds to the inverse covariance matrix of a system
         systems['pareto_indices'] is a list of pareto systems ordered by the first objective
         systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
-    WSFlag : bool
-        True if warm-start is to be done, otherwise False.
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.
         Length must be equal to the number of systems.
@@ -130,14 +126,14 @@ def score_allocation_smart(systems, WSFlag=False, warm_start=None):
             A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
-    # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
-    if len(systems['obj'][0]) > 3 and WSFlag:
+    # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+    if len(systems['obj'][0]) > 3:
         warm_start = iscore_allocation(systems, warm_start=warm_start)[0]
         # [0] corresponds to allocation. [1] would be associated rate.
     return score_allocation(systems, warm_start=warm_start)
 
 
-def phantom_allocation_smart(systems, WSFlag=False, warm_start=None):
+def phantom_allocation_smart(systems, warm_start=None):
     """Generate a non-sequential simulation allocation for the MORS problem
     using the Phantom method.
 
@@ -152,8 +148,6 @@ def phantom_allocation_smart(systems, WSFlag=False, warm_start=None):
             each of which corresponds to the inverse covariance matrix of a system
         systems['pareto_indices'] is a list of pareto systems ordered by the first objective
         systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
-    WSFlag : bool
-        True if warm-start is to be done, otherwise False.
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.
         Length must be equal to the number of systems.
@@ -165,14 +159,14 @@ def phantom_allocation_smart(systems, WSFlag=False, warm_start=None):
             A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
-    # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
-    if len(systems['obj'][0]) > 3 and WSFlag:
+    # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+    if len(systems['obj'][0]) > 3:
         warm_start = iscore_allocation(systems, warm_start=warm_start)[0]
         # [0] corresponds to allocation. [1] would be associated rate.
     return calc_phantom_allocation(systems, warm_start=warm_start)
 
 
-def bf_allocation_smart(systems, WSFlag=False, warm_start=None):
+def bf_allocation_smart(systems, warm_start=None):
     """Generate a non-sequential simulation allocation for the MORS problem
     using the Brute Force method.
 
@@ -187,8 +181,6 @@ def bf_allocation_smart(systems, WSFlag=False, warm_start=None):
             each of which corresponds to the inverse covariance matrix of a system
         systems['pareto_indices'] is a list of pareto systems ordered by the first objective
         systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
-    WSFlag : bool
-        True if warm-start is to be done, otherwise False.
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.
         Length must be equal to the number of systems.
@@ -200,14 +192,14 @@ def bf_allocation_smart(systems, WSFlag=False, warm_start=None):
             A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
-    # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
-    if len(systems['obj'][0]) > 3 and WSFlag:
+    # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+    if len(systems['obj'][0]) > 3:
         warm_start = iscore_allocation(systems, warm_start=warm_start)[0]
         # [0] corresponds to allocation. [1] would be associated rate.
     return calc_bf_allocation(systems, warm_start=warm_start)
 
 
-def bfind_allocation_smart(systems, WSFlag=False, warm_start=None):
+def bfind_allocation_smart(systems, warm_start=None):
     """Generate a non-sequential simulation allocation for the MORS problem
     using the Brute Force Independent method.
 
@@ -243,8 +235,8 @@ def bfind_allocation_smart(systems, WSFlag=False, warm_start=None):
     for s in range(n_systems):
         systems['var'][s] = idmat
     # Perform allocation as in 'normal' brute force.
-    # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
-    if len(systems['obj'][0]) > 3 and WSFlag:
+    # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+    if len(systems['obj'][0]) > 3:
         warm_start = iscore_allocation(systems, warm_start=warm_start)[0]
         # [0] corresponds to allocation. [1] would be associated rate.
     return calc_bf_allocation(systems, warm_start=warm_start)
