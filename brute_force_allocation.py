@@ -417,6 +417,7 @@ def MCI_brute_force_rates(alphas, systems, kappa, num_par, n_systems, n_obj):
                 P = matrix((P + P.transpose()) / 2)
 
                 # Solve.
+                solvers.options['show_progress'] = False
                 x_star = np.array(solvers.qp(P, q, G, h)['x']).flatten()
 
                 # Reformat results of optimization.

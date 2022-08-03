@@ -32,14 +32,14 @@ def allocate(method, systems, warm_start=None):
     method : str
         Chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", "Brute Force", and "Brute Force Ind".
     systems : dict
-            systems['obj'] is a dictionary of numpy arrays, indexed by system number,
-                each of which corresponds to the objective values of a system
-            systems['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-                each of which corresponds to the covariance matrix of a system
-            systems['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-                each of which corresponds to the inverse covariance matrix of a system
-            systems['pareto_indices'] is a list of pareto systems ordered by the first objective
-            systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+        systems['obj'] is a dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system
+        systems['var'] is a dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system
+        systems['inv_var'] is a dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system
+        systems['pareto_indices'] is a list of pareto systems ordered by the first objective
+        systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.
         Length must be equal to the number of systems.
@@ -214,8 +214,6 @@ def bfind_allocation_smart(systems, warm_start=None):
             each of which corresponds to the inverse covariance matrix of a system
         systems['pareto_indices'] is a list of pareto systems ordered by the first objective
         systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
-    WSFlag : bool
-        True if warm-start is to be done, otherwise False.
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.
         Length must be equal to the number of systems.

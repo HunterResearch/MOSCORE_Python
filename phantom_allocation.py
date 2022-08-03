@@ -17,8 +17,6 @@ from MCI_hard_coded import MCI_1d, MCI_2d, MCI_3d, MCI_four_d_plus
 from utils import is_pareto_efficient
 
 
-# solvers.options['show_progress'] = False
-
 def calc_phantom_allocation(systems, warm_start=None):
     """Calculates Phantom Allocation given a set of systems and optional warm start
     

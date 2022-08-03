@@ -49,7 +49,7 @@ mytester2.run(n_macroreps=5)
 
 # make_rate_plots(testers=[mytester, mytester2])
 
-make_phantom_rate_plots(testers=[mytester, mytester2])
+# make_phantom_rate_plots(testers=[mytester, mytester2])
 
 # START OF OLD CODE.
 # """
