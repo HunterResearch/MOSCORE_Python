@@ -55,9 +55,8 @@ def allocate(method, systems, WSFlag=False, warm_start=None):
     Returns
     -------
     outs : tuple
-        outs[0] is the estimated optimal simulation allocation.\
-        A list of float of length equal to the number of systems.\
-        outs[1] is the estimated rate of convergence.
+        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        outs[1]: The estimated rate of convergence.
     """
     if warm_start is not None and len(warm_start) != len(systems['obj']):
         raise ValueError("Length of warm_start must be equal to the number of systems.")
@@ -102,9 +101,8 @@ def equal_allocation(systems):
     Returns
     -------
     outs : tuple
-        outs[0] is the estimated optimal simulation allocation.
-        A list of float of length equal to the number of systems.
-        outs[1] is automatically set to zero
+        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        outs[1]: The estimated rate of convergence.
     """
     n_systems = len(systems["obj"])
     alloc = [1 / n_systems for _ in range(n_systems)]
@@ -142,9 +140,8 @@ def score_allocation_smart(systems, WSFlag=False, warm_start=None):
     Returns
     -------
     outs : tuple
-        outs[0] is the estimated optimal simulation allocation.
-        A list of float of length equal to the number of systems.
-        outs[1] is the estimated rate of convergence.
+        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        outs[1]: The estimated rate of convergence.
     """
     # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
     if len(systems['obj'][0]) > 3 and WSFlag:
@@ -182,9 +179,8 @@ def phantom_allocation_smart(systems, WSFlag=False, warm_start=None):
     Returns
     -------
     outs : tuple
-        outs[0] is the estimated optimal simulation allocation.
-        A list of float of length equal to the number of systems.
-        outs[1] is the estimated rate of convergence.
+        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        outs[1]: The estimated rate of convergence.
     """
     # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
     if len(systems['obj'][0]) > 3 and WSFlag:
@@ -223,9 +219,8 @@ def bf_allocation_smart(systems, WSFlag=False, warm_start=None):
     Returns
     -------
     outs : tuple
-        outs[0] is the estimated optimal simulation allocation.
-        A list of float of length equal to the number of systems.
-        outs[1] is the estimated rate of convergence.
+        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        outs[1]: The estimated rate of convergence.
     """
     # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
     if len(systems['obj'][0]) > 3 and WSFlag:
@@ -263,9 +258,8 @@ def bfind_allocation_smart(systems, WSFlag=False, warm_start=None):
     Returns
     -------
     outs : tuple
-        outs[0] is the estimated optimal simulation allocation.
-        A list of float of length equal to the number of systems.
-        outs[1] is the estimated rate of convergence.
+        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        outs[1]: The estimated rate of convergence.
     """
     # Extract number of objective and number of systems.
     n_obj = len(systems["obj"][0])
