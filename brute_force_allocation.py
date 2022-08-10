@@ -115,18 +115,10 @@ def calc_bf_allocation(systems, warm_start=None):
                        constraints=[equality_constraint, nonlinear_constraint]
                        )
 
-    stop_flag = 1
-    if res.status == 0:
-        stop_flag = 0
-        print(systems["obj"])
-        print(systems["var"])
-    # If latest attempt to optimize terminated improperly, warm-start at
+    # If first attempt to optimize terminated improperly, warm-start at
     # final solution and try again.
-    while stop_flag == 0:
-        print('cycling')
-        print(res.message)
-        print(res.status)
-        print(res.x[-1])
+    if res.status == 0:
+        print("cycling")
         res = opt.minimize(fun=objective_function,
                            x0=res.x,
                            method='trust-constr',
@@ -135,8 +127,30 @@ def calc_bf_allocation(systems, warm_start=None):
                            bounds=my_bounds,
                            constraints=[equality_constraint, nonlinear_constraint]
                            )
-        if res.status != 0:
-            stop_flag = 1
+
+    # stop_flag = 1
+    # if res.status == 0:
+    #     stop_flag = 0
+    #     print("means = ", systems["obj"])
+    #     print("var = ", systems["var"])
+    # # If latest attempt to optimize terminated improperly, warm-start at
+    # # final solution and try again.
+    # while stop_flag == 0:
+    #     print('cycling')
+    #     print(res.message)
+    #     print(res.status)
+    #     print("allocation = ", res.x[:-1])
+    #     print("rate = ", res.x[-1])
+    #     res = opt.minimize(fun=objective_function,
+    #                        x0=res.x,
+    #                        method='trust-constr',
+    #                        jac=True,
+    #                        hess=hessian_zero,
+    #                        bounds=my_bounds,
+    #                        constraints=[equality_constraint, nonlinear_constraint]
+    #                        )
+    #     if res.status != 0:
+    #         stop_flag = 1
     # print(res.constr_violation)
     # print(res.message)
 

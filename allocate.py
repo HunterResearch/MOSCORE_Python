@@ -192,11 +192,15 @@ def bf_allocation_smart(systems, warm_start=None):
             A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
+    # If 2 or fewer objetives, use phantom allocation instead.
+    # It is equivalent to the brute-force allocation, but easier to solve.
+    if len(systems['obj'][0]) <= 2:
+        return calc_phantom_allocation(systems, warm_start=warm_start)
     # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
-    if len(systems['obj'][0]) > 3:
+    else:
         warm_start = iscore_allocation(systems, warm_start=warm_start)[0]
         # [0] corresponds to allocation. [1] would be associated rate.
-    return calc_bf_allocation(systems, warm_start=warm_start)
+        return calc_bf_allocation(systems, warm_start=warm_start)
 
 
 def bfind_allocation_smart(systems, warm_start=None):
