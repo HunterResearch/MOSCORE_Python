@@ -36,7 +36,7 @@ def allocate(method, systems, WSFlag=False, warm_start=None):
         A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
         ``"var"``
-            A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
 
         ``"inv_var"``
         A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
@@ -85,20 +85,25 @@ def equal_allocation(systems):
     Parameters
     ----------
     systems : dict
-        systems['obj'] is a dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system
-        systems['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system
-        systems['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system
-        systems['pareto_indices'] is a list of pareto systems ordered by the first objective
-        systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
 
     Returns
     -------
     outs : tuple
         outs[0] is the estimated optimal simulation allocation.
-            A list of float of length equal to the number of systems.
+        A list of float of length equal to the number of systems.
         outs[1] is automatically set to zero
     """
     n_systems = len(systems["obj"])
@@ -115,14 +120,19 @@ def score_allocation_smart(systems, WSFlag=False, warm_start=None):
     Parameters
     ----------
     systems : dict
-        systems['obj'] is a dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system
-        systems['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system
-        systems['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system
-        systems['pareto_indices'] is a list of pareto systems ordered by the first objective
-        systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     WSFlag : bool
         True if warm-start is to be done, otherwise False.
     warm_start : list of float
@@ -133,7 +143,7 @@ def score_allocation_smart(systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0] is the estimated optimal simulation allocation.
-            A list of float of length equal to the number of systems.
+        A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
     # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
@@ -150,14 +160,19 @@ def phantom_allocation_smart(systems, WSFlag=False, warm_start=None):
     Parameters
     ----------
     systems : dict
-        systems['obj'] is a dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system
-        systems['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system
-        systems['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system
-        systems['pareto_indices'] is a list of pareto systems ordered by the first objective
-        systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``""pareto_indices``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     WSFlag : bool
         True if warm-start is to be done, otherwise False.
     warm_start : list of float
@@ -168,7 +183,7 @@ def phantom_allocation_smart(systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0] is the estimated optimal simulation allocation.
-            A list of float of length equal to the number of systems.
+        A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
     # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
@@ -185,14 +200,20 @@ def bf_allocation_smart(systems, WSFlag=False, warm_start=None):
     Parameters
     ----------
     systems : dict
-        systems['obj'] is a dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system
-        systems['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system
-        systems['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system
-        systems['pareto_indices'] is a list of pareto systems ordered by the first objective
-        systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     WSFlag : bool
         True if warm-start is to be done, otherwise False.
     warm_start : list of float
@@ -203,7 +224,7 @@ def bf_allocation_smart(systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0] is the estimated optimal simulation allocation.
-            A list of float of length equal to the number of systems.
+        A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
     # If more than 3 objectives, use iSCORE allocation as a warm-start solution.
@@ -220,14 +241,19 @@ def bfind_allocation_smart(systems, WSFlag=False, warm_start=None):
     Parameters
     ----------
     systems : dict
-        systems['obj'] is a dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system
-        systems['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system
-        systems['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system
-        systems['pareto_indices'] is a list of pareto systems ordered by the first objective
-        systems['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     WSFlag : bool
         True if warm-start is to be done, otherwise False.
     warm_start : list of float
@@ -238,7 +264,7 @@ def bfind_allocation_smart(systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0] is the estimated optimal simulation allocation.
-            A list of float of length equal to the number of systems.
+        A list of float of length equal to the number of systems.
         outs[1] is the estimated rate of convergence.
     """
     # Extract number of objective and number of systems.
