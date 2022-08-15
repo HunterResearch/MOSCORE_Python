@@ -35,13 +35,16 @@ def calc_bf_allocation(systems, warm_start=None):
     ----------
     systems : dict
         ``"obj"``:
-        A dictionary of objective value (float) tuples  keyed by system number
+        A dictionary of objective value (float) tuples  keyed by system number.
+
         ``"var"``:
-        A dictionary of objective covariance matrices (numpy matrices) keyed by system number
+        A dictionary of objective covariance matrices (numpy matrices) keyed by system number.
+
         ``"pareto_indices"``:
-        A list of integer system numbers of estimated pareto systems ordered by first objective value
+        A list of integer system numbers of estimated pareto systems ordered by first objective value.
+
         ``"non_pareto_indices"``:
-        A list of integer system numbers of estimated non-pareto systems ordered by first objective value
+        A list of integer system numbers of estimated non-pareto systems ordered by first objective value.
 
     warm_start : numpy array of length equal to the number of system, which sums to 1
 
@@ -197,12 +200,16 @@ def brute_force_constraints_wrapper(alphas, systems, kappa, num_par, n_obj, n_sy
     systems : dict
         ``"obj"``:
         A dictionary of objective value (float) tuples  keyed by system number.
+
         ``"var"``:
         A dictionary of objective covariance matrices (numpy matrices) keyed by system number.
+
         ``"pareto_indices"``:
         A list of integer system numbers of estimated pareto systems ordered by first objective value.
+
         ``"non_pareto_indices"``:
         A list of integer system numbers of estimated non-pareto systems ordered by first objective value.
+
     kappa : numpy list (length n_obj^num_par) of tuples (length num_par)
         Each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
     num_par : integer
@@ -240,13 +247,17 @@ def brute_force_constraints(alphas, systems, kappa, num_par, n_obj, n_systems):
         allocation for each system and estimated convergence rate
     systems : dict
         ``"obj"``:
-        A dictionary of objective value (float) tuples  keyed by system number
+        A dictionary of objective value (float) tuples  keyed by system number.
+
         ``"var"``:
-        A dictionary of objective covariance matrices (numpy matrices) keyed by system number
+        A dictionary of objective covariance matrices (numpy matrices) keyed by system number.
+
         ``"pareto_indices"``:
-        A list of integer system numbers of estimated pareto systems ordered by first objective value
+        A list of integer system numbers of estimated pareto systems ordered by first objective value.
+
         ``"non_pareto_indices"``:
-        A list of integer system numbers of estimated non-pareto systems ordered by first objective value
+        A list of integer system numbers of estimated non-pareto systems ordered by first objective value.
+
     kappa : numpy list (length n_obj^num_par) of tuples (length num_par)
         each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
     num_par : integer
@@ -280,13 +291,17 @@ def MCE_brute_force_rates(alphas, systems, num_par, n_systems, n_obj):
         allocation for each system and estimated convergence rate
     systems : dict
         ``"obj"``:
-        A dictionary of objective value (float) tuples  keyed by system number
+        A dictionary of objective value (float) tuples  keyed by system number.
+
         ``"var"``:
-        A dictionary of objective covariance matrices (numpy matrices) keyed by system number
+        A dictionary of objective covariance matrices (numpy matrices) keyed by system number.
+
         ``"pareto_indices"``:
-        A list of integer system numbers of estimated pareto systems ordered by first objective value
+        A list of integer system numbers of estimated pareto systems ordered by first objective value.
+
         ``"non_pareto_indices"``:
-        A list of integer system numbers of estimated non-pareto systems ordered by first objective value
+        A list of integer system numbers of estimated non-pareto systems ordered by first objective value.
+
     num_par : integer
         number of estimated pareto systems
     n_systems : integer
@@ -373,13 +388,17 @@ def MCI_brute_force_rates(alphas, systems, kappa, num_par, n_systems, n_obj):
         allocation for each system and estimated convergence rate
     systems : dict
         ``"obj"``:
-        A dictionary of objective value (float) tuples  keyed by system number
+        A dictionary of objective value (float) tuples  keyed by system number.
+
         ``"var"``:
-        A dictionary of objective covariance matrices (numpy matrices) keyed by system number
+        A dictionary of objective covariance matrices (numpy matrices) keyed by system number.
+
         ``"pareto_indices"``:
-        A list of integer system numbers of estimated pareto systems ordered by first objective value
+        A list of integer system numbers of estimated pareto systems ordered by first objective value.
+
         ``"non_pareto_indices"``:
-        A list of integer system numbers of estimated non-pareto systems ordered by first objective value
+        A list of integer system numbers of estimated non-pareto systems ordered by first objective value.
+        
     kappa : numpy list (length n_obj^num_par) of tuples (length num_par)
         each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
     num_par : integer
