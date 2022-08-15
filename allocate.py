@@ -56,7 +56,7 @@ def allocate(method, systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0]:
-        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\n
         outs[1]:
         The estimated rate of convergence.
     """
