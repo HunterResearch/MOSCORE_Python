@@ -104,7 +104,7 @@ def equal_allocation(systems):
     -------
     outs : tuple
         outs[0]:
-        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\n
         outs[1]:
         The estimated rate of convergence.
     """
@@ -145,7 +145,7 @@ def score_allocation_smart(systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0]:
-        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\n
         outs[1]:
         The estimated rate of convergence.
     """
@@ -186,7 +186,7 @@ def phantom_allocation_smart(systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0]:
-        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\n
         outs[1]:
         The estimated rate of convergence.
     """
@@ -228,7 +228,7 @@ def bf_allocation_smart(systems, WSFlag=False, warm_start=None):
     -------
     outs : tuple
         outs[0]:
-        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\n
         outs[1]:
         The estimated rate of convergence.
     """
@@ -268,7 +268,7 @@ def bfind_allocation_smart(systems, WSFlag=False, warm_start=None):
     Returns
     -------
     outs : tuple
-        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\
+        outs[0]: The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.\n
         outs[1]: The estimated rate of convergence.
     """
     # Extract number of objective and number of systems.
