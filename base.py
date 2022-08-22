@@ -34,10 +34,10 @@ class MORS_Problem(object):
     """Class for multi-objective ranking-and-selection problem.
 
     Attributes
-    ---------
-    n_obj: int
+    ----------
+    n_obj : int
         number of objectives
-    systems: list
+    systems : list
         list of systems with associated x's (if applicable)
     n_systems : int
         number of systems
