@@ -13,6 +13,7 @@ record_metrics : function
 MORS_Tester : class
 make_rate_plots : function
 make_phantom_rate_plots : function
+attach_rng : function
 """
 
 import numpy as np
