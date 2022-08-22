@@ -33,7 +33,7 @@ from utils import create_allocation_problem, is_pareto_efficient, calc_phantom_r
 class MORS_Problem(object):
     """Class for multi-objective ranking-and-selection problem.
 
-    Attributes
+    Parameters
     ----------
     n_obj : int
         number of objectives
