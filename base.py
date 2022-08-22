@@ -37,34 +37,49 @@ class MORS_Problem(object):
     ----------
     n_obj : int
         number of objectives
+
     systems : list
         list of systems with associated x's (if applicable)
+
     n_systems : int
         number of systems
+
     true_means : list
         true perfomances of all systems
+
     true_covs : list
         true covariance matrices of all systems
+
     true_paretos_mask : list
         a mask indicating whether each system is a Pareto system or not
+
     true_paretos : list
         list of indicies of true Pareto systems
+
     n_pareto_systems : int
         number of Pareto systems
+
     sample_sizes : list
         sample sizes for each system
+
     sums : list
         sums of observed objectives
+
     sums_of_products : list
         sums of products of pairs of observed objectives
+
     sample_means : list
         sample means of objectives for each system
+
     sample_covs : list
         sample variance-covariance matrices of objectives for each system
+
     rng : MRG32k3a object
         random number generator to use for simulating replications
+
     rng_states : list
         states of random number generators (i.e., substream) for each system
+
     """
     def __init__(self):
         self.n_systems = len(self.systems)
