@@ -237,7 +237,6 @@ class MORS_Solver(object):
         Returns
         -------
         outputs : dict
-
             ``"alpha_hat"``
             list of float, final simulation allocation by system
 
@@ -254,7 +253,6 @@ class MORS_Solver(object):
             list of int, final sample size for each system
 
         metrics(optional): dict
-
             ``"alpha_hats"``
             list of lists of float, the simulation allocation selected at each step in the solver
 
