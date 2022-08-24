@@ -237,58 +237,57 @@ class MORS_Solver(object):
         Returns
         -------
         outputs : dict
-        ``"alpha_hat"``
-        list of float, final simulation allocation by system
+            ``"alpha_hat"``
+            list of float, final simulation allocation by system
 
-         ``"paretos"``
-         list of indices of estimated pareto systems at termination
+            ``"paretos"``
+            list of indices of estimated pareto systems at termination
 
-        ``"objectives"``
-        dictionary, keyed by system index, of lists containing estimated objective values at termination
+            ``"objectives"``
+            dictionary, keyed by system index, of lists containing estimated objective values at termination
 
-        ``"variances"``
-        dictionary, keyed by system index, of estimated covariance matrices as numpy arrays at termination
+            ``"variances"``
+            dictionary, keyed by system index, of estimated covariance matrices as numpy arrays at termination
 
-        ``"sample_sizes"``
-        list of int, final sample size for each system
+            ``"sample_sizes"``
+            list of int, final sample size for each system
 
         metrics : dict (optional)
-        ``"alpha_hats"``
-         list of lists of float, the simulation allocation selected at each step in the solver
+            ``"alpha_hats"``
+            list of lists of float, the simulation allocation selected at each step in the solver
 
-        ``"alpha_bars"``
-         list of lists of float, the portion of the simulation budget that has been allocated
-                to each system at each step in the solver
-                
-        ``"paretos"``
-        list of lists of int, the estimated pareto frontier at each step in the solver
+            ``"alpha_bars"``
+            list of lists of float, the portion of the simulation budget that has been allocatedto each system at each step in the solver
 
-        ``"MCI_bool"``
-        list of Bool, indicating whether an misclassification by inclusion
+            ``"paretos"``
+            list of lists of int, the estimated pareto frontier at each step in the solver
+
+            ``"MCI_bool"``
+            list of Bool, indicating whether an misclassification by inclusion
                 occured at each step in the solver
 
-        ``"MCE_bool"``
-        list of Bool, indicating whether an misclassification by exclusion
+            ``"MCE_bool"``
+            list of Bool, indicating whether an misclassification by exclusion
                 occured at each step in the solver
 
-        ``"MC_bool"``
-        list of Bool, indicating whether an misclassification
+            ``"MC_bool"``
+            list of Bool, indicating whether an misclassification
                 occured at each step in the solver
 
-        ``"percent_false_exclusion"``
-        list of float, the portion of true pareto systems
+            ``"percent_false_exclusion"``
+            list of float, the portion of true pareto systems
                 that are falsely excluded at each step in the solver
 
-        ``"percent_false_inclusion"``
-        list of float, the portion of true non-pareto systems
+            ``"percent_false_inclusion"``
+            list of float, the portion of true non-pareto systems
                 that are falsely included at each step in the solver
 
-        ``"percent_misclassification"``
-        list of float, the portion of systems that are
+            ``"percent_misclassification"``
+            list of float, the portion of systems that are
                 misclassified at each step in the solver
 
-        ``"timings"``
-        list of float, the time spent calculating the allocation distribution
+            ``"timings"``
+            list of float, the time spent calculating the allocation distribution
                 at each step in the solver
 
         """
