@@ -248,6 +248,7 @@ class MORS_Solver(object):
 
         ``"variances"``
         dictionary, keyed by system index, of estimated covariance matrices as numpy arrays at termination
+        
         ``"sample_sizes"``
         list of int, final sample size for each system
 
