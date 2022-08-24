@@ -248,7 +248,7 @@ class MORS_Solver(object):
 
         ``"variances"``
         dictionary, keyed by system index, of estimated covariance matrices as numpy arrays at termination
-        
+
         ``"sample_sizes"``
         list of int, final sample size for each system
 
@@ -259,6 +259,7 @@ class MORS_Solver(object):
         ``"alpha_bars"``
          list of lists of float, the portion of the simulation budget that has been allocated
                 to each system at each step in the solver
+                
         ``"paretos"``
         list of lists of int, the estimated pareto frontier at each step in the solver
 
