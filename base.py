@@ -237,30 +237,58 @@ class MORS_Solver(object):
         Returns
         -------
         outputs : dict
-            outputs['alpha_hat'] : list of float, final simulation allocation by system
-            outputs['paretos'] : list of indices of estimated pareto systems at termination
-            outputs['objectives'] : dictionary, keyed by system index, of lists containing estimated objective values at termination
-            outputs['variances'] : dictionary, keyed by system index, of estimated covariance matrices as numpy arrays at termination
-            outputs['sample_sizes'] : list of int, final sample size for each system
+        ``"alpha_hat"``
+        list of float, final simulation allocation by system
+
+         ``"paretos"``
+         list of indices of estimated pareto systems at termination
+
+        ``"objectives"``
+        dictionary, keyed by system index, of lists containing estimated objective values at termination
+
+        ``"variances"``
+        dictionary, keyed by system index, of estimated covariance matrices as numpy arrays at termination
+        ``"sample_sizes"``
+        list of int, final sample size for each system
+
         metrics : dict (optional)
-            metrics['alpha_hats'] : list of lists of float, the simulation allocation selected at each step in the solver
-            metrics['alpha_bars'] : list of lists of float, the portion of the simulation budget that has been allocated
+        ``"alpha_hats"``
+         list of lists of float, the simulation allocation selected at each step in the solver
+
+        ``"alpha_bars"``
+         list of lists of float, the portion of the simulation budget that has been allocated
                 to each system at each step in the solver
-            metrics['paretos'] : list of lists of int, the estimated pareto frontier at each step in the solver
-            metrics['MCI_bool'] : list of Bool, indicating whether an misclassification by inclusion
+        ``"paretos"``
+        list of lists of int, the estimated pareto frontier at each step in the solver
+
+        ``"MCI_bool"``
+        list of Bool, indicating whether an misclassification by inclusion
                 occured at each step in the solver
-            metrics['MCE_bool'] : list of Bool, indicating whether an misclassification by exclusion
+
+        ``"MCE_bool"``
+        list of Bool, indicating whether an misclassification by exclusion
                 occured at each step in the solver
-            metrics['MC_bool'] : list of Bool, indicating whether an misclassification
+
+        ``"MC_bool"``
+        list of Bool, indicating whether an misclassification
                 occured at each step in the solver
-            metrics['percent_false_exclusion'] : list of float, the portion of true pareto systems
+
+        ``"percent_false_exclusion"``
+        list of float, the portion of true pareto systems
                 that are falsely excluded at each step in the solver
-            metrics['percent_false_inclusion'] : list of float, the portion of true non-pareto systems
+
+        ``"percent_false_inclusion"``
+        list of float, the portion of true non-pareto systems
                 that are falsely included at each step in the solver
-            metrics['percent_misclassification'] : list of float, the portion of systems that are
+
+        ``"percent_misclassification"``
+        list of float, the portion of systems that are
                 misclassified at each step in the solver
-            metrics['timings'] : list of float, the time spent calculating the allocation distribution
+
+        ``"timings"``
+        list of float, the time spent calculating the allocation distribution
                 at each step in the solver
+
         """
         if self.n0 < problem.n_obj + 1:
             raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
@@ -367,22 +395,41 @@ def record_metrics(metrics, problem, alpha_hat):
     Parameters
     ----------
     metrics : dict
-            metrics['alpha_hats']: list of lists of float, the simulation allocation selected at each step in the solver
-            metrics['alpha_bars']: list of lists of float, the portion of the simulation budget that has been allocated
-                to each system at each step in the solver
-            metrics['paretos']: list of lists of int, the estimated pareto frontier at each step in the solver
-            metrics['MCI_bool']: list of Bool, indicating whether an misclassification by inclusion
-                occured at each step in the solver
-            metrics['MCE_bool']: list of Bool, indicating whether an misclassification by exclusion
-                occured at each step in the solver
-            metrics['MC_bool']: list of Bool, indicating whether an misclassification
-                occured at each step in the solver
-            metrics['percent_false_exclusion']: list of float, the portion of true pareto systems
-                which are falsely excluded at each step in the solver
-            metrics['percent_false_inclusion']: list of float, the portion of true non-pareto systems
-                which are falsely included at each step in the solver
-            metrics['percent_misclassification']: list of float, the portion of systems which are
-                misclassified at each step in the solver
+
+        ``"alpha_hats"``
+        list of lists of float, the simulation allocation selected at each step in the solver
+
+        ``"alpha_bars"``
+        list of lists of float, the portion of the simulation budget that has been allocated
+        to each system at each step in the solver
+
+        ``"paretos"``
+        list of lists of int, the estimated pareto frontier at each step in the solver
+
+        ``"MCI_bool"``
+        list of Bool, indicating whether an misclassification by inclusion
+        occured at each step in the solver
+
+        ``"MCE_bool"``
+        list of Bool, indicating whether an misclassification by exclusion
+        occured at each step in the solver
+
+        ``"MC_bool"``
+        list of Bool, indicating whether an misclassification
+        occured at each step in the solver
+
+        ``"percent_false_exclusion"``
+        list of float, the portion of true pareto systems
+        which are falsely excluded at each step in the solver
+
+        ``"percent_false_inclusion"``
+        list of float, the portion of true non-pareto systems
+        which are falsely included at each step in the solver
+
+        ``"percent_misclassification"``
+        list of float, the portion of systems which are
+        misclassified at each step in the solver
+
     problem : base.MORS_Problem object
         multi-objective R&S problem to solve
     alpha_hat : list
@@ -391,22 +438,41 @@ def record_metrics(metrics, problem, alpha_hat):
     Returns
     -------
     metrics : dict
-            metrics['alpha_hats'] : list of np arrays of float, the simulation allocation selected at each step in the solver
-            metrics['alpha_bars'] : list of np arrays of float, the portion of the simulation budget that has been allocated
-                to each system at each step in the solver
-            metrics['paretos'] : list of lists of int, the estimated pareto frontier at each step in the solver
-            metrics['MCI_bool'] : list of Bool, indicating whether an misclassification by inclusion
-                occured at each step in the solver
-            metrics['MCE_bool'] : list of Bool, indicating whether an misclassification by exclusion
-                occured at each step in the solver
-            metrics['MC_bool'] : list of Bool, indicating whether an misclassification
-                occured at each step in the solver
-            metrics['percent_false_exclusion'] : list of float, the portion of true pareto systems
-                which are falsely excluded at each step in the solver
-            metrics['percent_false_inclusion'] : list of float, the portion of true non-pareto systems
-                which are falsely included at each step in the solver
-            metrics['percent_misclassification'] : list of float, the portion of systems which are
-                misclassified at each step in the solver
+
+        ``"alpha_hats"``
+        list of lists of float, the simulation allocation selected at each step in the solver
+
+        ``"alpha_bars"``
+        list of lists of float, the portion of the simulation budget that has been allocated
+        to each system at each step in the solver
+
+        ``"paretos"``
+        list of lists of int, the estimated pareto frontier at each step in the solver
+
+        ``"MCI_bool"``
+        list of Bool, indicating whether an misclassification by inclusion
+        occured at each step in the solver
+
+        ``"MCE_bool"``
+        list of Bool, indicating whether an misclassification by exclusion
+        occured at each step in the solver
+
+        ``"MC_bool"``
+        list of Bool, indicating whether an misclassification
+        occured at each step in the solver
+
+        ``"percent_false_exclusion"``
+        list of float, the portion of true pareto systems
+        which are falsely excluded at each step in the solver
+
+        ``"percent_false_inclusion"``
+        list of float, the portion of true non-pareto systems
+        which are falsely included at each step in the solver
+
+        ``"percent_misclassification"``
+        list of float, the portion of systems which are
+        misclassified at each step in the solver
+
     """
     # Record recommended and empirical allocation proportions.
     metrics['alpha_hats'].append(alpha_hat)
@@ -456,24 +522,33 @@ class MORS_Tester(object):
     all_metrics : list of dict
         list of statistics over time from each macroreplication
     rates : dict
-        rates['MCI_rate'] : list of float
-            empirical MCI rate at a given point across sequential solver macroreplications
-        rates['MCE_rate'] : list of float
-            empirical MCE rate at a given point across sequential solver macroreplications
-        rates['MC_rate'] : list of float
-            empirical MC rate at a given point across sequential solver macroreplications
-        rates['avg_percent_false_exclusion'] : list of float
-            the average proportion of true pareto systems that are falsely excluded at each step in the solver
-        rates['avg_percent_false_inclusion'] : list of float
-            the average proportion of true non-pareto systems that are falsely included at each step in the solver
-        rates['avg_percent_misclassification'] : list of float
-            the proportion of systems that are misclassified at each step in the solver
-        rates['phantom_rate_25pct'] : list of float
-            25-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
-        rates['phantom_rate_50pct'] : list of float
-            50-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
-        rates['phantom_rate_75pct'] : list of float
-            75-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
+        ``"MCI_rate"``
+        list of float, empirical MCI rate at a given point across sequential solver macroreplications
+
+        ``"MCE_rate"``
+        list of float, empirical MCE rate at a given point across sequential solver macroreplications
+
+        ``"MC_rate"``
+        list of float, empirical MC rate at a given point across sequential solver macroreplications
+
+        ``"avg_percent_false_exclusion"``
+        list of float, the average proportion of true pareto systems that are falsely excluded at each step in the solver
+
+        ``"avg_percent_false_inclusion"``
+        list of float, the average proportion of true non-pareto systems that are falsely included at each step in the solver
+
+        ``"avg_percent_misclassification"``
+        list of float, the proportion of systems that are misclassified at each step in the solver
+
+        ``"phantom_rate_25pct"``
+        list of float, 25-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
+
+        ``"phantom_rate_50pct"``
+        list of float, 50-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
+
+        ``"phantom_rate_75pct"``
+        list of float, 75-percentile of difference of phantom rates for phantom allocation and empirical allocation over time
+
     file_name_path : str
         name of files for saving results
     """
