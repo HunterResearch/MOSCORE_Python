@@ -236,7 +236,7 @@ class MORS_Solver(object):
 
         Returns
         -------
-        outputs : dict
+        outputs : dict \n
 
             ``"alpha_hat"``
             list of float, final simulation allocation by system
@@ -253,8 +253,8 @@ class MORS_Solver(object):
             ``"sample_sizes"``
             list of int, final sample size for each system
 
-        metrics : dict (optional)
-        
+        metrics : dict (optional) \n
+
             ``"alpha_hats"``
             list of lists of float, the simulation allocation selected at each step in the solver
 
@@ -265,32 +265,25 @@ class MORS_Solver(object):
             list of lists of int, the estimated pareto frontier at each step in the solver
 
             ``"MCI_bool"``
-            list of Bool, indicating whether an misclassification by inclusion
-                occured at each step in the solver
+            list of Bool, indicating whether an misclassification by inclusion occured at each step in the solver
 
             ``"MCE_bool"``
-            list of Bool, indicating whether an misclassification by exclusion
-                occured at each step in the solver
+            list of Bool, indicating whether an misclassification by exclusion occured at each step in the solver
 
             ``"MC_bool"``
-            list of Bool, indicating whether an misclassification
-                occured at each step in the solver
+            list of Bool, indicating whether an misclassification occured at each step in the solver
 
             ``"percent_false_exclusion"``
-            list of float, the portion of true pareto systems
-                that are falsely excluded at each step in the solver
+            list of float, the portion of true pareto systems that are falsely excluded at each step in the solver
 
             ``"percent_false_inclusion"``
-            list of float, the portion of true non-pareto systems
-                that are falsely included at each step in the solver
+            list of float, the portion of true non-pareto systems that are falsely included at each step in the solver
 
             ``"percent_misclassification"``
-            list of float, the portion of systems that are
-                misclassified at each step in the solver
+            list of float, the portion of systems that are misclassified at each step in the solver
 
             ``"timings"``
-            list of float, the time spent calculating the allocation distribution
-                at each step in the solver
+            list of float, the time spent calculating the allocation distribution at each step in the solver
 
         """
         if self.n0 < problem.n_obj + 1:
