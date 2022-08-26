@@ -161,7 +161,23 @@ def iscore_allocation(systems,warm_start = None):
     return alloc, out_alphas[-1]
 
 def iscore_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambdas, n_obj, n_systems):
-    
+    """parameters:
+            alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            systems: dict, as described under calc_bf_allocation()
+            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+            num_par: integer, number of estimated pareto systems
+            m_star: numpy matrix
+            j_star: numpy_matrix
+            lambdas: numpy_array
+            n_obj: number of systems
+            n_systems: integer, number of total systems
+
+    Returns
+    -------
+
+        rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint\n
+        jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
+ """
     tol = 10**-50
     
     alphas[0:-1][alphas[0:-1] < tol] = 0
@@ -176,6 +192,23 @@ def iscore_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambda
     return rates, grads
 
 def MCI_iscore_rates(alphas, lambdas, j_star, systems, phantoms, num_par, n_obj, n_systems):
+    """calculates the MCI Phantom rate constraint values and jacobian
+
+    Parameters
+    ----------
+            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            lambdas: numpy array
+            j_star: numpy  matrix
+            systems: dict, as described under calc_bf_allocation()
+            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+            num_par: integer, number of estimated pareto systems
+            n_systems: integer, number of total systems
+            n_obj: integer, number of objectives
+
+    Returns
+    -------
+    MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint\n
+    MCE_grads: 2d numy array, giving the jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)"""
     
     tol = 10**-50
     
@@ -236,7 +269,22 @@ def MCI_iscore_rates(alphas, lambdas, j_star, systems, phantoms, num_par, n_obj,
 
 
 def MCE_iscore_rates(alphas, systems, M_star, n_obj, n_systems):
-    
+    """calculates the MCE iscore rate constraint values and jacobian
+
+    Parameters
+    ----------
+    alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+    systems: dict, as described under calc_bf_allocation()
+    M_star: numpy array
+    n_obj: integer, number of objectives
+    n_systems: integer, number of total systems
+
+
+    Returns
+    -------
+    MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint\n
+    MCE_grads: 2d numy array, giving the jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
+            """
     tol = 10**-50
     
     n_MCE = len(M_star)
@@ -285,7 +333,23 @@ def MCE_iscore_rates(alphas, systems, M_star, n_obj, n_systems):
 def iscore_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star, lambdas, n_obj, n_systems):
     """scipy optimization methods don't directly support simultaneous computation
     of constraint values and their gradients. Additionally, it only considers one constraint and its gradient
-    at a time, as separate functions. """
+    at a time, as separate functions.
+
+    parameters
+    ----------
+        alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+        systems: dict, as described under calc_bf_allocation()
+        phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+        num_par: integer, number of estimated pareto systems
+        n_obj: number of systems
+        n_systems: integer, number of total systems
+
+    Returns
+    -------
+    rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint\n
+    jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
+    """
+
     if all(alphas == iscore_constraints_wrapper.last_alphas):
         return iscore_constraints_wrapper.last_outputs
     else:
@@ -300,11 +364,25 @@ def iscore_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star
     
 
 def objective_function(alphas):
-    gradient = np.zeros(len(alphas))
-    gradient[-1] = -1.0
-    return -1.0*alphas[-1],gradient
+    """Parameters
+    ----------
+    alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate\n
+
+    """
     
 def calc_iSCORE_MCE(systems, num_par, n_obj):
+    """calculates the iSCORE for MCE constraints
+
+    parameters:
+            systems:  systems: dict, as described under calc_score_allocation()
+            num_par: integer, number of pareto systems
+            n_obj: integer, number of objectives
+
+    Returns
+    -------
+    M_star: a numpy matrix (sorry, I don't remember what's going on here - Nathan)
+
+        """
     scores = np.zeros([num_par,num_par])
     all_scores = np.zeros(num_par*(num_par-1))
     M_star = np.zeros([num_par*n_obj,2])
@@ -372,6 +450,23 @@ def calc_iSCORE_MCE(systems, num_par, n_obj):
     
     
 def calc_iSCORE(phantoms, systems, n_systems, num_par, n_obj, n_phantoms):
+    """calculates the iSCORE for MCI constraints
+
+    parameters
+    ----------
+            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+            systems: dict, as described under calc_score_allocation()
+            n_systems: number of systems
+            num_par: integer, number of pareto systems
+            n_obj: integer, number of objectives
+            n_phantoms: number of phantom systems
+
+    Returns
+    -------
+    j_star: a numpy matrix (sorry, I don't remember what's going on here - Nathan)\n
+    lambdas: a numpy array (ditto)
+
+        """
     
     scores = np.zeros([n_phantoms, n_systems-num_par])
     j_star = np.zeros([n_phantoms*n_obj,2])
