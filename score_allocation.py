@@ -172,11 +172,11 @@ def score_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambdas
             n_obj: number of systems
             n_systems: integer, number of total systems
 
-    Returns:
+    Returns
+    -------
 
-        output:
-            rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint\n
-            jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
+        rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint\n
+        jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
  """
     tol = 10**-12
     alphas[0:-1][alphas[0:-1] < tol] = 0
