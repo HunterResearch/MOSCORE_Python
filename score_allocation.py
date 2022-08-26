@@ -154,7 +154,16 @@ def score_allocation(systems,warm_start = None):
         
 def objective_function(alphas):
     """We want to maximize the convergence rate, so the objective function is -1 times the convergence rate
-    and the gradient thereof is zero with respect to alphas and -1 with respect to the convergence rate"""
+    and the gradient thereof is zero with respect to alphas and -1 with respect to the convergence rate
+
+    parameters
+    ----------
+    alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate\n
+            gradient = np.zeros(len(alphas))\n
+            gradient[-1] = -1.0\n
+             return -1.0*alphas[-1],gradient\n
+    """
+
     gradient = np.zeros(len(alphas))
     gradient[-1] = -1
     return -1*alphas[-1],gradient
@@ -195,7 +204,10 @@ def MCI_score_rates(alphas, lambdas, j_star, systems, phantoms, num_par, n_obj, 
     
     Parameters
     ----------
-            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate\n
+            gradient = np.zeros(len(alphas))\n
+            gradient[-1] = -1.0\n
+             return -1.0*alphas[-1],gradient\n
             lambdas: numpy array
             j_star: numpy  matrix
             systems: dict, as described under calc_bf_allocation()
@@ -296,7 +308,10 @@ def MCE_score_rates(alphas, systems, M_star, n_obj, n_systems):
     
     Parameters
     ----------
-    alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+    alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate\n
+    gradient = np.zeros(len(alphas))\n
+    gradient[-1] = -1.0\n
+    return -1.0*alphas[-1],gradient\n
     systems: dict, as described under calc_bf_allocation()
     M_star: numpy array
     n_systems: integer, number of total systems
@@ -365,7 +380,10 @@ def score_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star,
     as the last call, and if so return the same output
     
     parameters:
-            alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate\n
+            gradient = np.zeros(len(alphas))\n
+            gradient[-1] = -1.0\n
+            return -1.0*alphas[-1],gradient\n
             systems: dict, as described under calc_bf_allocation()
             phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
             num_par: integer, number of estimated pareto systems
