@@ -237,7 +237,7 @@ class MORS_Solver(object):
         Returns
         -------
         outputs : dict
-        
+
 
             ``"alpha_hat"``
             list of float, final simulation allocation by system
