@@ -41,7 +41,7 @@ def score_allocation(systems,warm_start = None):
     Returns:
         
         out_tuple:
-            out_tuple[0]: the estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true
+            out_tuple[0]: the estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true\n
             out_tuple[1]: the estimated convergence rate associatedc with the optimal allocation"""
     
     n_obj = len(systems['obj'][0])
@@ -171,9 +171,11 @@ def score_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambdas
             lambdas: numpy_array
             n_obj: number of systems
             n_systems: integer, number of total systems
-            
-    output:
-            rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint
+
+    Returns:
+
+        output:
+            rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint\n
             jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
  """
     tol = 10**-12
@@ -200,8 +202,10 @@ def MCI_score_rates(alphas, lambdas, j_star, systems, phantoms, num_par, n_obj, 
             num_par: integer, number of estimated pareto systems
             n_systems: integer, number of total systems
             n_obj: integer, number of objectives
-    output:
-            MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
+    Returns:
+
+        output:
+            MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint\n
             MCE_grads: 2d numy array, giving the jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)"""
       
     tol = 10**-12
@@ -295,8 +299,11 @@ def MCE_score_rates(alphas, systems, M_star, n_obj, n_systems):
             M_star: numpy array
             n_systems: integer, number of total systems
             n_obj: integer, number of objectives
-    output:
-            MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
+
+    Returns:
+        output:
+
+            MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint\n
             MCE_grads: 2d numy array, giving the jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
             """
     
@@ -364,8 +371,10 @@ def score_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star,
             n_obj: number of systems
             n_systems: integer, number of total systems
             
-    output:
-            rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint
+    Returns:
+
+        output:
+            rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint\n
             jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
             
     """
@@ -389,8 +398,9 @@ def calc_SCORE_MCE(systems,num_par,n_obj):
             systems:  systems: dict, as described under calc_score_allocation()
             num_par: integer, number of pareto systems
             n_obj: integer, number of objectives
-            
-    output:
+
+    Returns:
+        output:
             M_star: a numpy matrix (sorry, I don't remember what's going on here - Nathan)
         
         """
@@ -482,9 +492,10 @@ def calc_SCORE(phantoms, systems, n_systems, num_par, n_obj, n_phantoms):
             num_par: integer, number of pareto systems
             n_obj: integer, number of objectives
             n_phantoms: number of phantom systems
-            
-    output:
-            j_star: a numpy matrix (sorry, I don't remember what's going on here - Nathan)
+
+    Returns:
+        output:
+            j_star: a numpy matrix (sorry, I don't remember what's going on here - Nathan)\n
             lambdas: a numpy array (ditto)
         
         """
