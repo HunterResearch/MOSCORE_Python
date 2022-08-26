@@ -23,11 +23,14 @@ def iscore_allocation(systems,warm_start = None):
     
     Parameters:
         
-        Systems: Dictionary with following keys and values
-            'obj': a dictionary of objective value (float) tuples  keyed by system number
-            'var': a dictionary of objective covariance matrices (numpy matrices) keyed by system number
-            'pareto_indices': a list of integer system numbers of estimated pareto systems ordered by first objective value
-            'non_pareto_indices': a list o finteger system numbers of estimated non-parety systems ordered by first objective value
+        Systems: dict
+            ``"obj"``: a dictionary of objective value (float) tuples  keyed by system number
+            
+            ``"var"``: a dictionary of objective covariance matrices (numpy matrices) keyed by system number
+            
+            ``"pareto_indices"``: a list of integer system numbers of estimated pareto systems ordered by first objective value
+            
+            ``"non_pareto_indices"``: a list o finteger system numbers of estimated non-parety systems ordered by first objective value
             
         warm_start: numpy array of length equal to the number of system, which sums to 1
         
@@ -35,7 +38,8 @@ def iscore_allocation(systems,warm_start = None):
     Returns:
         
         out_tuple:
-            out_tuple[0]: the estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true
+            out_tuple[0]: the estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true\n
+            
             out_tuple[1]: the estimated convergence rate associatedc with the optimal allocation"""
     
     n_obj = len(systems['obj'][0])
