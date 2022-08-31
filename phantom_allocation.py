@@ -142,7 +142,7 @@ def phantom_constraints_wrapper(alphas, systems, phantoms, num_par,n_obj, n_syst
     at a time, as separate functions. Thus we check whether we're looking at the same alphas
     as the last call, and if so return the same output
     
-    parameters
+    Parameters
     ----------
     alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
     systems: dict, as described under calc_bf_allocation()
@@ -151,8 +151,8 @@ def phantom_constraints_wrapper(alphas, systems, phantoms, num_par,n_obj, n_syst
     n_obj: number of systems
     n_systems: integer, number of total systems
             
-    output
-    ------
+    Returns
+    -------
     rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint
     jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
             
@@ -172,7 +172,7 @@ def phantom_constraints(alphas, systems, phantoms, num_par,n_obj, n_systems):
     """calculates MCE constraints and MCI constraints on the convergence rate and appends them together, where the value of each constraint is equal to z, the total rate estimator, minus the rate associated with each possible MCI and MCE event based on the phantom pareto set, each of which serves as an upper bound on the total rate
     
     
-    parameters
+    Parameters
     ----------
     alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
     systems: dict, as described under calc_bf_allocation()
@@ -181,8 +181,8 @@ def phantom_constraints(alphas, systems, phantoms, num_par,n_obj, n_systems):
     n_obj: number of systems
     n_systems: integer, number of total systems
             
-    output
-    ------
+    Returns
+    -------
     rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint
     jacobian: 2d numy array, giving the jacobian of the rates with respect to the vector alpha (including the final element z)
             
@@ -203,7 +203,7 @@ def phantom_constraints(alphas, systems, phantoms, num_par,n_obj, n_systems):
 def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
     """calculates the MCI Phantom rate constraint values and jacobian
     
-    parameters
+    Parameters
     ----------
     alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
     systems: dict, as described under calc_bf_allocation()
@@ -212,8 +212,8 @@ def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
     n_systems: integer, number of total systems
     n_obj: integer, number of objectives
 
-    output
-    ------
+    Returns
+    -------
     MCE_rates: numpy array, giving the value of z(estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
     MCE_grads: 2d numy array, giving the jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)"""
             
@@ -333,14 +333,14 @@ def MCI_phantom_rates(alphas,systems,phantoms,num_par,n_systems,n_obj):
 def find_phantoms(paretos,n_obj,num_par):
     """finds the phantom pareto set
     
-    paramters
+    Paramters
     ---------
     paretos: a numpy matrix representing the pareto set, with a row for each pareto system and a column for each objective
     n_obj: integer number of objectives
     num_par: integer number of pareto systems
             
-    output
-    ------
+    Returns
+    -------
     phantoms: a numpy matrix similar in structure to paretos characterizing the phantom paretos. same number of columns but a difficult-to-predict number of rows
        """     
     
@@ -385,13 +385,13 @@ def sweep(paretos):
     
     pretty sure inputs and outputs are the same as paretos and phantoms above
 
-    paramters
+    Paramters
     ---------
     paretos: a numpy matrix representing the pareto set, with a row for each pareto system and a column for each objective
     n_obj: integer number of objectives
 
-    output
-    ------
+    Returns
+    -------
     phantoms: a numpy matrix similar in structure to paretos characterizing the phantom paretos. same number of columns but a difficult-to-predict number of rows
        """
     n_obj = len(paretos[0,:])
