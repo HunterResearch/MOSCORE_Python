@@ -51,7 +51,7 @@ def calc_bf_allocation(systems, warm_start=None):
     Returns
     -------
     out : tuple
-        out[0]: The estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true.
+        out[0]: The estimated optimal allocation of simulation runs assuming that estimated objectives and variances are true.\n
         out[1]: The estimated convergence rate associated with the optimal allocation.
         """
     # Extract number of objectives, number of systems, and number of pareto systems.
