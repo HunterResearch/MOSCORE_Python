@@ -12,7 +12,8 @@ import numpy as np
 
 def MCI_1d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
     """calculates phantom MCI rates
-    parameters
+
+    Parameters
     ----------
     aI: float, allocation to system I
     Iobj: numpy arra, objectives of system I (yes I know there's no need for the matrix in 1d, but this way it's consistent across cases - Nathan)
@@ -21,7 +22,7 @@ def MCI_1d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
     Lobjs: numpy array, phantom pareto objectives
     Lsigs: numpy array, phantom pareto variances (phantom objectives are treated as independent)
             
-    returns
+    Returns
     -------
     curr_rate:MCI event decay rate (phantom approximation) given aI and alphs
     gradI: gradient of curr_rate wrt system I
@@ -50,6 +51,7 @@ def MCI_1d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
 
 def MCI_2d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
     """calculates phantom MCI rates
+
     parameters
     ----------
     aI: float, allocation to system I
@@ -124,6 +126,7 @@ def MCI_2d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
 
 def MCI_3d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
     """calculates phantom MCI rates
+
     parameters
     ----------
     aI: float, allocation to system I
@@ -437,6 +440,7 @@ def MCI_3d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
 def MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var):
     """calculates phantom MCI rates
     The input variable names and the return variable names are not the same as 2d and 3d (Ziyu)
+    
     parameters
     ----------
     aI: float, allocation to system I
