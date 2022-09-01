@@ -113,21 +113,25 @@ def testsolve(tester, solver_class, n_0, budget, method, time_budget = 604800, d
         if crn is True, the oracle will utilize common random numbers
 
     phantom_rate: bool
-        if phantom_rates is True, and alloc_prob_true is provided, solver_metrics will include the phantom rate
-            calculated at each allocation
+        if phantom_rates is True, and alloc_prob_true is provided, solver_metrics will include the phantom ratecalculated at each allocation
 
     Returns
     -------
 
     solver_metrics: list of dictionaries returned by each solver macroreplication as metrics_out
     est_rates: dict
-            rates['MCI_rate']: list of float
-                empirical MCI rate at a given point across sequential solver macroreplications
-            rates['MCE_rate']: list of float
-                empirical MCE rate at a given point across sequential solver macroreplications
-            rates['MC_rate']: list of float
-                empirical MC rate at a given point across sequential solver macroreplications
+
+    ``"MCI_rate"``: list of float
+        empirical MCI rate at a given point across sequential solver macroreplications
+
+    ``"MCE_rate"``: list of float
+        empirical MCE rate at a given point across sequential solver macroreplications
+
+    ``"MC_rate"``: list of float
+        empirical MC rate at a given point across sequential solver macroreplications
+
     solver_outputs: list of dictionaries returned by each solver macroreplication as outs
+
     endseed: tuple of int
         MRG32k3a seed of independent random number stream subsequent to those used in the solver
         and simulation replications.
