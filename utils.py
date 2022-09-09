@@ -113,21 +113,25 @@ def testsolve(tester, solver_class, n_0, budget, method, time_budget = 604800, d
         if crn is True, the oracle will utilize common random numbers
 
     phantom_rate: bool
-        if phantom_rates is True, and alloc_prob_true is provided, solver_metrics will include the phantom rate
-            calculated at each allocation
+        if phantom_rates is True, and alloc_prob_true is provided, solver_metrics will include the phantom ratecalculated at each allocation
 
     Returns
     -------
 
     solver_metrics: list of dictionaries returned by each solver macroreplication as metrics_out
+
     est_rates: dict
-            rates['MCI_rate']: list of float
-                empirical MCI rate at a given point across sequential solver macroreplications
-            rates['MCE_rate']: list of float
-                empirical MCE rate at a given point across sequential solver macroreplications
-            rates['MC_rate']: list of float
-                empirical MC rate at a given point across sequential solver macroreplications
+        ``"MCI_rate"``: list of float
+        empirical MCI rate at a given point across sequential solver macroreplications
+
+        ``"MCE_rate"``: list of float
+        empirical MCE rate at a given point across sequential solver macroreplications
+
+        ``"MC_rate"``: list of float
+        empirical MC rate at a given point across sequential solver macroreplications
+
     solver_outputs: list of dictionaries returned by each solver macroreplication as outs
+
     endseed: tuple of int
         MRG32k3a seed of independent random number stream subsequent to those used in the solver
         and simulation replications.
@@ -198,15 +202,20 @@ def par_runs(joblst, num_proc=1):
     Solve many problems in parallel.
     Parameters
     ----------
+
     joblist : list of tuple
-        Each tuple is length 2. 'tuple[0]' is tuple of positional
+        Each tuple is length 2. 'tuple[0]' is tuple of positional\n
         arguments, 'tuple[1]' is dict of keyword arguments.
     num_proc : int
-        Number of processes to use in parallel. Default is 1.
+        Number of processes to use in parallel. Default is 1.\
+
     Returns
     -------
     runtots : dict
         Contains the results of every chnbase.MOSOSOlver.solve call
+
+    Note
+    ----
     note: this par_runs is a slightly edited version of the one that exists in PyMOSO
     """
     NUM_PROCESSES = num_proc
@@ -281,15 +290,20 @@ def calc_phantom_rate(alphas, problem):
         Length must be equal to the number of systems.
 
     problem: dict
-        problem must have the following structure:
-            alloc_prob_true['obj'] is a dictionary of numpy arrays, indexed by system number,
-                each of which corresponds to the objective values of a system
-            alloc_prob_true['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-                each of which corresponds to the covariance matrix of a system
-            alloc_prob_true['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-                each of which corresponds to the inverse covariance matrix of a system
-            alloc_prob_true['pareto_indices'] is a list of pareto systems ordered by the first objective
-            alloc_prob_true['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+        ``"obj"``:
+        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
+
+        ``"var"``:
+        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
+
+        ``"inv_var"``:
+        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
+
+        ``"pareto_indices"``:
+        is a list of pareto systems ordered by the first objective
+
+        ``"non_pareto_indices"``:
+        is a list of non-pareto systems ordered by the first objective
 
     Returns
     -------
@@ -344,21 +358,27 @@ def calc_phantom_rate(alphas, problem):
 
 
 def nearestSPD(A):
-    """ nearestSPD - the nearest (in Frobenius norm) Symmetric Positive Definite matrix to A
+""" nearestSPD - the nearest (in Frobenius norm) Symmetric Positive Definite matrix to A
 
 usage: Ahat = nearestSPD(A)
 
 From Higham: "The nearest symmetric positive semidefinite matrix in the
 Frobenius norm to an arbitrary real matrix A is shown to be (B + H)/2,
-where H is the symmetric polar factor of B=(A + A')/2."
+where H is the symmetric polar factor of B=(A + A')/2."\n
 
- http://www.sciencedirect.com/science/article/pii/0024379588902236
- arguments: (input)
-  A - square matrix, which will be converted to the nearest Symmetric
+http://www.sciencedirect.com/science/article/pii/0024379588902236
+arguments: (input)
+
+Parameters
+----------
+
+    A: square matrix, which will be converted to the nearest Symmetric
     Positive Definite Matrix.
 
- Arguments: (output)
-  Ahat - The matrix chosen as the nearest SPD matrix to A.
+Returns
+-------
+
+Ahat: The matrix chosen as the nearest SPD matrix to A.\n
   From Susan R Hunter's MATLAB implementation"""
     Asize = np.size(A)
 
@@ -471,16 +491,26 @@ def calc_bf_rate(alphas, problem):
         an initial simulation allocation which sets the starting point for determining the optimal allocation.
         Length must be equal to the number of systems.
 
+
+
+
     problem: dict
-        problem must have the following structure:
-            alloc_prob_true['obj'] is a dictionary of numpy arrays, indexed by system number,
-                each of which corresponds to the objective values of a system
-            alloc_prob_true['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-                each of which corresponds to the covariance matrix of a system
-            alloc_prob_true['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-                each of which corresponds to the inverse covariance matrix of a system
-            alloc_prob_true['pareto_indices'] is a list of pareto systems ordered by the first objective
-            alloc_prob_true['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
+    problem must have the following structure
+
+        ``"obj"``:
+        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
+
+        ``"var"``:
+        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
+
+        ``"inv_var"``:
+        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
+
+        ``"pareto_indices"``:
+        is a list of pareto systems ordered by the first objective
+
+        ``"non_pareto_indices"``:
+        is a list of non-pareto systems ordered by the first objective
 
     """
     from phantom_allocation import find_phantoms
