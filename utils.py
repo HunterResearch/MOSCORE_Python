@@ -358,28 +358,28 @@ def calc_phantom_rate(alphas, problem):
 
 
 def nearestSPD(A):
-""" nearestSPD - the nearest (in Frobenius norm) Symmetric Positive Definite matrix to A
+    """ nearestSPD - the nearest (in Frobenius norm) Symmetric Positive Definite matrix to A
 
-usage: Ahat = nearestSPD(A)
+    usage: Ahat = nearestSPD(A)
 
-From Higham: "The nearest symmetric positive semidefinite matrix in the
-Frobenius norm to an arbitrary real matrix A is shown to be (B + H)/2,
-where H is the symmetric polar factor of B=(A + A')/2."\n
+    From Higham: "The nearest symmetric positive semidefinite matrix in the
+    Frobenius norm to an arbitrary real matrix A is shown to be (B + H)/2,
+    where H is the symmetric polar factor of B=(A + A')/2."\n
 
-http://www.sciencedirect.com/science/article/pii/0024379588902236
-arguments: (input)
+    http://www.sciencedirect.com/science/article/pii/0024379588902236
+    arguments: (input)
 
-Parameters
-----------
+    Parameters
+    ----------
 
-    A: square matrix, which will be converted to the nearest Symmetric
-    Positive Definite Matrix.
+        A: square matrix, which will be converted to the nearest Symmetric
+        Positive Definite Matrix.
 
-Returns
--------
+    Returns
+    -------
 
-Ahat: The matrix chosen as the nearest SPD matrix to A.\n
-  From Susan R Hunter's MATLAB implementation"""
+    Ahat: The matrix chosen as the nearest SPD matrix to A.\n
+    From Susan R Hunter's MATLAB implementation"""
     Asize = np.size(A)
 
     if Asize[0]!= Asize[1]:
