@@ -12,18 +12,21 @@ import numpy as np
 
 def MCI_1d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
     """calculates phantom MCI rates
-    parameters:
-            aI: float, allocation to system I
-            Iobj: numpy arra, objectives of system I (yes I know there's no need for the matrix in 1d, but this way it's consistent across cases - Nathan)
-            Isig: 2d numpy array, covariance matrix of objectives for system i
-            alphs: numpy array of allocations of the paretos from which the phantom pareto at hand is derived
-            Lobjs: numpy array, phantom pareto objectives
-            Lsigs: numpy array, phantom pareto variances (phantom objectives are treated as independent)
+
+    Parameters
+    ----------
+    aI: float, allocation to system I
+    Iobj: numpy arra, objectives of system I (yes I know there's no need for the matrix in 1d, but this way it's consistent across cases - Nathan)
+    Isig: 2d numpy array, covariance matrix of objectives for system i
+    alphs: numpy array of allocations of the paretos from which the phantom pareto at hand is derived
+    Lobjs: numpy array, phantom pareto objectives
+    Lsigs: numpy array, phantom pareto variances (phantom objectives are treated as independent)
             
-    returns:
-            curr_rate:MCI event decay rate (phantom approximation) given aI and alphs
-            gradI: gradient of curr_rate wrt system I
-            Grads: gradient of curr_rate wrt alphs"""
+    Returns
+    -------
+    curr_rate:MCI event decay rate (phantom approximation) given aI and alphs
+    gradI: gradient of curr_rate wrt system I
+    Grads: gradient of curr_rate wrt alphs"""
             
         
         
@@ -47,6 +50,22 @@ def MCI_1d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
     return curr_rate, GradI, Grads
 
 def MCI_2d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
+    """calculates phantom MCI rates
+
+    parameters
+    ----------
+    aI: float, allocation to system I
+    Iobj: numpy arra, objectives of system I (yes I know there's no need for the matrix in 1d, but this way it's consistent across cases - Nathan)
+    Isig: 2d numpy array, covariance matrix of objectives for system i
+    alphs: numpy array of allocations of the paretos from which the phantom pareto at hand is derived
+    Lobjs: numpy array, phantom pareto objectives
+    Lsigs: numpy array, phantom pareto variances (phantom objectives are treated as independent)
+
+    returns
+    -------
+    curr_rate:MCI event decay rate (phantom approximation) given aI and alphs
+    gradI: gradient of curr_rate wrt system I
+    Grads: gradient of curr_rate wrt alphs"""
     a1=alphs[0]
     a2=alphs[1]
     i1=Iobj[0]
@@ -106,7 +125,23 @@ def MCI_2d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
     return curr_rate, GradI, Grads
 
 def MCI_3d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
-    
+    """calculates phantom MCI rates
+
+    parameters
+    ----------
+    aI: float, allocation to system I
+    Iobj: numpy arra, objectives of system I (yes I know there's no need for the matrix in 1d, but this way it's consistent across cases - Nathan)
+    Isig: 2d numpy array, covariance matrix of objectives for system i
+    alphs: numpy array of allocations of the paretos from which the phantom pareto at hand is derived
+    Lobjs: numpy array, phantom pareto objectives
+    Lsigs: numpy array, phantom pareto variances (phantom objectives are treated as independent)
+
+    returns
+    -------
+    curr_rate:MCI event decay rate (phantom approximation) given aI and alphs
+    gradI: gradient of curr_rate wrt system I
+    Grads: gradient of curr_rate wrt alphs"""
+
     a1=alphs[0]
     a2=alphs[1]
     a3=alphs[2]
@@ -403,6 +438,23 @@ def MCI_3d(aI, Iobj, Isig, alphs, Lobjs, Lsigs):
 
 
 def MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var):
+    """calculates phantom MCI rates
+    The input variable names and the return variable names are not the same as 2d and 3d (Ziyu)
+    
+    parameters
+    ----------
+    aI: float, allocation to system I
+    Iobj: numpy arra, objectives of system I (yes I know there's no need for the matrix in 1d, but this way it's consistent across cases - Nathan)
+    Isig: 2d numpy array, covariance matrix of objectives for system i
+    alphs: numpy array of allocations of the paretos from which the phantom pareto at hand is derived
+    Lobjs: numpy array, phantom pareto objectives
+    Lsigs: numpy array, phantom pareto variances (phantom objectives are treated as independent)
+
+    returns
+    -------
+    curr_rate:MCI event decay rate (phantom approximation) given aI and alphs
+    gradI: gradient of curr_rate wrt system I
+    Grads: gradient of curr_rate wrt alphs"""
     
     #zero var could break the optimizer, replace with tiny var
     phantom_var[phantom_var==0] = 10**-100

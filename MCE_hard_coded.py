@@ -12,20 +12,22 @@ import numpy as np
 def MCE_2d(aI,aJ,Iobj,Isig,Jobj,Jsig, inv_var_i, inv_var_j):
     """calculates MCE constraint values and gradients
     
-    parameters:
-            aI: float, allocation to system i
-            aJ: float, allocation to system j
-            Iobj: numpy array, objective vals of system i
-            Isig: 2d numpy array, covariance matrix of objectives of system i
-            Jobj: numpy array, objective vals of system j
-            Jsig: 2d numpy array, covariance martrix of objectives of system j
-            inv_var_i: 2d numpy array, inverse of Isig (precomputed for efficiency)
-            inv_var_j: 2d numpy array, inverse of Jsig (precomputed for efficiency)
+    parameters
+    ----------
+    aI: float, allocation to system i
+    aJ: float, allocation to system j
+    Iobj: numpy array, objective vals of system i
+    Isig: 2d numpy array, covariance matrix of objectives of system i
+    Jobj: numpy array, objective vals of system j
+    Jsig: 2d numpy array, covariance martrix of objectives of system j
+    inv_var_i: 2d numpy array, inverse of Isig (precomputed for efficiency)
+    inv_var_j: 2d numpy array, inverse of Jsig (precomputed for efficiency)
             
-    returns:
-            rate: float, decay rate of MCE event between systems i and j
-            grad_i: numpy array, gradient of rate wrt alpha_i
-            grad_j: numpy array, gradient of rate wrt alpha_j"""
+    returns
+    -------
+    curr_rate: float, decay rate of MCE event between systems i and j
+    grad_i: numpy array, gradient of rate wrt alpha_i
+    grad_j: numpy array, gradient of rate wrt alpha_j"""
                 
     i1=Iobj[0]
     i2=Iobj[1]
@@ -100,6 +102,24 @@ def MCE_2d(aI,aJ,Iobj,Isig,Jobj,Jsig, inv_var_i, inv_var_j):
     return curr_rate, GradI, GradJ
 
 def MCE_3d(aI,aJ,Iobj,Isig,Jobj,Jsig, inv_var_i, inv_var_j):
+    """calculates MCE constraint values and gradients
+
+    parameters
+    ----------
+    aI: float, allocation to system i
+    aJ: float, allocation to system j
+    Iobj: numpy array, objective vals of system i
+    Isig: 2d numpy array, covariance matrix of objectives of system i
+    Jobj: numpy array, objective vals of system j
+    Jsig: 2d numpy array, covariance martrix of objectives of system j
+    inv_var_i: 2d numpy array, inverse of Isig (precomputed for efficiency)
+    inv_var_j: 2d numpy array, inverse of Jsig (precomputed for efficiency)
+
+    returns
+    -------
+    curr_rate: float, decay rate of MCE event between systems i and j
+    grad_i: numpy array, gradient of rate wrt alpha_i
+    grad_j: numpy array, gradient of rate wrt alpha_j"""
     
     i1=Iobj[0]
     i2=Iobj[1]
@@ -1882,6 +1902,25 @@ def MCE_3d(aI,aJ,Iobj,Isig,Jobj,Jsig, inv_var_i, inv_var_j):
     return curr_rate, GradI, GradJ
 
 def MCE_four_d_plus(alpha_i, alpha_j, obj_i, inv_var_i, obj_j, inv_var_j, n_obj):
+    """calculates MCE constraint values and gradients\n
+    The input variable names and the return variable names are not the same as 2d and 3d (Ziyu)
+
+    parameters
+    ----------
+    aI: float, allocation to system i
+    aJ: float, allocation to system j
+    Iobj: numpy array, objective vals of system i
+    Isig: 2d numpy array, covariance matrix of objectives of system i
+    Jobj: numpy array, objective vals of system j
+    Jsig: 2d numpy array, covariance martrix of objectives of system j
+    inv_var_i: 2d numpy array, inverse of Isig (precomputed for efficiency)
+    inv_var_j: 2d numpy array, inverse of Jsig (precomputed for efficiency)
+
+    returns
+    -------
+    rate: float, decay rate of MCE event between systems i and j
+    grad_i: numpy array, gradient of rate wrt alpha_i
+    grad_j: numpy array, gradient of rate wrt alpha_j"""
     
     #this comes almost straight from the 
     P = linalg.block_diag(alpha_i*inv_var_i, alpha_j*inv_var_j)
