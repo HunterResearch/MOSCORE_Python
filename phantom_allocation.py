@@ -339,7 +339,6 @@ def find_phantoms(paretos, n_obj):
     ----------
     paretos: a numpy matrix representing the pareto set, with a row for each pareto system and a column for each objective
     n_obj: integer number of objectives
-    num_par: integer number of pareto systems
             
     Returns
     -------

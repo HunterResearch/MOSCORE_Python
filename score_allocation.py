@@ -40,7 +40,7 @@ def score_allocation(systems, warm_start=None):
     # Get array of pareto values for the phantom finder.
     for i in range(num_par):
         pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
-    phantom_values = find_phantoms(pareto_array, n_obj, num_par)
+    phantom_values = find_phantoms(pareto_array, n_obj)
 
     # Sort the phantom system.
     for i in range(n_obj):

@@ -227,7 +227,7 @@ def RunParPhantSummary(numobj, ssize, fix, foldername, fn2):
         pareto_array = np.zeros([num_par, n_obj])
         for i in range(num_par):
             pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
-        phantom_values = find_phantoms(pareto_array, n_obj, num_par)
+        phantom_values = find_phantoms(pareto_array, n_obj)
         n_phantoms = len(phantom_values)
 
         ParMatrix[prob] = num_par

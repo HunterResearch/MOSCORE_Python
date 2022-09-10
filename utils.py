@@ -323,7 +323,7 @@ def calc_phantom_rate(alphas, problem):
     for i in range(n_paretos):
         pareto_array[i,:] = problem['obj'][problem['pareto_indices'][i]]
     #get the phantoms
-    phantom_values = find_phantoms(pareto_array,n_obj,n_paretos)
+    phantom_values = find_phantoms(pareto_array, n_obj)
 
     for i in range(n_obj):
         phantom_values = phantom_values[(phantom_values[:,n_obj-1-i]).argsort(kind='mergesort')]

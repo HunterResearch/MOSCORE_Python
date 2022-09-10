@@ -27,14 +27,15 @@ import time
 import pymoso.chnutils as utils
 from mrg32k3a import MRG32k3a
 
-from allocate import allocate
+# from allocate import allocate
+from allocation import allocate_wrapper
 from utils import create_allocation_problem, is_pareto_efficient, calc_phantom_rate  # _mp_objmethod
 
 
 class MORS_Problem(object):
     """Class for multi-objective ranking-and-selection problem.
 
-    Parameters
+    Attributes
     ----------
     n_obj : int
         number of objectives
@@ -292,7 +293,7 @@ class MORS_Solver(object):
             raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
                   sample variance-covariance matrices.")
 
-        # No warm start solution for first call to allocate().
+        # No warm start solution for first call to allocate_wrapper().
         warm_start = None
 
         # Initialize summary statistics tracked over time:
@@ -351,7 +352,7 @@ class MORS_Solver(object):
                     obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
                     allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
                     tic = time.perf_counter()
-                    alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
+                    alpha_hat, _ = allocate_wrapper(self.allocation_rule, allocation_problem, warm_start=warm_start)
                     toc = time.perf_counter()
                     # In subsequent iterations, use previous alpha_hat as warm start
                     warm_start = alpha_hat
@@ -731,7 +732,7 @@ def make_phantom_rate_plots(testers):
     true_obj_vals = {idx: common_problem.true_means[idx] for idx in range(common_problem.n_systems)}
     true_obj_vars = {idx: np.array(common_problem.true_covs[idx]) for idx in range(common_problem.n_systems)}
     true_allocation_problem = create_allocation_problem(obj_vals=true_obj_vals, obj_vars=true_obj_vars)
-    _, phantom_rate_of_phantom_alloc = allocate(method="Phantom", systems=true_allocation_problem)
+    _, phantom_rate_of_phantom_alloc = allocate_wrapper(method="Phantom", systems=true_allocation_problem)
     # print(phantom_rate_of_phantom_alloc)
 
     # Calculate phantom rates for each tester.

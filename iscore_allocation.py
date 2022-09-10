@@ -51,7 +51,7 @@ def iscore_allocation(systems,warm_start = None):
     for i in range(num_par):
         pareto_array[i,:] = systems['obj'][systems['pareto_indices'][i]]
     
-    phantom_values = find_phantoms(pareto_array,n_obj,num_par)
+    phantom_values = find_phantoms(pareto_array, n_obj)
     
     
     
