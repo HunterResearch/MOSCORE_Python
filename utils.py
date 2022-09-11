@@ -6,6 +6,9 @@ Created on Sun Sep 15 18:09:55 2019
 @author: nathangeldner
 """
 
+import itertools as it
+
+
 from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
 from pymoso.chnutils import do_work
 from multiprocessing.pool import Pool
@@ -542,3 +545,85 @@ def calc_bf_rate(alphas, problem):
     MCI_rates = MCI_brute_force_rates(alphas, problem, kappa, n_paretos, n_systems, n_obj)[0]
 
     return min(min(-MCE_rates),min(-MCI_rates))
+
+
+def find_phantoms(paretos, n_obj):
+    """finds the phantom pareto set
+
+    Parameters
+    ----------
+    paretos: a numpy matrix representing the pareto set, with a row for each pareto system and a column for each objective
+    n_obj: integer number of objectives
+            
+    Returns
+    -------
+    phantoms: a numpy matrix similar in structure to paretos characterizing the phantom paretos. same number of columns but a difficult-to-predict number of rows
+    """     
+    max_y = np.inf
+    phantoms = np.zeros([1, n_obj])
+    v = range(n_obj)
+
+    for b in v:
+        # Get all subsets of size b of our objective dimensions.
+        T = list(it.combinations(v, b + 1))
+        for dims in T:
+            temp_paretos = paretos[:, dims]
+            temp_paretos = np.unique(temp_paretos, axis=0)
+
+            # Only want points which are paretos in our b-dimensional subspace.
+            temp_paretos = temp_paretos[is_pareto_efficient(temp_paretos, return_mask=False), :]
+
+            # Do the sweep.
+            phants = sweep(temp_paretos)
+            phan = np.ones([len(phants), n_obj]) * max_y
+            phan[:, dims] = phants
+            phantoms = np.append(phantoms, phan, axis=0)
+    phantoms = phantoms[1:, :]
+    return phantoms
+
+
+def sweep(paretos):
+    """
+    Parameters
+    ----------
+    paretos: a numpy matrix representing the pareto set, with a row for each pareto system and a column for each objective
+    n_obj: integer number of objectives
+
+    Returns
+    -------
+    phantoms: a numpy matrix similar in structure to paretos characterizing the phantom paretos. same number of columns but a difficult-to-predict number of rows
+    """
+    n_obj = len(paretos[0,:])
+    num_par = len(paretos)
+
+    if n_obj == 1:
+        return paretos[[paretos[:, 0].argmin()], :]
+    else:
+        phantoms = np.zeros([1, n_obj])
+        # Python indexes from 0, so the index for our last dimension is n_obj - 1.
+        d = n_obj - 1
+        # Other dimensions.
+        T = range(d)
+
+        # Sort paretos by dimension d in descending order.
+        paretos = paretos[(-paretos[:, d]).argsort(), :]
+
+        # Sweep dimension d from max to min, projecting into dimensions T
+        for i in range(num_par - (n_obj - 1)):  # Need at least n_obj - 1 paretos to get a phantom.
+            max_y = paretos[i, d]
+            temp_paretos = paretos[i + 1:num_par, :]  # Paretos following the current max pareto.
+            temp_paretos = temp_paretos[:, T]  # Remove dimension d or project onto dimension d.
+            temp_paretos = temp_paretos[is_pareto_efficient(temp_paretos, return_mask=False), :]  # Find pareto front.
+            phants = sweep(temp_paretos)  # Find phantoms from hyperplane passing through pareto i along T.
+
+            # Of phantom candidates, include only those which are dominated by pareto i.
+            # TODO: Vectorize?
+            for j in T:
+                non_dom = phants[:, j] > paretos[i, j]
+                phants = phants[non_dom, :]
+            phan = np.ones([len(phants), n_obj]) * max_y
+            phan[:, T] = phants
+            phantoms = np.append(phantoms, phan, axis=0)
+        # Remove the row we used to initialize phantoms.
+        phantoms = phantoms[1:, :]
+        return phantoms

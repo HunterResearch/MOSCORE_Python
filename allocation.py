@@ -18,15 +18,17 @@ import scipy.linalg as linalg
 from cvxopt import matrix, solvers
 
 from MCE_hard_coded import MCE_2d, MCE_3d, MCE_four_d_plus
+from MCI_hard_coded import MCI_1d, MCI_2d, MCI_3d, MCI_four_d_plus
+from utils import find_phantoms
 
 # Temporary imports
 from iscore_allocation import iscore_allocation
 from score_allocation import score_allocation
-from phantom_allocation import calc_phantom_allocation
+# from phantom_allocation import calc_phantom_allocation
 # from brute_force_allocation import calc_bf_allocation
 
 
-def allocate_wrapper(method, systems, warm_start=None):
+def smart_allocate(method, systems, warm_start=None):
     """Generate a non-sequential simulation allocation for the MORS problem.
 
     Parameters
@@ -484,31 +486,6 @@ class SCORE(ConvexOptAllocAlg):
         return alpha, z
 
 
-class Phantom(ConvexOptAllocAlg):
-    """Class for phantom allocation algorithm.
-
-    Attributes
-    ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
-    """
-    def solve_opt_problem(self, warm_start=None):
-        alpha, z = calc_phantom_allocation(systems=self.systems, warm_start=warm_start)  # TODO
-        return alpha, z
-
-
 class BruteForce(ConvexOptAllocAlg):
     """Class for brute force allocation algorithm.
 
@@ -541,6 +518,20 @@ class BruteForce(ConvexOptAllocAlg):
         self.kappas = list(it.product(v, repeat=self.n_paretos))
 
     def MCE_rates(self, x):
+        """Calculate the MCE rate constraint values and jacobian.
+
+        Parameters
+        ----------
+        x : numpy array of length n_systems + 1
+            allocation for each system and estimated convergence rate
+
+        Returns
+        -------
+        MCE_rates : numpy array
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
+        MCE_grads : 2d numy array
+            The jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
+        """
         # Negative alphas break the quadratic optimizer called below.
         # alphas that are too small may give us numerical precision issues.
         tol = 10**-12
@@ -604,6 +595,20 @@ class BruteForce(ConvexOptAllocAlg):
         return MCE_rates, MCE_grads
 
     def MCI_rates(self, x):
+        """Calculate the MCE rate constraint values and jacobian.
+
+        Parameters
+        ----------
+        x : numpy array of length n_systems + 1
+            allocation for each system and estimated convergence rate
+
+        Returns
+        -------
+        MCI_rates : numpy array
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
+        MCI_grads: 2d numy array
+            The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
+        """
         tol = 10**-12
         n_kap = len(self.kappas)
 
@@ -670,3 +675,159 @@ class BruteForce(ConvexOptAllocAlg):
                 count = count + 1
 
         return MCI_rates, MCI_grad
+
+
+class Phantom(BruteForce):
+    """Class for phantom allocation algorithm.
+
+    Notes
+    -----
+    MCE_rates() method is inherited from BruteForce class.
+
+    Attributes
+    ----------
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    """
+    def __init__(self, systems):
+        super().__init__(systems=systems)
+
+        # Get array of pareto values for the phantom finder.
+        pareto_array = np.zeros([self.n_paretos, self.n_obj])
+        for i in range(self.n_paretos):
+            pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
+        # Get the phantom systems.
+        phantom_values = find_phantoms(pareto_array, self.n_obj)
+
+        # Sort the phantom system.
+        for i in range(self.n_obj):
+            phantom_values = phantom_values[(phantom_values[:, self.n_obj - 1 - i]).argsort(kind='mergesort')]
+        self.n_phantoms = len(phantom_values)
+
+        # The commented part doesn't give different results, but this makes the constraint
+        # ordering identical to that of the matlab code, which you'll want for debugging
+        # phantom_values = phantom_values[(phantom_values[:,0]).argsort()]
+
+        # TODO: consider using something other than inf as a placeholder.
+        # Unfortunately, inf is a float in numpy, and arrays must be homogenous
+        # and floats don't automatically cast to ints for indexing leading to an error.
+        # Right now we're casting as ints for indexing, but that's a little gross.
+        # Also, inf doesn't cast to intmax if you cast as int.
+        # It ends up being very negative for some reason.
+        self.phantoms = np.ones([self.n_phantoms, self.n_obj]) * np.inf
+
+        # TODO: Vectorize?
+        for i in range(self.n_phantoms):
+            for j in range(self.n_obj):
+                for k in range(self.n_paretos):
+                    if pareto_array[k, j] == phantom_values[i, j]:
+                        self.phantoms[i, j] = systems['pareto_indices'][k]
+
+    def MCI_rates(self, x):
+        """Calculate the MCE rate constraint values and jacobian.
+
+        Parameters
+        ----------
+        x : numpy array of length n_systems + 1
+            allocation for each system and estimated convergence rate
+
+        Returns
+        -------
+        MCI_rates : numpy array
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
+        MCI_grads: 2d numy array
+            The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
+        """
+        tol = 10**-12
+        n_nonparetos = self.n_systems - self.n_paretos
+        n_MCI = n_nonparetos * self.n_phantoms
+
+        MCI_rates = np.zeros(n_MCI)
+        MCI_grads = np.zeros([n_MCI, self.n_systems + 1])
+
+        count = 0
+        x[0:-1][x[0:-1] <= tol] = 0
+        for j in self.systems['non_pareto_indices']:
+            for m in range(self.n_phantoms):
+                # Get the pareto indices corresponding to phantom l.
+                phantom_indices = self.phantoms[m, :]
+                if x[j] <= tol:
+                    # The rate and gradients are zero. Only have to worry about gradient
+                    # wrt z since we initialize with zero.
+                    MCI_grads[count, -1] = 1
+                else:
+                    phantom_obj = np.zeros(self.n_obj)
+                    phantom_var = np.zeros(self.n_obj)
+                    phantom_alphas = np.zeros(self.n_obj)
+                    phantom_objectives = np.array(range(self.n_obj))
+                    phantom_objective_count = self.n_obj
+                    alpha_zeros = 0
+
+                    # Extract objective and variance values for the phantom pareto system.
+                    for b in range(self.n_obj):
+                        if phantom_indices[b] < np.inf:
+                            pareto_system = int(phantom_indices[b])
+                            phantom_obj[b] = self.systems['obj'][pareto_system][b]
+                            phantom_var[b] = self.systems['var'][pareto_system][b, b]
+                            if x[pareto_system] <= tol:
+                                phantom_alphas[b] = 0
+                                alpha_zeros = alpha_zeros + 1
+                            else:
+                                phantom_alphas[b] = x[pareto_system]
+                        else:
+                            phantom_objective_count -= 1
+
+                    # Keep track of which objectives are included in phantom set.
+                    phantom_objectives = phantom_objectives[phantom_indices < np.inf]
+                    obj_j = self.systems['obj'][j][phantom_objectives]
+                    # Only want covariances for the phantom objectives.
+                    # np.ix_ allows us to subset nicely that way.
+                    cov_j = self.systems['var'][j][np.ix_(phantom_objectives, phantom_objectives)]
+
+                    # Remove unassigned objective indices for phantom variances and objectives.
+                    phantom_obj = phantom_obj[phantom_objectives]
+                    phantom_var = phantom_var[phantom_objectives]
+                    phantom_alphas = phantom_alphas[phantom_objectives]
+
+                    # If all of the alphas corresponding to the phantom objectives are zero:
+                    if alpha_zeros == phantom_objective_count:
+                        rate = 0
+                        grad_j = 0
+                        phantom_grads = 0.5 * ((obj_j - phantom_obj) ** 2) / phantom_var
+
+                        # Note: floats equal to ints don't get automatically converted when used for indices.
+                        # Need to convert.
+                        MCI_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
+                        MCI_grads[count, -1] = 1
+                        MCI_rates[count] = x[-1] - rate
+                    else:
+                        length = len(phantom_objectives)
+                        if length == 1:
+                            rate, grad_j, phantom_grads = MCI_1d(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                        elif length == 2:
+                            rate, grad_j, phantom_grads = MCI_2d(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                        elif length == 3:
+                            rate, grad_j, phantom_grads = MCI_3d(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                        else:
+                            rate, grad_j, phantom_grads = MCI_four_d_plus(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+
+                        # TODO: Hard-code solutions for 1-3 objectives.
+                        MCI_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
+                        MCI_grads[count, -1] = 1
+                        MCI_grads[count, j] = -1.0 * grad_j
+                        MCI_rates[count] = x[-1] - rate
+
+                count = count + 1
+        return MCI_rates, MCI_grads
