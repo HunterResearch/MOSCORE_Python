@@ -19,11 +19,12 @@ from cvxopt import matrix, solvers
 
 from MCE_hard_coded import MCE_2d, MCE_3d, MCE_four_d_plus
 from MCI_hard_coded import MCI_1d, MCI_2d, MCI_3d, MCI_four_d_plus
+from SCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
 from utils import find_phantoms
 
 # Temporary imports
 from iscore_allocation import iscore_allocation
-from score_allocation import score_allocation
+# from score_allocation import score_allocation
 # from phantom_allocation import calc_phantom_allocation
 # from brute_force_allocation import calc_bf_allocation
 
@@ -148,8 +149,8 @@ def allocate(method, systems, warm_start=None):
         cvxoptallocalg = Phantom(systems=systems)
     elif method == "Brute Force":
         cvxoptallocalg = BruteForce(systems=systems)
-    cvxoptallocalg.setup_opt_problem()
-    alpha, z = cvxoptallocalg.solve_opt_problem(warm_start=warm_start)
+    cvxoptallocalg.setup_opt_problem(warm_start=warm_start)
+    alpha, z = cvxoptallocalg.solve_opt_problem()
     return alpha, z
 
 
@@ -223,12 +224,12 @@ class ConvexOptAllocAlg(object):
         self.n_paretos = len(systems["pareto_indices"])
         self.n_system_decision_variables = self.n_systems
 
-    def objective_function(self, alphas):
+    def objective_function(self, x):
         """Return the objective function value and associated gradient at a given solution.
 
         Parameters
         ----------
-        alpha : a numpy array
+        x : a numpy array
             A feasible solution for the optimization problem.
 
         Returns
@@ -242,16 +243,16 @@ class ConvexOptAllocAlg(object):
         # The objective is -z and its derivative wrt z is -1.
         # The objective function is -1 times the convergence rate.
         # The gradient is zero with respect to alphas and -1 with respect to the convergence rate (the last term).
-        gradient = np.zeros(len(alphas))
+        gradient = np.zeros(len(x))
         gradient[-1] = -1
-        return -1 * alphas[-1], gradient
+        return -1 * x[-1], gradient
 
-    def hessian_zero(self, alphas):
+    def hessian_zero(self, x):
         """Return the Hessian of the objective function at a given solution.
 
         Parameters
         ----------
-        alpha : a numpy array
+        x : a numpy array
             A feasible solution for the optimization problem.
 
         Returns
@@ -260,9 +261,9 @@ class ConvexOptAllocAlg(object):
         """
         # Hessian of the objective function is just a matrix of zeros.
         # Return a square matrix of zeros with len(alpha) rows and columns.
-        return np.zeros([len(alphas), len(alphas)])
+        return np.zeros([len(x), len(x)])
 
-    def setup_opt_problem(self):
+    def setup_opt_problem(self, warm_start=None):
         """Setup optimization problem."""
 
         # We don't have a good way to pass in constraint values and gradients simultaneously.
@@ -286,7 +287,7 @@ class ConvexOptAllocAlg(object):
                                                             )
 
         # Define bounds on alpha values and z (the last element of our decision variable array).
-        self.my_bounds = [(10**-12, 1.0) for i in range(self.n_system_decision_variables)] + [(0.0, np.inf)]
+        self.bounds = [(10**-12, 1.0) for i in range(self.n_system_decision_variables)] + [(0.0, np.inf)]
 
         # Set sum of alphas (not z) to 1.
         equality_constraint_array = np.ones(self.n_system_decision_variables + 1)
@@ -296,6 +297,8 @@ class ConvexOptAllocAlg(object):
                                                         equality_constraint_bound,
                                                         equality_constraint_bound
                                                         )
+        # Set up warmstart solution.
+        self.set_warmstart(warm_start)
 
     def constraints_wrapper(self, x):
         """Wrapper to go around self.constraint().
@@ -345,6 +348,8 @@ class ConvexOptAllocAlg(object):
         jacobian : 2d numy array
             The jacobian of the constraint values with respect to the vector alpha (including the final element z)
         """
+        # tol = 10**-12
+        # x[0:-1][x[0:-1] < tol] = 0
         # Compose MCE and MCI constraint values and gradients.
         MCE_rates, MCE_grads = self.MCE_rates(x)
         MCI_rates, MCI_grads = self.MCI_rates(x)
@@ -386,14 +391,22 @@ class ConvexOptAllocAlg(object):
         """
         raise NotImplementedError
 
-    def solve_opt_problem(self, warm_start=None):
-        """Solve optimization problem from warm-start solution.
+    def set_warmstart(self, warm_start=None):
+        """Set warm-start solution.
 
         Parameters
         ----------
         warm_start : list of float
             An initial simulation allocation from which to determine the optimal allocation.\
             Length must be equal to the number of systems.
+        """
+        if warm_start is None:
+            self.warm_start = np.array([1.0 / self.n_system_decision_variables] * self.n_system_decision_variables + [0])
+        else:
+            self.warm_start = np.append(warm_start, 0)
+
+    def solve_opt_problem(self):
+        """Solve optimization problem from warm-start solution.
 
         Returns
         -------
@@ -402,19 +415,13 @@ class ConvexOptAllocAlg(object):
         z : float
             The estimated rate of convergence.
         """
-        # Set up warmstart solution.
-        if warm_start is None:
-            warm_start = np.array([1.0 / self.n_system_decision_variables] * self.n_system_decision_variables + [0])
-        else:
-            warm_start = np.append(warm_start, 0)
-
         # Solve optimization problem.
         res = opt.minimize(fun=self.objective_function,
-                           x0=warm_start,
+                           x0=self.warm_start,
                            method='trust-constr',
                            jac=True,
                            hess=self.hessian_zero,
-                           bounds=self.my_bounds,
+                           bounds=self.bounds,
                            constraints=[self.equality_constraint, self.nonlinear_constraint]
                            )
 
@@ -427,62 +434,31 @@ class ConvexOptAllocAlg(object):
                                method='trust-constr',
                                jac=True,
                                hess=self.hessian_zero,
-                               bounds=self.my_bounds,
+                               bounds=self.bounds,
                                constraints=[self.equality_constraint, self.nonlinear_constraint]
                                )
 
-        alpha = res.x[0:-1]
-        z = res.x[-1]
+        alpha, z = self.post_process(opt_sol=res.x)
         return alpha, z
 
+    def post_process(self, opt_sol):
+        """Convert solution to optimization problem into an allocation
+        and a convergence rate.
 
-class ISCORE(ConvexOptAllocAlg):
-    """Class for iSCORE allocation algorithm.
+        Parameters
+        ----------
+        opt_sol : tuple
+            Optimal solution to the allocation optimization problem.
 
-    Attributes
-    ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
-    """
-    def solve_opt_problem(self, warm_start=None):
-        alpha, z = iscore_allocation(systems=self.systems, warm_start=warm_start)  # TODO
-        return alpha, z
-
-
-class SCORE(ConvexOptAllocAlg):
-    """Class for SCORE allocation algorithm.
-
-    Attributes
-    ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
-    """
-    def solve_opt_problem(self, warm_start=None):
-        alpha, z = score_allocation(systems=self.systems, warm_start=warm_start)  # TODO
+        Returns
+        -------
+        alpha : tuple
+            The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.
+        z : float
+            The estimated rate of convergence.
+        """
+        alpha = opt_sol[0:-1]
+        z = opt_sol[-1]
         return alpha, z
 
 
@@ -831,3 +807,419 @@ class Phantom(BruteForce):
 
                 count = count + 1
         return MCI_rates, MCI_grads
+
+
+class SCORE(Phantom):
+    """Class for SCORE allocation algorithm.
+
+    Notes
+    -----
+    Much of __init__() method is inherited from Phantom class.
+
+    Attributes
+    ----------
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    """
+    def __init__(self, systems):
+        super().__init__(systems=systems)
+        # Specify number of allocation decision variables.
+        self.n_system_decision_variable = self.n_paretos + 1
+        # Calculate j_star, lambda, and M_star.
+        self.j_star, self.lambdas = self.calc_SCORE()
+        self.M_star = self.calc_SCORE_MCE()
+
+    def set_warmstart(self, warm_start=None):
+        """Set warm-start solution.
+
+        Parameters
+        ----------
+        warm_start : list of float
+            An initial simulation allocation from which to determine the optimal allocation.\
+            Length must be equal to the number of systems.
+        """
+        if warm_start is None:
+            self.warm_start = np.array([1 / (2 * self.n_paretos)] * self.n_paretos + [0.5] + [0])
+        else:
+            self.warm_start = np.append(warm_start[0:self.n_paretos], [sum(warm_start[self.n_paretos:]), 0])
+
+    def post_process(self, opt_sol):
+        """Convert solution to optimization problem into an allocation
+        and a convergence rate.
+
+        Parameters
+        ----------
+        opt_sol : tuple
+            Optimal solution to the allocation optimization problem.
+
+        Returns
+        -------
+        alpha : tuple
+            The estimated optimal simulation allocation, which is a list of float of length equal to the number of systems.
+        z : float
+            The estimated rate of convergence.
+        """
+        # Sort output by system number.
+        alpha = np.zeros(self.n_systems)
+        alpha[self.systems['pareto_indices']] = opt_sol[0:self.n_paretos]
+        for j in range(self.n_systems - self.n_paretos):
+            alpha[self.systems['non_pareto_indices'][j]] = self.lambdas[j] * opt_sol[-2]
+        z = opt_sol[-1]
+        return alpha, z
+
+    def calc_SCORE(self):
+        """Calculates the SCORE for MCI constraints.
+
+        Returns
+        -------
+        j_star : numpy matrix
+            ???
+        lambdas : numpy array
+            ???
+        """
+        scores = np.zeros([self.n_phantoms, self.n_systems - self.n_paretos])
+        j_star = np.zeros([self.n_phantoms * self.n_obj, 2])
+        # Note: the matlab code pre-computes several vectors for speed here
+        # which I instead initialize individually.
+        # This is because initializing vector v at this point, setting v_instance = v
+        # and then modifying v_instance would modify v, which is undesireable.
+
+        # Loop over phantoms.
+        for i in range(self.n_phantoms):
+
+            # phantom_pareto_inds refers to the pareto system number from which each phantom objective
+            # gets its value. We drop objectives that are infinity in the phantom
+            # and keep track of the rest of the objectives in objectives_playing.
+            phantom_pareto_nums = self.phantoms[i, :]
+            objectives_playing = np.array(range(self.n_obj))[phantom_pareto_nums < np.inf]
+            phantom_pareto_nums = phantom_pareto_nums[phantom_pareto_nums < np.inf]
+            # pareto_phantom_inds refers to the actual system indices.
+
+            n_obj_playing = len(objectives_playing)
+
+            phantom_objectives = np.zeros(n_obj_playing)
+            # Extract the objectives for the phantoms.
+            for obj in range(n_obj_playing):
+                phantom_pareto_ind = self.systems['pareto_indices'][int(phantom_pareto_nums[obj])]
+                phantom_objectives[obj] = self.systems['obj'][phantom_pareto_ind][objectives_playing[obj]]
+
+            j_comps = np.ones(self.n_obj) * np.inf
+            j_indices = np.ones(self.n_obj) * np.inf
+            size = len(objectives_playing)
+            for j in range(self.n_systems - self.n_paretos):
+                j_ind = self.systems['non_pareto_indices'][j]
+                obj_j = self.systems['obj'][j_ind][objectives_playing]
+                cov_j = self.systems['var'][j_ind][np.ix_(objectives_playing, objectives_playing)]
+
+                # TODO: Hard code solutions for 1, 2, 3 objectives.
+                if size == 1:
+                    score, binds = SCORE_1d(phantom_objectives, obj_j, cov_j)
+                elif size == 2:
+                    score, binds = SCORE_2d(phantom_objectives, obj_j, cov_j)
+                elif size == 3:
+                    score, binds = SCORE_3d(phantom_objectives, obj_j, cov_j)
+                else:
+                    score, binds = score_four_d_plus(phantom_objectives, obj_j, cov_j)
+
+                j_current = np.ones(self.n_obj) * np.inf
+                j_current[objectives_playing] = binds
+                scores[i, j] = score
+
+                for m in range(self.n_obj):
+                    if j_current[m] < j_comps[m]:
+                        j_comps[m] = j_current[m]
+                        j_indices[m] = j
+
+            L_indices = np.ones(self.n_obj) * i
+
+            # For every constraint (with n_obj rows in J_star), we want the non-pareto index
+            # per objective and the phantom index
+            # TODO: consider instead having one row per constraint, one column per objective
+            # and separate matrices (arrays) for J indices and L indices. Or actually we wouldn't
+            # need L indices I think because the J matrix would then be ordered as such.
+
+            j_star[self.n_obj * i:self.n_obj * (i + 1), :] = np.vstack((j_indices, L_indices)).T
+
+        # inv_scores is the inverse of the minimum of each column in scores, resulting in one
+        # value per non-pareto system.
+        inv_scores = 1 / np.minimum.reduce(scores)
+        lambdas = inv_scores / sum(inv_scores)
+
+        # TODO: Not sure why we're doing this, but we remove the rows of J_star where
+        # the first column is infinity.
+        j_star = j_star[j_star[:, 0] < np.inf, :]
+        j_star = np.unique(j_star, axis=0)
+
+        return j_star, lambdas
+
+    def calc_SCORE_MCE(self):
+        """Calculate the SCORE for MCE constraints.
+
+        Returns
+        -------
+        M_star : numpy matrix
+            ???
+        """
+        scores = np.zeros([self.n_paretos, self.n_paretos])
+        all_scores = np.zeros(self.n_paretos * (self.n_paretos - 1))
+        M_star = np.zeros([self.n_paretos * self.n_obj, 2])
+
+        count = 0
+        for i in range(self.n_paretos):
+            i_ind = self.systems['pareto_indices'][i]
+            obj_i = self.systems['obj'][i_ind]
+            j_comps = np.ones(self.n_obj) * np.inf
+            j_inds = np.ones(self.n_obj) * np.inf
+
+            for j in range(self.n_paretos):
+                if i != j:
+                    j_ind = self.systems['pareto_indices'][j]
+                    obj_j = self.systems['obj'][j_ind]
+                    cov_j = self.systems['var'][j_ind]
+
+                    # TODO: Hard code solutions for <4 objectives.
+                    if self.n_obj == 1:
+                        score, binds = SCORE_1d(obj_i, obj_j, cov_j)
+                    elif self.n_obj == 2:
+                        score, binds = SCORE_2d(obj_i, obj_j, cov_j)
+                    elif self.n_obj == 3:
+                        score, binds = SCORE_3d(obj_i, obj_j, cov_j)
+                    else:
+                        score, binds = score, binds = score_four_d_plus(obj_i, obj_j, cov_j)
+                    scores[i, j] = score
+
+                    all_scores[count] = score
+
+                    count = count + 1
+
+                    j_current = binds
+                    # TODO: Vectorize?
+                    for m in range(self.n_obj):
+                        if j_current[m] < j_comps[m]:
+                            j_comps[m] = j_current[m]
+                            j_inds[m] = j
+
+            L_inds = np.ones(self.n_obj) * i
+            M_star[self.n_obj * i:self.n_obj * (i + 1), :] = np.vstack((j_inds, L_inds)).T
+
+        # TODO: Not sure why we're doing this, but we remove the rows of M_star where
+        # the first column is infinity.
+        M_star = M_star[M_star[:, 0] < np.inf, :]
+        # Switch columns and append.
+        M_star_b = M_star[:, [1, 0]]
+        M_star = np.append(M_star, M_star_b, axis=0)
+
+        # Add pairs of systems where SCORE < percentile (all scores).
+        score_percentile = np.percentile(all_scores, 25)
+
+        for a in range(self.n_paretos):
+            for b in range(self.n_paretos):
+                if a != b and scores[a, b] <= score_percentile:
+                    M_star = np.append(M_star, [[a, b]], axis=0)
+                    M_star = np.append(M_star, [[b, a]], axis=0)
+
+        M_star = np.unique(M_star, axis=0)
+        return M_star
+
+    def MCI_rates(self, x):
+        """Calculate the MCE rate constraint values and jacobian.
+
+        Parameters
+        ----------
+        x : numpy array of length n_systems + 1
+            allocation for each system and estimated convergence rate
+
+        Returns
+        -------
+        MCI_rates : numpy array
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
+        MCI_grads: 2d numy array
+            The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
+        """
+        tol = 10**-12
+
+        n_MCI = len(self.j_star)
+        MCI_rates = np.zeros(n_MCI)
+        MCI_grads = np.zeros([n_MCI, len(x)])
+
+        for i in range(n_MCI):
+            j = int(self.j_star[i, 0])
+            j_ind = self.systems['non_pareto_indices'][j]
+            lambda_j = self.lambdas[j]
+            alpha_j = lambda_j * x[-2]
+            obj_j = self.systems['obj'][j_ind]
+            cov_j = self.systems['var'][j_ind]
+
+            phantom_ind = int(self.j_star[i, 1])
+            phantom_pareto_inds = self.phantoms[phantom_ind, :]
+
+            if alpha_j < tol:
+                # Rate is 0. Returned rate is z. Grads wrt anything but z are left as zero.
+                MCI_rates[i] = x[-1]
+                MCI_grads[i, -1] = 1
+            else:
+                phantom_objectives = np.zeros(self.n_obj)
+                phantom_vars = np.zeros(self.n_obj)
+                phantom_alphas = np.zeros(self.n_obj)
+                objectives_playing = np.array(range(self.n_obj))
+                alpha_zeros = 0
+                n_objectives_playing = self.n_obj
+
+                for b in range(self.n_obj):
+                    if phantom_pareto_inds[b] < np.inf:
+                        pareto_system_num = int(phantom_pareto_inds[b])
+                        pareto_system_ind = self.systems['pareto_indices'][pareto_system_num]
+                        phantom_objectives[b] = self.systems['obj'][pareto_system_ind][b]
+                        phantom_vars[b] = self.systems['var'][pareto_system_ind][b, b]
+                        if x[pareto_system_num] < tol:
+                            phantom_alphas[b] = 0
+                            alpha_zeros += 1
+                        else:
+                            phantom_alphas[b] = x[pareto_system_num]
+                    else:
+                        n_objectives_playing -= 1
+
+                objectives_playing = objectives_playing[phantom_pareto_inds < np.inf]
+
+                obj_j = obj_j[objectives_playing]
+                cov_j = cov_j[np.ix_(objectives_playing, objectives_playing)]
+
+                phantom_objectives = phantom_objectives[objectives_playing]
+                phantom_vars = phantom_vars[objectives_playing]
+                phantom_alphas = phantom_alphas[objectives_playing]
+
+                if alpha_zeros == n_objectives_playing:
+                    MCI_rates[i] = x[-1]
+                    MCI_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -0.5 * ((obj_j - phantom_objectives) ** 2) / phantom_vars
+                    MCI_grads[i, -1] = 1
+                else:
+                    # TODO: Hard code solutions for < 4 objectives.
+                    length = len(objectives_playing)
+                    if length == 1:
+                        rate, grad_j, phantom_grads = MCI_1d(alpha_j, obj_j, cov_j, phantom_alphas, phantom_objectives, phantom_vars)
+                    elif length == 2:
+                        rate, grad_j, phantom_grads = MCI_2d(alpha_j, obj_j, cov_j, phantom_alphas, phantom_objectives, phantom_vars)
+                    elif length == 3:
+                        rate, grad_j, phantom_grads = MCI_3d(alpha_j, obj_j, cov_j, phantom_alphas, phantom_objectives, phantom_vars)
+                    else:
+                        rate, grad_j, phantom_grads = MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_objectives, phantom_vars)
+
+                    MCI_rates[i] = x[-1] - rate
+                    phantom_grads[phantom_grads < tol] = 0
+                    MCI_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -1.0 * phantom_grads
+                    MCI_grads[i, -2] = -1 * lambda_j * grad_j
+                    MCI_grads[i, -1] = 1
+
+        return MCI_rates, MCI_grads
+
+    def MCE_rates(self, x):
+        """Calculate the MCE rate constraint values and jacobian.
+
+        Parameters
+        ----------
+        x : numpy array of length n_systems + 1
+            allocation for each system and estimated convergence rate
+
+        Returns
+        -------
+        MCE_rates : numpy array
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
+        MCE_grads : 2d numy array
+            The jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
+        """
+        tol = 10**-12
+        n_MCE = len(self.M_star)
+        MCE_rates = np.zeros(n_MCE)
+        MCE_grads = np.zeros([n_MCE, len(x)])
+
+        for k in range(n_MCE):
+            i = int(self.M_star[k, 0])
+            j = int(self.M_star[k, 1])
+
+            if (x[i] < tol or x[j] < tol):
+                rate = x[-1]
+                grad_i = 0
+                grad_j = 0
+            else:
+                i_ind = self.systems['pareto_indices'][i]
+                j_ind = self.systems['pareto_indices'][j]
+                obj_i = self.systems['obj'][i_ind]
+                inv_cov_i = self.systems['inv_var'][i_ind]
+                obj_j = self.systems['obj'][j_ind]
+                inv_cov_j = self.systems['inv_var'][j_ind]
+
+                # TODO: Hard code solutions for <4 dimensions.
+                if self.n_obj == 2:
+                    rate, grad_i, grad_j = MCE_2d(aI=x[i],
+                                                  aJ=x[j],
+                                                  Iobj=obj_i,
+                                                  Isig=self.systems["var"][i_ind],
+                                                  Jobj=obj_j,
+                                                  Jsig=self.systems["var"][j_ind],
+                                                  inv_var_i=inv_cov_i,
+                                                  inv_var_j=inv_cov_j
+                                                  )
+                elif self.n_obj == 3:
+                    rate, grad_i, grad_j = MCE_3d(aI=x[i],
+                                                  aJ=x[j],
+                                                  Iobj=obj_i,
+                                                  Isig=self.systems["var"][i_ind],
+                                                  Jobj=obj_j,
+                                                  Jsig=self.systems["var"][j_ind],
+                                                  inv_var_i=inv_cov_i,
+                                                  inv_var_j=inv_cov_j
+                                                  )
+                else:
+                    rate, grad_i, grad_j = MCE_four_d_plus(alpha_i=x[i],
+                                                           alpha_j=x[j],
+                                                           obj_i=obj_i,
+                                                           inv_var_i=inv_cov_i,
+                                                           obj_j=obj_j,
+                                                           inv_var_j=inv_cov_j,
+                                                           n_obj=self.n_obj
+                                                           )
+                rate = x[-1] - rate
+
+            MCE_rates[k] = rate
+            MCE_grads[k, i] = -1 * grad_i
+            MCE_grads[k, j] = -1 * grad_j
+            MCE_grads[k, -1] = 1.0
+
+        return MCE_rates, MCE_grads
+
+
+class ISCORE(ConvexOptAllocAlg):
+    """Class for iSCORE allocation algorithm.
+
+    Attributes
+    ----------
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    """
+    def solve_opt_problem(self, warm_start=None):
+        alpha, z = iscore_allocation(systems=self.systems, warm_start=warm_start)  # TODO
+        return alpha, z

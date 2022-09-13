@@ -28,6 +28,7 @@ import pymoso.chnutils as utils
 from mrg32k3a import MRG32k3a
 
 # from allocate import allocate
+# from allocate import allocate as smart_allocate
 from allocation import smart_allocate
 from utils import create_allocation_problem, is_pareto_efficient, calc_phantom_rate  # _mp_objmethod
 
