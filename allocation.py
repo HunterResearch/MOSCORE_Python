@@ -23,7 +23,7 @@ from SCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
 from utils import find_phantoms
 
 # Temporary imports
-from iscore_allocation import iscore_allocation
+# from iscore_allocation import iscore_allocation
 # from score_allocation import score_allocation
 # from phantom_allocation import calc_phantom_allocation
 # from brute_force_allocation import calc_bf_allocation
@@ -1200,8 +1200,12 @@ class SCORE(Phantom):
         return MCE_rates, MCE_grads
 
 
-class ISCORE(ConvexOptAllocAlg):
+class ISCORE(SCORE):
     """Class for iSCORE allocation algorithm.
+
+    Notes
+    -----
+    __init__() and set_warmstart() are inherited from SCORE.
 
     Attributes
     ----------
@@ -1220,6 +1224,256 @@ class ISCORE(ConvexOptAllocAlg):
         ``"non_pareto_indices"``
         A list of non-pareto systems ordered by the first objective.
     """
-    def solve_opt_problem(self, warm_start=None):
-        alpha, z = iscore_allocation(systems=self.systems, warm_start=warm_start)  # TODO
-        return alpha, z
+    def __init__(self, systems):
+        super().__init__(systems=systems)
+        # Specify number of allocation decision variables.
+        self.n_system_decision_variable = self.n_paretos + 1
+        # Calculate j_star, lambda, and M_star.
+        self.j_star, self.lambdas = self.calc_iSCORE()
+        self.M_star = self.calc_iSCORE_MCE()
+
+    def calc_iSCORE(self):
+        """Calculates the SCORE for MCI constraints.
+
+        Returns
+        -------
+        j_star : numpy matrix
+            ???
+        lambdas : numpy array
+            ???
+        """
+        scores = np.zeros([self.n_phantoms, self.n_systems - self.n_paretos])
+        j_star = np.zeros([self.n_phantoms * self.n_obj, 2])
+
+        for i in range(self.n_phantoms):
+            phantom_indices = self.phantoms[i, :]
+            phantom_objs = np.ones(self.n_obj) * np.inf
+
+            for b in range(self.n_obj):
+                if phantom_indices[b] < np.inf:
+                    pareto_num = int(phantom_indices[b])
+                    pareto_system = self.systems['pareto_indices'][pareto_num]
+                    phantom_objs[b] = self.systems['obj'][pareto_system][b]
+
+            j_comps = np.ones(self.n_obj) * np.inf
+            j_inds = np.ones(self.n_obj) * np.inf
+
+            for j in range(self.n_systems - self.n_paretos):
+                j_ind = self.systems['non_pareto_indices'][j]
+                obj_j = self.systems['obj'][j_ind]
+                cov_j = self.systems['var'][j_ind]
+
+                score = 0
+                binds = np.ones(self.n_obj) * np.inf
+                for m in range(self.n_obj):
+                    if obj_j[m] > phantom_objs[m]:
+                        score = score + (phantom_objs[m] - obj_j[m])**2 / (2 * cov_j[m, m])
+                        binds[m] = 1
+
+                j_current = binds * score
+                scores[i, j] = score
+
+                # Determine if this non-pareto is closer than another
+                # TODO: vectorize.
+                for m in range(self.n_obj):
+                    if j_current[m] < j_comps[m]:
+                        j_comps[m] = j_current[m]
+                        j_inds[m] = j
+
+            L_indices = np.ones(self.n_obj) * i
+            j_star[i * self.n_obj:(i + 1) * self.n_obj, :] = np.vstack((j_inds, L_indices)).T
+
+        inv_scores = 1 / np.minimum.reduce(scores)
+        lambdas = inv_scores / sum(inv_scores)
+
+        j_star = j_star[j_star[:, 0] < np.inf, :]
+        j_star = np.unique(j_star, axis=0)
+
+        return j_star, lambdas
+
+    def calc_iSCORE_MCE(self):
+        """Calculates the iSCORE for MCE constraints.
+
+        Returns
+        -------
+        M_star : a numpy matrix
+            ???
+        """
+        scores = np.zeros([self.n_paretos, self.n_paretos])
+        all_scores = np.zeros(self.n_paretos * (self.n_paretos - 1))
+        M_star = np.zeros([self.n_paretos * self.n_obj, 2])
+
+        count = 0
+
+        for i in range(self.n_paretos):
+            i_ind = self.systems['pareto_indices'][i]
+            obj_i = self.systems['obj'][i_ind]
+
+            j_comps = np.ones(self.n_obj) * np.inf
+            j_inds = np.ones(self.n_obj) * np.inf
+
+            for j in range(self.n_paretos):
+                if i != j:
+                    j_ind = self.systems['pareto_indices'][j]
+                    obj_j = self.systems['obj'][j_ind]
+                    cov_j = self.systems['var'][j_ind]
+
+                    score = 0
+                    binds = np.ones(self.n_obj) * np.inf
+                    for m in range(self.n_obj):
+                        if obj_j[m] > obj_i[m]:
+                            score = score + (obj_i[m] - obj_j[m])**2 / (2 * cov_j[m, m])
+                            binds[m] = 1
+
+                    j_current = binds * score
+                    scores[i, j] = score
+                    all_scores[count] = score
+
+                    count = count + 1
+                    # TODO: vectorize?
+                    for m in range(self.n_obj):
+                        if j_current[m] < j_comps[m]:
+                            j_comps[m] = j_current[m]
+                            j_inds[m] = j
+
+            L_inds = np.ones(self.n_obj) * i
+            M_star[self.n_obj * i:self.n_obj * (i + 1), :] = np.vstack((j_inds, L_inds)).T
+
+        # TODO not sure why we're doing this, but we remove the rows of M_star where
+        # the first column is infinity.
+        M_star = M_star[M_star[:, 0] < np.inf, :]
+        # Switch columns and append.
+        M_star_b = M_star[:, [1, 0]]
+        M_star = np.append(M_star, M_star_b, axis=0)
+
+        # Add pairs of systems where SCORE < percentile(all scores).
+        score_percentile = np.percentile(all_scores, 25)
+
+        for a in range(self.n_paretos):
+            for b in range(self.n_paretos):
+                if a != b and scores[a, b] <= score_percentile:
+
+                    M_star = np.append(M_star, [[a, b]], axis=0)
+                    M_star = np.append(M_star, [[b, a]], axis=0)
+
+        M_star = np.unique(M_star, axis=0)
+        return M_star
+
+    def MCI_rates(self, x):
+        """Calculate the MCE rate constraint values and jacobian.
+
+        Parameters
+        ----------
+        x : numpy array of length n_systems + 1
+            allocation for each system and estimated convergence rate
+
+        Returns
+        -------
+        MCI_rates : numpy array
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
+        MCI_grads: 2d numy array
+            The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
+        """
+        tol = 10**-50
+        n_MCI = len(self.j_star)
+        MCI_rates = np.zeros(n_MCI)
+        MCI_grads = np.zeros([n_MCI, len(x)])
+
+        for i in range(n_MCI):
+            j = int(self.j_star[i, 0])
+            j_ind = self.systems['non_pareto_indices'][j]
+            lambda_j = self.lambdas[j]
+            alpha_j = lambda_j * x[-2]
+
+            obj_j = self.systems['obj'][j_ind]
+            cov_j = self.systems['var'][j_ind]
+
+            phantom_ind = int(self.j_star[i, 1])
+            phantom_pareto_nums = self.phantoms[phantom_ind, :]
+
+            if alpha_j < tol:
+                MCI_rates[i] = x[-1]
+                MCI_grads[i, -1] = 1
+                # All the grads aside from z are zero here, already zero from initialization
+            else:
+                phantom_objectives = np.ones(self.n_obj) * np.inf
+                phantom_vars = np.zeros(self.n_obj)
+                phantom_alphas = np.zeros(self.n_obj)
+
+                for b in range(self.n_obj):
+                    if phantom_pareto_nums[b] < np.inf:
+                        phantom_pareto_num = int(phantom_pareto_nums[b])
+                        phantom_pareto_ind = self.systems['pareto_indices'][phantom_pareto_num]
+                        phantom_objectives[b] = self.systems['obj'][phantom_pareto_ind][b]
+                        phantom_vars[b] = self.systems['var'][phantom_pareto_ind][b, b]
+                        phantom_alphas[b] = x[phantom_pareto_num]
+
+                rate = 0
+                grad_j = 0
+                for m in range(self.n_obj):
+                    if obj_j[m] > phantom_objectives[m]:
+                        rate = rate + (phantom_alphas[m] * alpha_j * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m]))
+                        grad_j = grad_j + (phantom_alphas[m]**2 * cov_j[m, m] * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m])**2)
+                        grad = (alpha_j**2 * phantom_vars[m] * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m])**2)
+                        MCI_grads[i, int(phantom_pareto_nums[m])] = -1.0 * grad
+
+                MCI_rates[i] = x[-1] - rate
+                MCI_grads[i, -1] = 1
+                MCI_grads[i, -2] = -1.0 * lambda_j * grad_j
+
+        return MCI_rates, MCI_grads
+
+    def MCE_rates(self, x):
+        """Calculate the MCE rate constraint values and jacobian.
+
+        Parameters
+        ----------
+        x : numpy array of length n_systems + 1
+            allocation for each system and estimated convergence rate
+
+        Returns
+        -------
+        MCE_rates : numpy array
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
+        MCE_grads : 2d numy array
+            The jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
+        """
+        tol = 10**-50
+        n_MCE = len(self.M_star)
+        MCE_rates = np.zeros(n_MCE)
+        MCE_grads = np.zeros([n_MCE, len(x)])
+
+        for k in range(n_MCE):
+            i = int(self.M_star[k, 0])
+            j = int(self.M_star[k, 1])
+
+            if (x[i] < tol or x[j] < tol):
+                rate = x[-1]
+                grad_i = 0
+                grad_j = 0
+            else:
+                i_ind = self.systems['pareto_indices'][i]
+                j_ind = self.systems['pareto_indices'][j]
+                obj_i = self.systems['obj'][i_ind]
+                cov_i = self.systems['var'][i_ind]
+                obj_j = self.systems['obj'][j_ind]
+                cov_j = self.systems['var'][j_ind]
+
+                rate = 0
+                grad_i = 0
+                grad_j = 0
+
+                # TODO: vectorize.
+                for m in range(self.n_obj):
+                    if obj_i[m] > obj_j[m]:
+                        rate = rate + (x[i] * x[j] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m]))
+                        grad_i = grad_i + (x[j]**2 * cov_i[m, m] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m])**2)
+                        grad_j = grad_j + (x[i]**2 * cov_j[m, m] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m])**2)
+
+                rate = x[-1] - rate
+
+            MCE_rates[k] = rate
+            MCE_grads[k, i] = -1 * grad_i
+            MCE_grads[k, j] = -1 * grad_j
+            MCE_grads[k, -1] = 1.0
+        return MCE_rates, MCE_grads
