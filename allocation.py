@@ -222,6 +222,8 @@ class ConvexOptAllocAlg(object):
         self.n_obj = len(systems["obj"][0])
         self.n_systems = len(systems["obj"])
         self.n_paretos = len(systems["pareto_indices"])
+        # The following attribute may be overwritten in the __init__ function
+        # of some subclasses.
         self.n_system_decision_variables = self.n_systems
 
     def objective_function(self, x):
@@ -835,8 +837,45 @@ class SCORE(Phantom):
     """
     def __init__(self, systems):
         super().__init__(systems=systems)
+
+        # Note: This next part is repeated from the __init__ of the Phantom subclass.
+        # The only difference is one line in the creation of the phantoms matrix.
+
+        # Get array of pareto values for the phantom finder.
+        pareto_array = np.zeros([self.n_paretos, self.n_obj])
+        for i in range(self.n_paretos):
+            pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
+        # Get the phantom systems.
+        phantom_values = find_phantoms(pareto_array, self.n_obj)
+
+        # Sort the phantom system.
+        for i in range(self.n_obj):
+            phantom_values = phantom_values[(phantom_values[:, self.n_obj - 1 - i]).argsort(kind='mergesort')]
+        self.n_phantoms = len(phantom_values)
+
+        # The commented part doesn't give different results, but this makes the constraint
+        # ordering identical to that of the matlab code, which you'll want for debugging
+        # phantom_values = phantom_values[(phantom_values[:,0]).argsort()]
+
+        # TODO: consider using something other than inf as a placeholder.
+        # Unfortunately, inf is a float in numpy, and arrays must be homogenous
+        # and floats don't automatically cast to ints for indexing leading to an error.
+        # Right now we're casting as ints for indexing, but that's a little gross.
+        # Also, inf doesn't cast to intmax if you cast as int.
+        # It ends up being very negative for some reason.
+        self.phantoms = np.ones([self.n_phantoms, self.n_obj]) * np.inf
+
+        # TODO: Vectorize?
+        for i in range(self.n_phantoms):
+            for j in range(self.n_obj):
+                for k in range(self.n_paretos):
+                    if pareto_array[k, j] == phantom_values[i, j]:
+                        self.phantoms[i, j] = k
+                        # The previous line is different from the
+                        # phantom subclass.
+
         # Specify number of allocation decision variables.
-        self.n_system_decision_variable = self.n_paretos + 1
+        self.n_system_decision_variables = self.n_paretos + 1
         # Calculate j_star, lambda, and M_star.
         self.j_star, self.lambdas = self.calc_SCORE()
         self.M_star = self.calc_SCORE_MCE()
@@ -1227,7 +1266,7 @@ class ISCORE(SCORE):
     def __init__(self, systems):
         super().__init__(systems=systems)
         # Specify number of allocation decision variables.
-        self.n_system_decision_variable = self.n_paretos + 1
+        self.n_system_decision_variables = self.n_paretos + 1
         # Calculate j_star, lambda, and M_star.
         self.j_star, self.lambdas = self.calc_iSCORE()
         self.M_star = self.calc_iSCORE_MCE()
