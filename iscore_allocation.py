@@ -19,16 +19,20 @@ from brute_force_allocation import hessian_zero
 def iscore_allocation(systems,warm_start = None):
     """Calculates ISCORE Allocation given a set of systems and optional warm start
     
-    Parameters:
-        
-        Systems: dict
-            ``"obj"``: a dictionary of objective value (float) tuples  keyed by system number
+    Parameters
+    ----------
+        Systems : dict
+            ``"obj"``
+            a dictionary of objective value (float) tuples  keyed by system number
             
-            ``"var"``: a dictionary of objective covariance matrices (numpy matrices) keyed by system number
+            ``"var"``
+            a dictionary of objective covariance matrices (numpy matrices) keyed by system number
             
-            ``"pareto_indices"``: a list of integer system numbers of estimated pareto systems ordered by first objective value
+            ``"pareto_indices"``
+            a list of integer system numbers of estimated pareto systems ordered by first objective value
             
-            ``"non_pareto_indices"``: a list o finteger system numbers of estimated non-parety systems ordered by first objective value
+            ``"non_pareto_indices"``
+            a list of integer system numbers of estimated non-parety systems ordered by first objective value
             
         warm_start: numpy array of length equal to the number of system, which sums to 1
         
@@ -161,8 +165,9 @@ def iscore_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambda
     """parameters:
             alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
             systems : dict
+
                 ``"obj"``
-                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+                A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
                 ``"var"``
                 A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
@@ -211,8 +216,9 @@ def MCI_iscore_rates(alphas, lambdas, j_star, systems, phantoms, num_par, n_obj,
             lambdas: numpy array
             j_star: numpy  matrix
             systems : dict
+
                 ``"obj"``
-                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+                A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
                 ``"var"``
                 A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
@@ -426,24 +432,25 @@ def objective_function(alphas):
 def calc_iSCORE_MCE(systems, num_par, n_obj):
     """calculates the iSCORE for MCE constraints
 
-    parameters:
-            systems : dict
-                ``"obj"``
-                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+    parameters
+    ----------
+        systems : dict
+            ``"obj"``
+            A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
-                ``"var"``
-                A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+            ``"var"``
+            A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
 
-                ``"inv_var"``
-                A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+            ``"inv_var"``
+            A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
 
-                ``"pareto_indices"``
-                A list of pareto systems ordered by the first objective.
+            ``"pareto_indices"``
+            A list of pareto systems ordered by the first objective.
 
-                ``"non_pareto_indices"``
-                A list of non-pareto systems ordered by the first objective.
-            num_par: integer, number of pareto systems
-            n_obj: integer, number of objectives
+            ``"non_pareto_indices"``
+            A list of non-pareto systems ordered by the first objective.
+        num_par: integer, number of pareto systems
+        n_obj: integer, number of objectives
 
     Returns
     -------
@@ -521,26 +528,26 @@ def calc_iSCORE(phantoms, systems, n_systems, num_par, n_obj, n_phantoms):
 
     parameters
     ----------
-            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
-            systems : dict
-                ``"obj"``
-                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+    phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
-                ``"var"``
-                A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
 
-                ``"inv_var"``
-                A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
 
-                ``"pareto_indices"``
-                A list of pareto systems ordered by the first objective.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
 
-                ``"non_pareto_indices"``
-                A list of non-pareto systems ordered by the first objective.
-            n_systems: number of systems
-            num_par: integer, number of pareto systems
-            n_obj: integer, number of objectives
-            n_phantoms: number of phantom systems
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    n_systems: number of systems
+    num_par: integer, number of pareto systems
+    n_obj: integer, number of objectives
+    n_phantoms: number of phantom systems
 
     Returns
     -------
