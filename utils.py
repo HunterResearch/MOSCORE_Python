@@ -117,18 +117,16 @@ def testsolve(tester, solver_class, n_0, budget, method, time_budget = 604800, d
 
     Returns
     -------
-
     solver_metrics: list of dictionaries returned by each solver macroreplication as metrics_out
-
     est_rates: dict
-        ``"MCI_rate"``: list of float
-        empirical MCI rate at a given point across sequential solver macroreplications
+        ``"MCI_rate"``
+        list of float, empirical MCI rate at a given point across sequential solver macroreplications
 
-        ``"MCE_rate"``: list of float
-        empirical MCE rate at a given point across sequential solver macroreplications
+        ``"MCE_rate"``
+        list of float, empirical MCE rate at a given point across sequential solver macroreplications
 
-        ``"MC_rate"``: list of float
-        empirical MC rate at a given point across sequential solver macroreplications
+        ``"MC_rate"``
+        list of float, empirical MC rate at a given point across sequential solver macroreplications
 
     solver_outputs: list of dictionaries returned by each solver macroreplication as outs
 
