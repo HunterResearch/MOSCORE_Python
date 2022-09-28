@@ -160,7 +160,21 @@ def iscore_allocation(systems,warm_start = None):
 def iscore_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambdas, n_obj, n_systems):
     """parameters:
             alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-            systems: dict, as described under calc_bf_allocation()
+            systems : dict
+                ``"obj"``
+                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+                ``"var"``
+                A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+                ``"inv_var"``
+                A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+                ``"pareto_indices"``
+                A list of pareto systems ordered by the first objective.
+
+                ``"non_pareto_indices"``
+                A list of non-pareto systems ordered by the first objective.
             phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
             num_par: integer, number of estimated pareto systems
             m_star: numpy matrix
@@ -196,7 +210,21 @@ def MCI_iscore_rates(alphas, lambdas, j_star, systems, phantoms, num_par, n_obj,
             alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
             lambdas: numpy array
             j_star: numpy  matrix
-            systems: dict, as described under calc_bf_allocation()
+            systems : dict
+                ``"obj"``
+                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+                ``"var"``
+                A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+                ``"inv_var"``
+                A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+                ``"pareto_indices"``
+                A list of pareto systems ordered by the first objective.
+
+                ``"non_pareto_indices"``
+                A list of non-pareto systems ordered by the first objective.
             phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
             num_par: integer, number of estimated pareto systems
             n_systems: integer, number of total systems
@@ -271,7 +299,21 @@ def MCE_iscore_rates(alphas, systems, M_star, n_obj, n_systems):
     Parameters
     ----------
     alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-    systems: dict, as described under calc_bf_allocation()
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     M_star: numpy array
     n_obj: integer, number of objectives
     n_systems: integer, number of total systems
@@ -335,7 +377,21 @@ def iscore_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star
     parameters
     ----------
         alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-        systems: dict, as described under calc_bf_allocation()
+        systems : dict
+            ``"obj"``
+            A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+            ``"var"``
+            A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+            ``"inv_var"``
+            A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+            ``"pareto_indices"``
+            A list of pareto systems ordered by the first objective.
+
+            ``"non_pareto_indices"``
+            A list of non-pareto systems ordered by the first objective.
         phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
         num_par: integer, number of estimated pareto systems
         n_obj: number of systems
@@ -371,7 +427,21 @@ def calc_iSCORE_MCE(systems, num_par, n_obj):
     """calculates the iSCORE for MCE constraints
 
     parameters:
-            systems:  systems: dict, as described under calc_score_allocation()
+            systems : dict
+                ``"obj"``
+                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+                ``"var"``
+                A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+                ``"inv_var"``
+                A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+                ``"pareto_indices"``
+                A list of pareto systems ordered by the first objective.
+
+                ``"non_pareto_indices"``
+                A list of non-pareto systems ordered by the first objective.
             num_par: integer, number of pareto systems
             n_obj: integer, number of objectives
 
@@ -452,7 +522,21 @@ def calc_iSCORE(phantoms, systems, n_systems, num_par, n_obj, n_phantoms):
     parameters
     ----------
             phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
-            systems: dict, as described under calc_score_allocation()
+            systems : dict
+                ``"obj"``
+                 A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+                ``"var"``
+                A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+                ``"inv_var"``
+                A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+                ``"pareto_indices"``
+                A list of pareto systems ordered by the first objective.
+
+                ``"non_pareto_indices"``
+                A list of non-pareto systems ordered by the first objective.
             n_systems: number of systems
             num_par: integer, number of pareto systems
             n_obj: integer, number of objectives
