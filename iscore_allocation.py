@@ -162,31 +162,32 @@ def iscore_allocation(systems,warm_start = None):
     return alloc, out_alphas[-1]
 
 def iscore_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambdas, n_obj, n_systems):
-    """parameters:
-            alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-            systems : dict
+    """
+    parameters
+    ----------
+    alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
-                ``"obj"``
-                A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
 
-                ``"var"``
-                A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
 
-                ``"inv_var"``
-                A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
 
-                ``"pareto_indices"``
-                A list of pareto systems ordered by the first objective.
-
-                ``"non_pareto_indices"``
-                A list of non-pareto systems ordered by the first objective.
-            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
-            num_par: integer, number of estimated pareto systems
-            m_star: numpy matrix
-            j_star: numpy_matrix
-            lambdas: numpy_array
-            n_obj: number of systems
-            n_systems: integer, number of total systems
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+    num_par: integer, number of estimated pareto systems
+    m_star: numpy matrix
+    j_star: numpy_matrix
+    lambdas: numpy_array
+    n_obj: number of systems
+    n_systems: integer, number of total systems
 
     Returns
     -------
