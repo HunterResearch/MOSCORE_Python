@@ -31,12 +31,18 @@ def calc_phantom_allocation(systems, warm_start=None):
 
     Parameters
     ----------
-        Systems: Dictionary with following keys and values
-            'obj': a dictionary of objective value (float) tuples  keyed by system number
-            'var': a dictionary of objective covariance matrices (numpy matrices) keyed by system number
-            'pareto_indices': a list of integer system numbers of estimated pareto systems ordered by first objective value
-            'non_pareto_indices': a list o finteger system numbers of estimated non-parety systems ordered by first objective value
+        systems : dict(I am not sure if it;s the same as other system variables-Ziyu)
+            ``"obj"``
+            A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
+            ``"var"``
+            A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+            ``"pareto_indices"``
+            A list of pareto systems ordered by the first objective.
+
+            ``"non_pareto_indices"``
+            A list of non-pareto systems ordered by the first objective.
         warm_start: numpy array of length equal to the number of system, which sums to 1
         
     Returns
@@ -168,7 +174,21 @@ def phantom_constraints_wrapper(alphas, systems, phantoms, num_par, n_obj, n_sys
     Parameters
     ----------
     alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-    systems: dict, as described under calc_bf_allocation()
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
     num_par: integer, number of estimated pareto systems
     n_obj: number of systems
@@ -194,7 +214,21 @@ def phantom_constraints(alphas, systems, phantoms, num_par, n_obj, n_systems):
     Parameters
     ----------
     alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-    systems: dict, as described under calc_bf_allocation()
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
     num_par: integer, number of estimated pareto systems
     n_obj: number of systems
@@ -219,7 +253,21 @@ def MCI_phantom_rates(alphas, systems, phantoms, num_par, n_systems, n_obj):
     Parameters
     ----------
     alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-    systems: dict, as described under calc_bf_allocation()
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
     num_par: integer, number of estimated pareto systems
     n_systems: integer, number of total systems
