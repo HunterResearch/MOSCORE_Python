@@ -26,12 +26,18 @@ def score_allocation(systems,warm_start = None):
     
     Parameters:
         
-        Systems: Dictionary with following keys and values
-            'obj': a dictionary of objective value (float) tuples  keyed by system number
-            'var': a dictionary of objective covariance matrices (numpy matrices) keyed by system number
-            'pareto_indices': a list of integer system numbers of estimated pareto systems ordered by first objective value
-            'non_pareto_indices': a list o finteger system numbers of estimated non-parety systems ordered by first objective value
-            
+        systems : dict(I am not sure if it;s the same as other system variables-Ziyu)
+            ``"obj"``
+            A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+            ``"var"``
+            A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+            ``"pareto_indices"``
+            A list of pareto systems ordered by the first objective.
+
+            ``"non_pareto_indices"``
+            A list of non-pareto systems ordered by the first objective.
         warm_start: numpy array of length equal to the number of system, which sums to 1
         
         
@@ -167,16 +173,32 @@ def objective_function(alphas):
 
     
 def score_constraints(alphas, systems,phantoms, num_par, m_star, j_star, lambdas, n_obj, n_systems):
-    """parameters:
-            alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-            systems: dict, as described under calc_bf_allocation()
-            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
-            num_par: integer, number of estimated pareto systems
-            m_star: numpy matrix
-            j_star: numpy_matrix
-            lambdas: numpy_array
-            n_obj: number of systems
-            n_systems: integer, number of total systems
+    """
+    parameters
+    ----------
+    alphas: numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+    num_par: integer, number of estimated pareto systems
+    m_star: numpy matrix
+    j_star: numpy_matrix
+    lambdas: numpy_array
+    n_obj: number of systems
+    n_systems: integer, number of total systems
 
     Returns
     -------
@@ -201,14 +223,28 @@ def MCI_score_rates(alphas, lambdas, j_star, systems, phantoms, num_par, n_obj, 
     
     Parameters
     ----------
-            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-            lambdas: numpy array
-            j_star: numpy  matrix
-            systems: dict, as described under calc_bf_allocation()
-            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
-            num_par: integer, number of estimated pareto systems
-            n_systems: integer, number of total systems
-            n_obj: integer, number of objectives
+    alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+    lambdas: numpy array
+    j_star: numpy  matrix
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+    num_par: integer, number of estimated pareto systems
+    n_systems: integer, number of total systems
+    n_obj: integer, number of objectives
 
     Returns
     -------
@@ -303,7 +339,21 @@ def MCE_score_rates(alphas, systems, M_star, n_obj, n_systems):
     Parameters
     ----------
     alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-    systems: dict, as described under calc_bf_allocation()
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
     M_star: numpy array
     n_systems: integer, number of total systems
     n_obj: integer, number of objectives
@@ -370,13 +420,28 @@ def score_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star,
     at a time, as separate functions. Thus we check whether we're looking at the same alphas
     as the last call, and if so return the same output
     
-    parameters:
-            alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
-            systems: dict, as described under calc_bf_allocation()
-            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
-            num_par: integer, number of estimated pareto systems
-            n_obj: number of systems
-            n_systems: integer, number of total systems
+    parameters
+    ----------
+        alphas:  numpy array of length n_systems + 1 consisting of allocation for each system and estimated convergence rate
+        systems : dict
+            ``"obj"``
+            A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+            ``"var"``
+            A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+            ``"inv_var"``
+            A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+            ``"pareto_indices"``
+            A list of pareto systems ordered by the first objective.
+
+            ``"non_pareto_indices"``
+            A list of non-pareto systems ordered by the first objective.
+        phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+        num_par: integer, number of estimated pareto systems
+        n_obj: number of systems
+        n_systems: integer, number of total systems
             
     Returns
     -------
@@ -400,10 +465,25 @@ def score_constraints_wrapper(alphas, systems,phantoms, num_par, m_star, j_star,
 def calc_SCORE_MCE(systems,num_par,n_obj):
     """calculates the SCORE for MCE constraints
     
-    parameters:
-            systems:  systems: dict, as described under calc_score_allocation()
-            num_par: integer, number of pareto systems
-            n_obj: integer, number of objectives
+    parameters
+    ----------
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    num_par: integer, number of pareto systems
+    n_obj: integer, number of objectives
 
     Returns
     -------
@@ -493,12 +573,26 @@ def calc_SCORE(phantoms, systems, n_systems, num_par, n_obj, n_phantoms):
     
     parameters
     ----------
-            phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
-            systems: dict, as described under calc_score_allocation()
-            n_systems: number of systems 
-            num_par: integer, number of pareto systems
-            n_obj: integer, number of objectives
-            n_phantoms: number of phantom systems
+    phantoms: numpy matrix with n_obj columns and an arbitrary number of rows, where each element is a pareto system number. Each row corresponds to a phantom pareto system - pareto system number n in column j implies that the phantom pareto has the same value in objective j as pareto system n
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
+
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    n_systems: number of systems
+    num_par: integer, number of pareto systems
+    n_obj: integer, number of objectives
+    n_phantoms: number of phantom systems
 
     Returns
     -------
