@@ -24,21 +24,21 @@ from score_calc_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plu
 def score_allocation(systems,warm_start = None):
     """Calculates Phantom Allocation given a set of systems and optional warm start
     
-    Parameters:
-        
-        systems : dict(I am not sure if it;s the same as other system variables-Ziyu)
-            ``"obj"``
-            A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
+    Parameters
+    ----------
+    systems : dict(I am not sure if it;s the same as other system variables-Ziyu)
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
 
-            ``"var"``
-            A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
 
-            ``"pareto_indices"``
-            A list of pareto systems ordered by the first objective.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
 
-            ``"non_pareto_indices"``
-            A list of non-pareto systems ordered by the first objective.
-        warm_start: numpy array of length equal to the number of system, which sums to 1
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+    warm_start: numpy array of length equal to the number of system, which sums to 1
         
         
     Returns:
