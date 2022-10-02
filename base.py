@@ -23,14 +23,11 @@ import time
 # import copy
 # import multiprocessing as mp
 
-# from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream, bsm, mrg32k3a, jump_substream
 import pymoso.chnutils as utils
 from mrg32k3a import MRG32k3a
 
-# from allocate import allocate
-# from allocate import allocate as smart_allocate
-from allocation import smart_allocate
-from utils import create_allocation_problem, is_pareto_efficient, calc_phantom_rate  # _mp_objmethod
+from allocation import smart_allocate, calc_phantom_rate
+from utils import create_allocation_problem, is_pareto_efficient  # _mp_objmethod
 
 
 class MORS_Problem(object):
@@ -235,7 +232,7 @@ class MORS_Solver(object):
         -----
         To skip our suggestions for more efficient allocations, one can
         directly call allocate() instead of smart_allocate(), with the
-        same inputs. 
+        same inputs.
 
         Parameters
         ----------
@@ -245,7 +242,6 @@ class MORS_Solver(object):
         Returns
         -------
         outputs : dict
-
 
             ``"alpha_hat"``
             list of float, final simulation allocation by system
@@ -746,7 +742,7 @@ def make_phantom_rate_plots(testers):
     for tester in testers:
         phantom_rate_of_empirical_alloc_curves = []
         for mrep in range(tester.n_macroreps):
-            z_phantom_alpha_bar_curve = [calc_phantom_rate(alphas=tester.all_metrics[mrep]["alpha_bars"][budget_idx], problem=true_allocation_problem) for budget_idx in range(len(tester.intermediate_budgets))]
+            z_phantom_alpha_bar_curve = [calc_phantom_rate(alphas=tester.all_metrics[mrep]["alpha_bars"][budget_idx], systems=true_allocation_problem) for budget_idx in range(len(tester.intermediate_budgets))]
             # print(z_phantom_alpha_bar_curve)
             phantom_rate_of_empirical_alloc_curves.append(z_phantom_alpha_bar_curve)
         tester.rates["phantom_rate_25pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][budget_idx] for mrep in range(tester.n_macroreps)], q=0.25) for budget_idx in range(len(tester.intermediate_budgets))]

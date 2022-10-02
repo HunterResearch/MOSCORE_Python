@@ -8,7 +8,7 @@ Created on 11/06/19
 from scipy import io
 import numpy as np
 from allocate import allocate
-from utils import create_allocation_problem, calc_phantom_rate, calc_bf_rate
+from utils import create_allocation_problem, calc_phantom_rate, calc_brute_force_rate
 from pathlib import Path
 import time
 import pickle
@@ -294,7 +294,7 @@ def RunTimingProblem(probfile, algorithm, ssize, WSFlag):
 
     if ssize == 10:
         print("Calculating BruteForce Rate...")
-        BFrate = calc_bf_rate(allo, systems)
+        BFrate = calc_brute_force_rate(allo, systems)
     else:
         BFrate = -1
 

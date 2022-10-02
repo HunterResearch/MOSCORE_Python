@@ -1,14 +1,25 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Summary
 -------
-Provide allocate_wrapper() function and class definitions for
+Provide smart_allocate() function and class definitions for
 convex-optimization allocation algorithms.
 
 Listing
 -------
-allocate_wrapper : function
+smart_allocate : function
 allocate : function
 equal_allocation : function
+ConvexOptAllocAlg : class
+BruteForce : class
+Phantom : class
+SCORE : class
+ISCORE : class
+calc_brute_force_rate : function
+calc_phantom_rate : function
+calc_score_rate : function
+calc_iscore_rate : function
 """
 
 import numpy as np
@@ -462,6 +473,29 @@ class ConvexOptAllocAlg(object):
         alpha = opt_sol[0:-1]
         z = opt_sol[-1]
         return alpha, z
+
+    def calc_rate(self, alphas):
+        """Calculate the rate of an allocation given a MORS problem.
+        Use the estimated rate associated with the convex optimization problem.
+
+        Parameters
+        ----------
+        alphas : list of float
+            An initial simulation allocation which sets the starting point for
+            determining the optimal allocation. Length must be equal to the
+            number of systems.
+
+        Returns
+        -------
+        z : float
+            Convergence rate associated with alphas.
+        """
+        # Append a zero for the convergence rate.
+        x = np.append(alphas, 0)
+        MCE_rates, _ = self.MCE_rates(x)
+        MCI_rates, _ = self.MCI_rates(x)
+        z = min(min(-1 * MCE_rates), min(-1 * MCI_rates))
+        return z
 
 
 class BruteForce(ConvexOptAllocAlg):
@@ -1516,3 +1550,147 @@ class ISCORE(SCORE):
             MCE_grads[k, j] = -1 * grad_j
             MCE_grads[k, -1] = 1.0
         return MCE_rates, MCE_grads
+
+
+def calc_brute_force_rate(alphas, systems):
+    """Calculate the brute force rate of an allocation given a MORS problem.
+
+    Parameters
+    ----------
+    alphas : list of float
+        An initial simulation allocation which sets the starting point for
+        determining the optimal allocation. Length must be equal to the
+        number of systems.
+
+    systems : dict
+        ``"obj"``:
+        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
+
+        ``"var"``:
+        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
+
+        ``"inv_var"``:
+        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
+
+        ``"pareto_indices"``:
+        is a list of pareto systems ordered by the first objective
+
+        ``"non_pareto_indices"``:
+        is a list of non-pareto systems ordered by the first objective
+
+    Returns
+    -------
+    z : float
+        Brute force convergence rate associated with alphas.
+    """
+    bf_problem = BruteForce(systems=systems)
+    z = bf_problem.calc_rate(alphas=alphas)
+    return z
+
+
+def calc_phantom_rate(alphas, systems):
+    """Calculate the phantom rate of an allocation given a MORS problem.
+
+    Parameters
+    ----------
+    alphas : list of float
+        An initial simulation allocation which sets the starting point for
+        determining the optimal allocation. Length must be equal to the
+        number of systems.
+
+    systems : dict
+        ``"obj"``:
+        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
+
+        ``"var"``:
+        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
+
+        ``"inv_var"``:
+        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
+
+        ``"pareto_indices"``:
+        is a list of pareto systems ordered by the first objective
+
+        ``"non_pareto_indices"``:
+        is a list of non-pareto systems ordered by the first objective
+
+    Returns
+    -------
+    z : float
+        Phantom convergence rate associated with alphas.
+    """
+    phantom_problem = Phantom(systems=systems)
+    z = phantom_problem.calc_rate(alphas=alphas)
+    return z
+
+
+def calc_score_rate(alphas, systems):
+    """Calculate the SCORE rate of an allocation given a MORS problem.
+
+    Parameters
+    ----------
+    alphas : list of float
+        An initial simulation allocation which sets the starting point for
+        determining the optimal allocation. Length must be equal to the
+        number of systems.
+
+    systems : dict
+        ``"obj"``:
+        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
+
+        ``"var"``:
+        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
+
+        ``"inv_var"``:
+        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
+
+        ``"pareto_indices"``:
+        is a list of pareto systems ordered by the first objective
+
+        ``"non_pareto_indices"``:
+        is a list of non-pareto systems ordered by the first objective
+
+    Returns
+    -------
+    z : float
+        SCORE convergence rate associated with alphas.
+    """
+    score_problem = SCORE(systems=systems)
+    z = score_problem.calc_rate(alphas=alphas)
+    return z
+
+
+def calc_iscore_rate(alphas, systems):
+    """Calculate the ISCORE rate of an allocation given a MORS problem.
+
+    Parameters
+    ----------
+    alphas : list of float
+        An initial simulation allocation which sets the starting point for
+        determining the optimal allocation. Length must be equal to the
+        number of systems.
+
+    systems : dict
+        ``"obj"``:
+        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
+
+        ``"var"``:
+        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
+
+        ``"inv_var"``:
+        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
+
+        ``"pareto_indices"``:
+        is a list of pareto systems ordered by the first objective
+
+        ``"non_pareto_indices"``:
+        is a list of non-pareto systems ordered by the first objective
+
+    Returns
+    -------
+    z : float
+        ISCORE convergence rate associated with alphas.
+    """
+    iscore_problem = ISCORE(systems=systems)
+    z = iscore_problem.calc_rate(alphas=alphas)
+    return z
