@@ -10,10 +10,10 @@ A script for interacting with the MORS Problem, Solver, and Tester classes.
 from mrg32k3a import MRG32k3a
 
 from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots, make_phantom_rate_plots
-from example import TestProblem, TestProblem2
+from example import TestProblem, TestProblem2, TestProblem3
 from allocate import allocate
 
-myproblem = TestProblem()
+myproblem = TestProblem2()
 
 # myrng = MRG32k3a()
 # myproblem.attach_rng(myrng)

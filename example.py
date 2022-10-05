@@ -9,6 +9,7 @@ An example MORS problem.
 
 from base import MORS_Problem
 
+
 class TestProblem(MORS_Problem):
     """Example implementation of a user-defined MORS problem."""
     def __init__(self):
@@ -72,6 +73,36 @@ class TestProblem2(MORS_Problem):
         obj = (obj1, obj2)
         return obj
 
+
+class TestProblem3(MORS_Problem):
+    """Example implementation of a user-defined MORS problem."""
+    def __init__(self):
+        self.n_obj = 2
+        self.systems = [(5.0, 0.0), (4.0, 6.0), (3.0, 2.0), (2.0, 3.0), (6.0, 4.0), (0.0, 5.0), (1.0, 1.0)]
+        self.n_systems = len(self.systems)
+        self.true_means = [list(self.systems[idx]) for idx in range(self.n_systems)]
+        self.true_covs = [[[1.0, 0.5], [0.5, 1.0]] for _ in range(self.n_systems)]
+        super().__init__()
+
+    def g(self, x):
+        """Perform a single replication at a given system.
+        Obtain a noisy estimate of its objectives.
+        
+        Parameters
+        ----------
+        x : tuple
+            tuple of values (possibly non-numerical) of inputs
+            characterizing the simulatable system
+        
+        Returns
+        -------
+        obj : tuple
+            tuple of estimates of the objectives
+        """
+        obj1 = x[0] + self.rng.normalvariate(0, 1)
+        obj2 = x[1] + self.rng.normalvariate(0, 1)
+        obj = (obj1, obj2)
+        return obj
 
 # START OF OLD CODE
 

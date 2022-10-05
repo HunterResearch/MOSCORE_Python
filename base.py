@@ -79,7 +79,6 @@ class MORS_Problem(object):
 
     rng_states : list
         states of random number generators (i.e., substream) for each system
-
     """
     def __init__(self):
         self.n_systems = len(self.systems)
@@ -140,7 +139,7 @@ class MORS_Problem(object):
                         #   sample cov (x, y) = n / (n-1) * [sample mean (x*y) - sample mean (x) * sample mean (y)]
                         self.sample_covs[system_idx][obj_idx1][obj_idx2] = self.sample_sizes[system_idx] / (self.sample_sizes[system_idx] - 1) * \
                             (self.sums_of_products[system_idx][obj_idx1][obj_idx2] / self.sample_sizes[system_idx] - self.sample_means[system_idx][obj_idx1] * self.sample_means[system_idx][obj_idx2])
-        # TO DO: Make more efficient by only recomputing stats outside the for loop.
+        # TODO: Make more efficient by only recomputing stats outside the for loop.
 
     def g(self, x):
         """Perform a single replication at a given system.
@@ -157,7 +156,13 @@ class MORS_Problem(object):
         obj : tuple
             tuple of estimates of the objectives
         """
-        raise NotImplementedError
+        # Assume the true_means and true_vars are specified, as in our test examples.
+        # As default behavior, generate observations from a multivariate normal distribution.
+        system_idx = self.systems.index(x)
+        obj = self.rng.mvnormalvariate(mean_vec = self.true_means[system_idx],
+                                       cov = self.true_covs[system_idx],
+                                       factorized=False)
+        return tuple(obj)
 
     def bump(self, system_indices):
         """Obtain replications from a list of systems.
