@@ -102,18 +102,11 @@ def smart_allocate(method, systems, warm_start=None):
             warm_start, _ = allocate(method="iSCORE", systems=systems, warm_start=warm_start)
             return allocate(method="Brute Force", systems=systems, warm_start=warm_start)
     elif method == "Brute Force Ind":
-        # Extract number of objective and number of systems.
-        n_obj = len(systems["obj"][0])
-        n_systems = len(systems["obj"])
-        # Replace covariance matrices with identity matrices.
-        idmat = np.identity(n_obj)
-        for s in range(n_systems):
-            systems['var'][s] = idmat
-        # Perform allocation as in 'normal' brute force.
+        # NOTE: Earlier version had independence applied before iSCORE warmstart.
         # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
         if len(systems['obj'][0]) > 3:
             warm_start, _ = allocate(method="iSCORE", systems=systems, warm_start=warm_start)
-        return allocate(method="Brute Force", systems=systems, warm_start=warm_start)
+        return allocate(method="Brute Force Ind", systems=systems, warm_start=warm_start)
     else:
         raise ValueError("Invalid method selected. Valid methods are 'Equal', 'iSCORE', 'SCORE', 'Phantom', 'Brute Force', and 'Brute Force Ind'.")
 
@@ -125,7 +118,7 @@ def allocate(method, systems, warm_start=None):
     Parameters
     ----------
     method : str
-        Chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", "Brute Force".
+        Chosen allocation method. Options are "Equal", "iSCORE", "SCORE", "Phantom", "Brute Force", "Brute Force Ind".
     systems : dict
         ``"obj"``
         A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
@@ -152,16 +145,29 @@ def allocate(method, systems, warm_start=None):
     z : float
         The estimated rate of convergence.
     """
-    if method == "iSCORE":
-        cvxoptallocalg = ISCORE(systems=systems)
-    elif method == "SCORE":
-        cvxoptallocalg = SCORE(systems=systems)
-    elif method == "Phantom":
-        cvxoptallocalg = Phantom(systems=systems)
-    elif method == "Brute Force":
-        cvxoptallocalg = BruteForce(systems=systems)
-    cvxoptallocalg.setup_opt_problem(warm_start=warm_start)
-    alpha, z = cvxoptallocalg.solve_opt_problem()
+    if method == "Equal":
+        alpha, z = equal_allocation(systems=systems)
+    else:
+        if method == "iSCORE":
+            cvxoptallocalg = ISCORE(systems=systems)
+        elif method == "SCORE":
+            cvxoptallocalg = SCORE(systems=systems)
+        elif method == "Phantom":
+            cvxoptallocalg = Phantom(systems=systems)
+        elif method == "Brute Force":
+            cvxoptallocalg = BruteForce(systems=systems)
+        elif method == "Brute Force Ind":
+            # Modify the allocation problem to have diagonal covariance matrices.
+            # Extract number of systems.
+            n_systems = len(systems["obj"])
+            # Modify covariance and precision matrices.
+            for s in range(n_systems):
+                systems['var'][s] = np.diag(np.diag(systems['var'][s]))
+                systems['inv_var'][s] = np.linalg.inv(systems['var'][s])
+            # Perform allocation as in 'normal' brute force.
+            cvxoptallocalg = BruteForce(systems=systems)
+        cvxoptallocalg.setup_opt_problem(warm_start=warm_start)
+        alpha, z = cvxoptallocalg.solve_opt_problem()
     return alpha, z
 
 
