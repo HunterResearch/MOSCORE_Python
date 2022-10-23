@@ -270,7 +270,7 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
     for i in range(n_non_paretos):
         ind = 0
         while ind == 0:  # Do until new non-pareto is added.
-            # Generate system in sphere with radius rad.
+            # Generate system in ball with radius rad.
             X = np.random.multivariate_normal([1] * n_obj, np.identity(n_obj))
             s2 = sum(X**2)
             X = X * radius * (sp.special.gammainc(s2 / 2, 1 / 2)**(1 / 1)) / np.sqrt(s2)
