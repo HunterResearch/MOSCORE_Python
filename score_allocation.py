@@ -9,7 +9,7 @@ from phantom_allocation import find_phantoms
 from brute_force_allocation import hessian_zero
 from MCI_hard_coded import MCI_1d, MCI_2d, MCI_3d, MCI_four_d_plus
 from MCE_hard_coded import MCE_2d, MCE_3d, MCE_four_d_plus
-from SCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
+from MOSCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
 
 
 def score_allocation(systems, warm_start=None):

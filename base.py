@@ -206,7 +206,7 @@ class MORS_Solver(object):
     delta : int
         incremental number of simulation replications taken before re-optimizing the allocation
     allocation_rule : str
-        chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", and "Brute Force"
+        chosen allocation method. Options are "iMOSCORE", "MOSCORE", "Phantom", and "Brute Force"
     alpha_epsilon : float
         lower threshold for enforcing a minimum required sample size
     crn_across_solns : bool

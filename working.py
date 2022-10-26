@@ -28,7 +28,7 @@ myproblem = TestProblem2()
 mysolver = MORS_Solver(budget=200,
                        n0=10,
                        delta=10,
-                       allocation_rule="iSCORE",
+                       allocation_rule="MOSCORE",
                        alpha_epsilon=1e-8,
                        crn_across_solns=False
                        )

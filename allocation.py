@@ -14,8 +14,8 @@ equal_allocation : function
 ConvexOptAllocAlg : class
 BruteForce : class
 Phantom : class
-SCORE : class
-ISCORE : class
+MOSCORE : class
+IMOSCORE : class
 calc_brute_force_rate : function
 calc_phantom_rate : function
 calc_score_rate : function
@@ -30,15 +30,8 @@ from cvxopt import matrix, solvers
 
 from MCE_hard_coded import MCE_2d, MCE_3d, MCE_four_d_plus
 from MCI_hard_coded import MCI_1d, MCI_2d, MCI_3d, MCI_four_d_plus
-from SCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
+from MOSCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
 from utils import find_phantoms
-
-# Temporary imports
-# from iscore_allocation import iscore_allocation
-# from score_allocation import score_allocation
-# from phantom_allocation import calc_phantom_allocation
-# from brute_force_allocation import calc_bf_allocation
-
 
 def smart_allocate(method, systems, warm_start=None):
     """Generate a non-sequential simulation allocation for the MORS problem.
@@ -46,7 +39,7 @@ def smart_allocate(method, systems, warm_start=None):
     Parameters
     ----------
     method : str
-        Chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", "Brute Force", and "Brute Force Ind".
+        Chosen allocation method. Options are "iMOSCORE", "MOSCORE", "Phantom", "Brute Force", and "Brute Force Ind".
     systems : dict
         ``"obj"``
         A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
@@ -80,35 +73,35 @@ def smart_allocate(method, systems, warm_start=None):
     # e.g., warmstart.
     if method == "Equal":
         return equal_allocation(systems)
-    elif method == "iSCORE":
-        return allocate(method="iSCORE", systems=systems, warm_start=warm_start)
-    elif method == "SCORE":
-        # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+    elif method == "iMOSCORE":
+        return allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
+    elif method == "MOSCORE":
+        # If more than 3 objectives, use  iMOSCORE allocation as a warmer-start solution.
         if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iSCORE", systems=systems, warm_start=warm_start)
-        return allocate(method="SCORE", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
+        return allocate(method="MOSCORE", systems=systems, warm_start=warm_start)
     elif method == "Phantom":
-        # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+        # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
         if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iSCORE", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
         return allocate(method="Phantom", systems=systems, warm_start=warm_start)
     elif method == "Brute Force":
         # If 2 or fewer objetives, use phantom allocation instead.
         # It is equivalent to the brute-force allocation, but easier to solve.
         if len(systems['obj'][0]) <= 2:
             return allocate(method="Phantom", systems=systems, warm_start=warm_start)
-        # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+        # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
         else:
-            warm_start, _ = allocate(method="iSCORE", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
             return allocate(method="Brute Force", systems=systems, warm_start=warm_start)
     elif method == "Brute Force Ind":
-        # NOTE: Earlier version had independence applied before iSCORE warmstart.
-        # If more than 3 objectives, use iSCORE allocation as a warmer-start solution.
+        # NOTE: Earlier version had independence applied before iMOSCORE warmstart.
+        # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
         if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iSCORE", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
         return allocate(method="Brute Force Ind", systems=systems, warm_start=warm_start)
     else:
-        raise ValueError("Invalid method selected. Valid methods are 'Equal', 'iSCORE', 'SCORE', 'Phantom', 'Brute Force', and 'Brute Force Ind'.")
+        raise ValueError("Invalid method selected. Valid methods are 'Equal', 'iMOSCORE', 'MOSCORE', 'Phantom', 'Brute Force', and 'Brute Force Ind'.")
 
 
 def allocate(method, systems, warm_start=None):
@@ -118,7 +111,7 @@ def allocate(method, systems, warm_start=None):
     Parameters
     ----------
     method : str
-        Chosen allocation method. Options are "Equal", "iSCORE", "SCORE", "Phantom", "Brute Force", "Brute Force Ind".
+        Chosen allocation method. Options are "Equal", "iMOSCORE", "MOSCORE", "Phantom", "Brute Force", "Brute Force Ind".
     systems : dict
         ``"obj"``
         A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
@@ -148,10 +141,10 @@ def allocate(method, systems, warm_start=None):
     if method == "Equal":
         alpha, z = equal_allocation(systems=systems)
     else:
-        if method == "iSCORE":
-            cvxoptallocalg = ISCORE(systems=systems)
-        elif method == "SCORE":
-            cvxoptallocalg = SCORE(systems=systems)
+        if method == "iMOSCORE":
+            cvxoptallocalg = IMOSCORE(systems=systems)
+        elif method == "MOSCORE":
+            cvxoptallocalg = MOSCORE(systems=systems)
         elif method == "Phantom":
             cvxoptallocalg = Phantom(systems=systems)
         elif method == "Brute Force":
@@ -851,8 +844,8 @@ class Phantom(BruteForce):
         return MCI_rates, MCI_grads
 
 
-class SCORE(Phantom):
-    """Class for SCORE allocation algorithm.
+class MOSCORE(Phantom):
+    """Class for MOSCORE allocation algorithm.
 
     Notes
     -----
@@ -1279,8 +1272,8 @@ class SCORE(Phantom):
         return MCE_rates, MCE_grads
 
 
-class ISCORE(SCORE):
-    """Class for iSCORE allocation algorithm.
+class IMOSCORE(MOSCORE):
+    """Class for iMOSCORE allocation algorithm.
 
     Notes
     -----
@@ -1661,13 +1654,13 @@ def calc_score_rate(alphas, systems):
     z : float
         SCORE convergence rate associated with alphas.
     """
-    score_problem = SCORE(systems=systems)
+    score_problem = MOSCORE(systems=systems)
     z = score_problem.calc_rate(alphas=alphas)
     return z
 
 
 def calc_iscore_rate(alphas, systems):
-    """Calculate the ISCORE rate of an allocation given a MORS problem.
+    """Calculate the IMOSCORE rate of an allocation given a MORS problem.
 
     Parameters
     ----------
@@ -1695,8 +1688,8 @@ def calc_iscore_rate(alphas, systems):
     Returns
     -------
     z : float
-        ISCORE convergence rate associated with alphas.
+        IMOSCORE convergence rate associated with alphas.
     """
-    iscore_problem = ISCORE(systems=systems)
+    iscore_problem = IMOSCORE(systems=systems)
     z = iscore_problem.calc_rate(alphas=alphas)
     return z
