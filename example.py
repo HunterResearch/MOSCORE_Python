@@ -247,7 +247,8 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
         while ind == 0:
             # TODO: Update to use mrg32k3a RNG.
             y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
-            z = y / np.linalg.norm(y)  # Normalize to put on the face of unit sphere.
+            u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
+            z = y / np.linalg.norm(y)  # Normalize to put uniformly on the unit sphere.
             z = -1 * np.abs(z)  # Rotate to put in negative orthant. By symmetry, this is equiprobable.
             y = z * radius + np.ones(n_obj) * center  # Recenter.
             if i == 0:  # If this is the first system, add it to the list.
@@ -271,10 +272,10 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
         ind = 0
         while ind == 0:  # Do until new non-pareto is added.
             # Generate system in ball with radius rad.
-            X = np.random.multivariate_normal([1] * n_obj, np.identity(n_obj))
-            s2 = sum(X**2)
-            X = X * radius * (sp.special.gammainc(s2 / 2, 1 / 2)**(1 / 1)) / np.sqrt(s2)
-            y = X + center  # Move to center.
+            y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
+            u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
+            z = (y / np.linalg.norm(y)) * u**(1/n_obj) # Normalize and reweight by radius to put uniformly within the unit ball.
+            y = z * radius + np.ones(n_obj) * center  # Recenter.
             ind2 = 0
             ind3 = 0
             for j in range(n_paretos):  # Compare to pareto systems.
@@ -366,11 +367,15 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
     """
     X = {}
     for i in range(n_systems):
-        # Generate system in sphere with radius rad.
-        X[i] = np.random.multivariate_normal([1] * n_obj, np.identity(n_obj))
-        s2 = sum(X[i]**2)
-        X[i] = X[i] * radius * (sp.special.gammainc(s2 / 2, n_obj / 2)**(1 / n_obj)) / np.sqrt(s2)
-        X[i] = list(X[i] + center)  # Recenter.
+        # Generate system in uniformly in sphere with radius rad.
+        # X[i] = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))
+        # s2 = sum(X[i]**2)
+        # X[i] = X[i] * radius * (sp.special.gammainc(s2 / 2, n_obj / 2)**(1 / n_obj)) / np.sqrt(s2)
+        # X[i] = list(X[i] + center)  # Recenter.
+        y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
+        u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
+        z = (y / np.linalg.norm(y)) * u**(1/n_obj) # Normalize and reweight by radius to put uniformly within the unit ball.
+        X[i] = z * radius + np.ones(n_obj) * center  # Recenter.
     if minsep > 0:
         # Find paretos.
         paretos = list(moso_utils.get_nondom(X))
@@ -399,10 +404,14 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
         for system in bads:
             ind = 0
             while ind == 0:
-                X[system] = np.random.multivariate_normal([1] * n_obj, np.identity(n_obj))
-                s2 = sum(X[system]**2)
-                X[system] = X[system] * radius * (sp.special.gammainc(s2 / 2, n_obj / 2)**(1 / n_obj)) / np.sqrt(s2)
-                X[system] = list(X[system] + center)  # Recenter.
+                y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
+                u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
+                z = (y / np.linalg.norm(y)) * u**(1/n_obj) # Normalize and reweight by radius to put uniformly within the unit ball.
+                X[system] = z * radius + np.ones(n_obj) * center  # Recenter.
+                # X[system] = np.random.multivariate_normal([1] * n_obj, np.identity(n_obj))
+                # s2 = sum(X[system]**2)
+                # X[system] = X[system] * radius * (sp.special.gammainc(s2 / 2, n_obj / 2)**(1 / n_obj)) / np.sqrt(s2)
+                # X[system] = list(X[system] + center)  # Recenter.
                 ind2 = 0
                 ind3 = 0
                 for par in paretos:  # Compare to each pareto system.

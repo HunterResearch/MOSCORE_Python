@@ -37,14 +37,14 @@ from example import create_fixed_pareto_random_problem, create_variable_pareto_r
 #     print("\n")
 
 # Repeat fixed-Pareto experiments from Figures 3.
-n_problems = 2
+n_problems = 10
 
 d = 3  # Number of objectives
 r = 10  # Number of systems
 p = 5  # Number of Pareto systems
 
-rules = ["Brute Force", "Phantom", "SCORE", "Brute Force Ind", "iSCORE", "Equal"]
-# rules = ["Phantom", "SCORE", "iSCORE", "Equal"]
+#rules = ["Brute Force", "Phantom", "MOSCORE", "Brute Force Ind", "iMOSCORE", "Equal"]
+rules = ["Phantom", "MOSCORE", "iMOSCORE", "Equal"]
 
 n_paretos_list = []
 n_phantoms_list = []
