@@ -9,11 +9,9 @@ allocation problems.
 """
 
 import numpy as np
-import scipy as sp
-import pymoso.chnutils as moso_utils
 
 
-from utils import nearestSPD, create_allocation_problem
+from utils import nearestSPD, create_allocation_problem, is_pareto_efficient
 from base import MORS_Problem
 
 
@@ -274,7 +272,7 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
             # Generate system in ball with radius rad.
             y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
             u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
-            z = (y / np.linalg.norm(y)) * u**(1/n_obj) # Normalize and reweight by radius to put uniformly within the unit ball.
+            z = (y / np.linalg.norm(y)) * u**(1 / n_obj)  # Normalize and reweight by radius to put uniformly within the unit ball.
             y = z * radius + np.ones(n_obj) * center  # Recenter.
             ind2 = 0
             ind3 = 0
@@ -368,17 +366,15 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
     X = {}
     for i in range(n_systems):
         # Generate system in uniformly in sphere with radius rad.
-        # X[i] = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))
-        # s2 = sum(X[i]**2)
-        # X[i] = X[i] * radius * (sp.special.gammainc(s2 / 2, n_obj / 2)**(1 / n_obj)) / np.sqrt(s2)
-        # X[i] = list(X[i] + center)  # Recenter.
         y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
         u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
-        z = (y / np.linalg.norm(y)) * u**(1/n_obj) # Normalize and reweight by radius to put uniformly within the unit ball.
+        z = (y / np.linalg.norm(y)) * u**(1 / n_obj)  # Normalize and reweight by radius to put uniformly within the unit ball.
         X[i] = z * radius + np.ones(n_obj) * center  # Recenter.
     if minsep > 0:
         # Find paretos.
-        paretos = list(moso_utils.get_nondom(X))
+        X_array = np.array([X[idx] for idx in range(n_systems)])
+        paretos_mask = is_pareto_efficient(costs=X_array, return_mask=True)
+        paretos = [idx for idx in range(n_systems) if paretos_mask[idx]]
         non_paretos = [system for system in range(n_systems) if system not in paretos]
         # A system will be designated bad if it's too close to a pareto system.
         bads = []
@@ -406,12 +402,8 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
             while ind == 0:
                 y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
                 u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
-                z = (y / np.linalg.norm(y)) * u**(1/n_obj) # Normalize and reweight by radius to put uniformly within the unit ball.
+                z = (y / np.linalg.norm(y)) * u**(1 / n_obj)  # Normalize and reweight by radius to put uniformly within the unit ball.
                 X[system] = z * radius + np.ones(n_obj) * center  # Recenter.
-                # X[system] = np.random.multivariate_normal([1] * n_obj, np.identity(n_obj))
-                # s2 = sum(X[system]**2)
-                # X[system] = X[system] * radius * (sp.special.gammainc(s2 / 2, n_obj / 2)**(1 / n_obj)) / np.sqrt(s2)
-                # X[system] = list(X[system] + center)  # Recenter.
                 ind2 = 0
                 ind3 = 0
                 for par in paretos:  # Compare to each pareto system.

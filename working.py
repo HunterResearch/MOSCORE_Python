@@ -107,8 +107,9 @@ from example import create_fixed_pareto_random_problem, create_variable_pareto_r
 # plt.scatter(obj1, obj2)
 # plt.show()
 
-myprob = create_variable_pareto_random_problem(n_systems=100, n_obj=2, sigma=1, corr=None, center=100, radius=6)
-obj1 = [myprob["obj"][idx][0] for idx in range(100)]
-obj2 = [myprob["obj"][idx][1] for idx in range(100)]
-plt.scatter(obj1, obj2)
+myprob = create_variable_pareto_random_problem(n_systems=500, n_obj=3, sigma=1, corr=None, center=100, radius=6)
+obj1 = [myprob["obj"][idx][0] for idx in range(500)]
+obj2 = [myprob["obj"][idx][1] for idx in range(500)]
+obj3 = [myprob["obj"][idx][2] for idx in range(500)]
+plt.scatter(obj1, obj2, obj3)
 plt.show()
