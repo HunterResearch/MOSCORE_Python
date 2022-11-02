@@ -375,7 +375,7 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
         X_array = np.array([X[idx] for idx in range(n_systems)])
         paretos_mask = is_pareto_efficient(costs=X_array, return_mask=True)
         paretos = [idx for idx in range(n_systems) if paretos_mask[idx]]
-        non_paretos = [system for system in range(n_systems) if system not in paretos]
+        non_paretos = [idx for idx in range(n_systems) if idx not in paretos]
         # A system will be designated bad if it's too close to a pareto system.
         bads = []
         for par1_ind in range(len(paretos)):

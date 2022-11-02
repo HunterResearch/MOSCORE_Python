@@ -40,11 +40,12 @@ from example import create_fixed_pareto_random_problem, create_variable_pareto_r
 n_problems = 10
 
 d = 3  # Number of objectives
-r = 10  # Number of systems
-p = 5  # Number of Pareto systems
+r = 500  # Number of systems
+p = 10  # Number of Pareto systems
 
 #rules = ["Brute Force", "Phantom", "MOSCORE", "Brute Force Ind", "iMOSCORE", "Equal"]
-rules = ["Phantom", "MOSCORE", "iMOSCORE", "Equal"]
+#rules = ["Phantom", "MOSCORE", "iMOSCORE", "Equal"]
+rules = ["MOSCORE", "iMOSCORE", "Equal"]
 
 n_paretos_list = []
 n_phantoms_list = []
@@ -75,12 +76,14 @@ for problem_idx in range(n_problems):
         alpha_hat, z = allocate(method=rule, systems=random_problem)
         toc = time.perf_counter()
         solve_time = toc - tic
-        z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=random_problem)
+        if r <= 10:  # Skip brute force if too expensive.
+            z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=random_problem)
         z_ph = calc_phantom_rate(alphas=alpha_hat, systems=random_problem)
 
         # Record statistics.
         solve_times[rule].append(solve_time)
-        z_bf_list[rule].append(z_bf)
+        if r <= 10:  # Skip brute force if too expensive.
+            z_bf_list[rule].append(z_bf)
         z_ph_list[rule].append(z_ph)
 
 print("Median # of Pareto systems, p =", np.median(n_paretos_list))
@@ -92,6 +95,7 @@ for rule in rules:
 
     print("Median wall-clock time, T =", round(np.median(solve_times[rule]), 3), "s")
     print("75-percentile wall-clock time, T =", round(np.quantile(solve_times[rule], 0.75), 3), "s")
-    print("Median brute force convergence rate, Z^bf(alpha) x 10^5 =", round(np.median(z_bf_list[rule]) * 10**5, 4))
+    if r <= 10:  # Skip brute force if too expensive
+        print("Median brute force convergence rate, Z^bf(alpha) x 10^5 =", round(np.median(z_bf_list[rule]) * 10**5, 4))
     print("Median phantom convergence rate, Z^ph(alpha) x 10^5 =", round(np.median(z_ph_list[rule]) * 10**5, 4))
     print("\n")

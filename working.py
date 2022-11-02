@@ -96,20 +96,50 @@ A script for interacting with the MORS Problem, Solver, and Tester classes.
 
 # # shoop = solve2(my_prob, MORS_Tester, 20, 500, "iSCORE")
 
-# Test random problem generation.
+# # Test random problem generation.
+
+# import matplotlib.pyplot as plt
+# from example import create_fixed_pareto_random_problem, create_variable_pareto_random_problem
+
+# # myprob = create_fixed_pareto_random_problem(n_systems=100, n_obj=2, n_paretos=6, sigma=1, corr=None, center=100, radius=6)
+# # obj1 = [myprob["obj"][idx][0] for idx in range(100)]
+# # obj2 = [myprob["obj"][idx][1] for idx in range(100)]
+# # plt.scatter(obj1, obj2)
+# # plt.show()
+
+# myprob = create_variable_pareto_random_problem(n_systems=500, n_obj=3, sigma=1, corr=None, center=100, radius=6)
+# obj1 = [myprob["obj"][idx][0] for idx in range(500)]
+# obj2 = [myprob["obj"][idx][1] for idx in range(500)]
+# obj3 = [myprob["obj"][idx][2] for idx in range(500)]
+# plt.scatter(obj1, obj2, obj3)
+# plt.show()
+
+# Test relationship between problem solve time and objective gap.
 
 import matplotlib.pyplot as plt
 from example import create_fixed_pareto_random_problem, create_variable_pareto_random_problem
+from utils import calc_min_obj_gap
+import time
+from allocation import allocate
 
-# myprob = create_fixed_pareto_random_problem(n_systems=100, n_obj=2, n_paretos=6, sigma=1, corr=None, center=100, radius=6)
-# obj1 = [myprob["obj"][idx][0] for idx in range(100)]
-# obj2 = [myprob["obj"][idx][1] for idx in range(100)]
-# plt.scatter(obj1, obj2)
-# plt.show()
+n_problems = 20
+n_obj = 3
+n_systems = 500
+n_paretos = 10
+method = "iMOSCORE"
 
-myprob = create_variable_pareto_random_problem(n_systems=500, n_obj=3, sigma=1, corr=None, center=100, radius=6)
-obj1 = [myprob["obj"][idx][0] for idx in range(500)]
-obj2 = [myprob["obj"][idx][1] for idx in range(500)]
-obj3 = [myprob["obj"][idx][2] for idx in range(500)]
-plt.scatter(obj1, obj2, obj3)
+min_obj_gaps = []
+solve_times = []
+for prob_idx in range(n_problems):
+    print(f"Problem {prob_idx + 1} of {n_problems}.")
+    random_problem = create_fixed_pareto_random_problem(n_systems=n_systems, n_obj=n_obj, n_paretos=n_paretos, sigma=1, corr=None, center=100, radius=6)
+    min_obj_gaps.append(calc_min_obj_gap(systems=random_problem))
+    tic = time.perf_counter()
+    alpha_hat, z = allocate(method=method, systems=random_problem)
+    toc = time.perf_counter()
+    solve_times.append(toc - tic)
+plt.scatter(min_obj_gaps, solve_times)
+plt.xlabel("Minimum Objective Gap", size=14)
+plt.ylabel("Solve Time (s)", size=14)
+plt.title(f"{method} with {n_obj} objs and {n_systems} systems.")
 plt.show()

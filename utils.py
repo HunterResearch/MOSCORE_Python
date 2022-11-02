@@ -12,6 +12,8 @@ is_pareto_efficient : function
 create_allocation_problem : function
 find_phantoms : function
 sweep : function
+calc_min_obj_gap : function
+calc_min_paired_obj_gap : function
 """
 
 import numpy as np
@@ -250,6 +252,72 @@ def sweep(paretos):
         # Remove the row we used to initialize phantoms.
         phantoms = phantoms[1:, :]
         return phantoms
+
+
+def calc_min_obj_gap(systems):
+    """Calculate the minimum gap between objectives of any pareto 
+    and any pareto/nonpareto system.
+
+    Parameters
+    ----------
+    systems : dict
+        ``"obj"``
+        A dictionary of numpy arrays, indexed by system number,
+            each of which corresponds to the objective values of a system.
+        ``"var"``
+        A dictionary of 2d numpy arrays, indexed by system number,
+            each of which corresponds to the covariance matrix of a system.
+        ``"inv_var"``
+        A dictionary of 2d numpy, indexed by system number,
+            each of which corresponds to the inverse covariance matrix of a system.
+        ``"pareto_indices"``
+        A list of pareto systems ordered by the first objective.
+        ``"non_pareto_indices"``
+        A list of non-pareto systems ordered by the first objective.
+
+    Returns
+    -------
+    min_obj_gap : float
+        Minimum gap between objectives of any pareto system and any pareto/nonpareto system.
+    """
+    n_systems = len(systems["obj"])
+    obj_vals = np.array([systems["obj"][idx] for idx in range(n_systems)])
+    paretos_mask = is_pareto_efficient(costs=obj_vals, return_mask=True)
+    paretos = [idx for idx in range(n_systems) if paretos_mask[idx]]
+    non_paretos = [idx for idx in range(n_systems) if idx not in paretos]
+    min_pareto_pareto_obj_gap = calc_min_paired_obj_gap(obj_vals=obj_vals, group1=paretos, group2=paretos)
+    min_parteo_nonpareto_obj_gap = calc_min_paired_obj_gap(obj_vals=obj_vals, group1=paretos, group2=non_paretos)
+    min_obj_gap = min(min_pareto_pareto_obj_gap, min_parteo_nonpareto_obj_gap)
+    return min_obj_gap
+
+
+def calc_min_paired_obj_gap(obj_vals, group1, group2):
+    """Calculate the minimum gap between objectives of any pair between
+    two groups of systems.
+    
+    Parameters
+    ----------
+    obj_vals : numpy array of size (n_systems, n_obj).
+        Objective function values for all systems.
+    group1 : list
+        List of indices of systems in first group.
+    group2: list
+        List of indices of systems in second group.
+
+    Returns
+    -------
+    min_obj_gap : float
+        Minimum gap between objectives of any pair between two groups of systems.
+    """
+    # Initialize objective gap.
+    min_obj_gap = np.inf
+    for group1_idx in group1:
+        for group2_idx in group2:
+            if group1_idx != group2_idx:
+                min_obj_gap_pair = min(abs(obj_vals[group1_idx] - obj_vals[group2_idx]))
+                if min_obj_gap_pair < min_obj_gap:
+                    min_obj_gap = min_obj_gap_pair
+    return min_obj_gap
 
 
 # class NoDaemonProcess(context.Process):
