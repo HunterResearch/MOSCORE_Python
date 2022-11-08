@@ -33,7 +33,7 @@ from MCI_hard_coded import MCI_1d, MCI_2d, MCI_3d, MCI_four_d_plus
 from MOSCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
 from utils import find_phantoms
 
-def smart_allocate(method, systems, warm_start=None):
+def smart_allocate(method, systems, warm_start=None, resolve=False):
     """Generate a non-sequential simulation allocation for the MORS problem.
 
     Parameters
@@ -58,6 +58,8 @@ def smart_allocate(method, systems, warm_start=None):
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.\
         Length must be equal to the number of systems.
+    resolve : bool
+        Resolve the optimization problem if insufficiently solved if True, otherwise False.
 
     Returns
     -------
@@ -74,37 +76,37 @@ def smart_allocate(method, systems, warm_start=None):
     if method == "Equal":
         return equal_allocation(systems)
     elif method == "iMOSCORE":
-        return allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
+        return allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
     elif method == "MOSCORE":
         # If more than 3 objectives, use  iMOSCORE allocation as a warmer-start solution.
         if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
-        return allocate(method="MOSCORE", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
+        return allocate(method="MOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
     elif method == "Phantom":
         # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
         if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
-        return allocate(method="Phantom", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
+        return allocate(method="Phantom", systems=systems, warm_start=warm_start, resolve=resolve)
     elif method == "Brute Force":
         # If 2 or fewer objetives, use phantom allocation instead.
         # It is equivalent to the brute-force allocation, but easier to solve.
         if len(systems['obj'][0]) <= 2:
-            return allocate(method="Phantom", systems=systems, warm_start=warm_start)
+            return allocate(method="Phantom", systems=systems, warm_start=warm_start, resolve=resolve)
         # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
         else:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
-            return allocate(method="Brute Force", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
+            return allocate(method="Brute Force", systems=systems, warm_start=warm_start, resolve=resolve)
     elif method == "Brute Force Ind":
         # NOTE: Earlier version had independence applied before iMOSCORE warmstart.
         # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
         if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start)
-        return allocate(method="Brute Force Ind", systems=systems, warm_start=warm_start)
+            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
+        return allocate(method="Brute Force Ind", systems=systems, warm_start=warm_start, resolve=resolve)
     else:
         raise ValueError("Invalid method selected. Valid methods are 'Equal', 'iMOSCORE', 'MOSCORE', 'Phantom', 'Brute Force', and 'Brute Force Ind'.")
 
 
-def allocate(method, systems, warm_start=None):
+def allocate(method, systems, warm_start=None, resolve=False):
     """Generate a simulation allocation for the MORS problem using
     a specified method.
 
@@ -130,6 +132,8 @@ def allocate(method, systems, warm_start=None):
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.\
         Length must be equal to the number of systems.
+    resolve : bool
+        Resolve the optimization problem if insufficiently solved if True, otherwise False.
 
     Returns
     -------
@@ -160,7 +164,7 @@ def allocate(method, systems, warm_start=None):
             # Perform allocation as in 'normal' brute force.
             cvxoptallocalg = BruteForce(systems=systems)
         cvxoptallocalg.setup_opt_problem(warm_start=warm_start)
-        alpha, z = cvxoptallocalg.solve_opt_problem()
+        alpha, z = cvxoptallocalg.solve_opt_problem(resolve=resolve)
     return alpha, z
 
 
@@ -417,8 +421,13 @@ class ConvexOptAllocAlg(object):
         else:
             self.warm_start = np.append(warm_start, 0)
 
-    def solve_opt_problem(self):
+    def solve_opt_problem(self, resolve):
         """Solve optimization problem from warm-start solution.
+
+        Parameters
+        ----------
+        resolve : bool
+            Resolve the optimization problem if insufficiently solved if True, otherwise False.
 
         Returns
         -------
@@ -437,18 +446,19 @@ class ConvexOptAllocAlg(object):
                            constraints=[self.equality_constraint, self.nonlinear_constraint]
                            )
 
-        # If first attempt to optimize terminated improperly, warm-start at
+        # (Optional) If first attempt to optimize terminated improperly, warm-start at
         # final solution and try again.
-        if res.status == 0:
-            print("cycling")
-            res = opt.minimize(fun=self.objective_function,
-                               x0=res.x,
-                               method='trust-constr',
-                               jac=True,
-                               hess=self.hessian_zero,
-                               bounds=self.bounds,
-                               constraints=[self.equality_constraint, self.nonlinear_constraint]
-                               )
+        if resolve:
+            if res.status == 0:
+                print("cycling")
+                res = opt.minimize(fun=self.objective_function,
+                                x0=res.x,
+                                method='trust-constr',
+                                jac=True,
+                                hess=self.hessian_zero,
+                                bounds=self.bounds,
+                                constraints=[self.equality_constraint, self.nonlinear_constraint]
+                                )
 
         alpha, z = self.post_process(opt_sol=res.x)
         return alpha, z

@@ -124,8 +124,8 @@ from allocation import allocate
 
 n_problems = 20
 n_obj = 3
-n_systems = 500
-n_paretos = 10
+n_systems = 10
+n_paretos = 5
 method = "iMOSCORE"
 
 min_obj_gaps = []
@@ -135,9 +135,10 @@ for prob_idx in range(n_problems):
     random_problem = create_fixed_pareto_random_problem(n_systems=n_systems, n_obj=n_obj, n_paretos=n_paretos, sigma=1, corr=None, center=100, radius=6)
     min_obj_gaps.append(calc_min_obj_gap(systems=random_problem))
     tic = time.perf_counter()
-    alpha_hat, z = allocate(method=method, systems=random_problem)
+    alpha_hat, z = allocate(method=method, systems=random_problem, resolve=False)  # Solve opt problem only once.
     toc = time.perf_counter()
     solve_times.append(toc - tic)
+
 plt.scatter(min_obj_gaps, solve_times)
 plt.xlabel("Minimum Objective Gap", size=14)
 plt.ylabel("Solve Time (s)", size=14)

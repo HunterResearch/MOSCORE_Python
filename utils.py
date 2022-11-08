@@ -314,7 +314,9 @@ def calc_min_paired_obj_gap(obj_vals, group1, group2):
     for group1_idx in group1:
         for group2_idx in group2:
             if group1_idx != group2_idx:
-                min_obj_gap_pair = min(abs(obj_vals[group1_idx] - obj_vals[group2_idx]))
+                # Sum absolute objective gaps over all objectives.
+                min_obj_gap_pair = sum(abs(obj_vals[group1_idx] - obj_vals[group2_idx]))
+                # Take a minimum over all pairs.
                 if min_obj_gap_pair < min_obj_gap:
                     min_obj_gap = min_obj_gap_pair
     return min_obj_gap

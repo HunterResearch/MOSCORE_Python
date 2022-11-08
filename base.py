@@ -265,7 +265,6 @@ class MORS_Solver(object):
 
         metrics(optional): dict
 
-
             ``"alpha_hats"``
             list of lists of float, the simulation allocation selected at each step in the solver
 
