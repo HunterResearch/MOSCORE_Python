@@ -124,23 +124,52 @@ from allocation import allocate
 
 n_problems = 20
 n_obj = 3
-n_systems = 10
-n_paretos = 5
+n_systems = 500
+n_paretos = 10
 method = "iMOSCORE"
 
 min_obj_gaps = []
-solve_times = []
+single_solve_times = []
+double_solve_times = []
+single_solve_rates = []
+double_solve_rates = []
 for prob_idx in range(n_problems):
     print(f"Problem {prob_idx + 1} of {n_problems}.")
     random_problem = create_fixed_pareto_random_problem(n_systems=n_systems, n_obj=n_obj, n_paretos=n_paretos, sigma=1, corr=None, center=100, radius=6)
     min_obj_gaps.append(calc_min_obj_gap(systems=random_problem))
+    
+    # Solve the optimization problem once.
     tic = time.perf_counter()
     alpha_hat, z = allocate(method=method, systems=random_problem, resolve=False)  # Solve opt problem only once.
     toc = time.perf_counter()
-    solve_times.append(toc - tic)
+    single_solve_times.append(toc - tic)
+    single_solve_rates.append(z)
 
-plt.scatter(min_obj_gaps, solve_times)
-plt.xlabel("Minimum Objective Gap", size=14)
-plt.ylabel("Solve Time (s)", size=14)
-plt.title(f"{method} with {n_obj} objs and {n_systems} systems.")
+    # Solve the same optimization problem. If insufficiently solved, resolve.
+    tic = time.perf_counter()
+    alpha_hat, z = allocate(method=method, systems=random_problem, resolve=True)  # Solve opt problem only once.
+    toc = time.perf_counter()
+    double_solve_times.append(toc - tic)
+    double_solve_rates.append(z)
+
+fig, (ax1, ax2) = plt.subplots(2)
+
+fig.suptitle(f"{method} with {n_obj} objs and {n_systems} systems.")
+
+ax1.scatter(min_obj_gaps, double_solve_times, c='blue')
+ax1.scatter(min_obj_gaps, single_solve_times, c='red')
+
+ax2.scatter(min_obj_gaps, double_solve_rates, c='blue')
+ax2.scatter(min_obj_gaps, single_solve_rates, c='red')
+
+ax1.set(ylabel="Solve Time (s)")
+ax2.set(xlabel="Minimum Objective Gap", ylabel="Large Deviations Rates (s)")
+
 plt.show()
+
+# ax1.xlabel("Minimum Objective Gap", size=14)
+# ax1.ylabel("Solve Time (s)", size=14)
+
+# ax2.xlabel("Minimum Objective Gap", size=14)
+# ax2.ylabel("Large Deviations Rates (s)", size=14)
+

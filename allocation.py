@@ -480,7 +480,8 @@ class ConvexOptAllocAlg(object):
             The estimated rate of convergence.
         """
         alpha = opt_sol[0:-1]
-        z = opt_sol[-1]
+        # Negate z to convert back to maximization problem.
+        z = -1.0 * opt_sol[-1]
         return alpha, z
 
     def calc_rate(self, alphas):
