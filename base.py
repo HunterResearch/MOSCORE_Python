@@ -23,7 +23,7 @@ import time
 # import copy
 # import multiprocessing as mp
 
-import pymoso.chnutils as utils
+# import pymoso.chnutils as utils
 from mrg32k3a import MRG32k3a
 
 from allocation import smart_allocate, calc_phantom_rate

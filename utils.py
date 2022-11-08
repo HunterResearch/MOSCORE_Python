@@ -146,13 +146,18 @@ def create_allocation_problem(obj_vals, obj_vars):
     """
 
     # TODO: Check for positive semidefinite?
-    pareto_indices = list(moso_utils.get_nondom(obj_vals))
-    pareto_indices.sort(key=lambda x: obj_vals[x][0])
-    non_pareto_indices = [system for system in range(len(obj_vals)) if system not in pareto_indices]
-    non_pareto_indices.sort(key=lambda x: obj_vals[x][0])
-    obj_val = {i: np.array(obj_vals[i]) for i in range(len(obj_vals))}
-    inv_vars = {i: np.linalg.inv(obj_vars[i]) for i in range(len(obj_vars))}
-    systems = {"obj": obj_val,
+    # Replacing the following line with call to is_pareto_efficient(). 
+    # pareto_indices = list(moso_utils.get_nondom(obj_vals))
+    n_systems = len(obj_vals)
+    obj_vals_matrix = np.array([list(obj_vals[system]) for system in range(n_systems)])
+    pareto_indices = list(is_pareto_efficient(costs=obj_vals_matrix, return_mask=False))
+    pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
+    non_pareto_indices = [system for system in range(n_systems) if system not in pareto_indices]
+    non_pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
+    # The following line is redundant.
+    # obj_vals = {system: np.array(obj_vals[system]) for system in range(n_systems)}
+    inv_vars = {system: np.linalg.inv(obj_vars[system]) for system in range(n_systems)}
+    systems = {"obj": obj_vals,
                "var": obj_vars,
                "inv_var": inv_vars,
                "pareto_indices": pareto_indices,
