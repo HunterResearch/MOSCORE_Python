@@ -163,7 +163,7 @@ ax2.scatter(min_obj_gaps, double_solve_rates, c='blue')
 ax2.scatter(min_obj_gaps, single_solve_rates, c='red')
 
 ax1.set(ylabel="Solve Time (s)")
-ax2.set(xlabel="Minimum Objective Gap", ylabel="Large Deviations Rates (s)")
+ax2.set(xlabel="Minimum Objective Gap", ylabel="Large Deviations Rates")
 
 plt.show()
 

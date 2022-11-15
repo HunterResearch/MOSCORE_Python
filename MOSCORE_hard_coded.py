@@ -176,6 +176,7 @@ def score_four_d_plus(phantom_objectives,obj_j, cov_j):
     
     h = matrix(phantom_objectives)
     
+    solvers.options['show_progress'] = False
     res = solvers.qp(P,q,G,h, options=opts)
     
     x_star = np.array(res['x']).flatten()

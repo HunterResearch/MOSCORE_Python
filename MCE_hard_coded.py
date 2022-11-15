@@ -1941,7 +1941,7 @@ def MCE_four_d_plus(alpha_i, alpha_j, obj_i, inv_var_i, obj_j, inv_var_j, n_obj)
     
     
 
-    
+    solvers.options['show_progress'] = False 
     x_star = np.array(solvers.qp(P,q,G,h)['x']).flatten()
     
 

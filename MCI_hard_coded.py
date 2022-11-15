@@ -495,8 +495,9 @@ def MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_obj, phantom_
     
     h = matrix(h)
     
+    solvers.options['show_progress'] = False 
     x_star = np.array(solvers.qp(P,q,G,h)['x']).flatten()
-    
+
     rate = 0.5*alpha_j*(obj_j - x_star[0:n_obj]).transpose() @ inv_cov_j @ (obj_j - x_star[0:n_obj])
     
     grad_j = 0.5*( x_star[0:n_obj]-obj_j).transpose() @ inv_cov_j @ ( x_star[0:n_obj]-obj_j)

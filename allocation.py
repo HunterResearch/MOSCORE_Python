@@ -419,6 +419,7 @@ class ConvexOptAllocAlg(object):
         if warm_start is None:
             self.warm_start = np.array([1.0 / self.n_system_decision_variables] * self.n_system_decision_variables + [0])
         else:
+            # Add an initial z value of 0.
             self.warm_start = np.append(warm_start, 0)
 
     def solve_opt_problem(self, resolve):
@@ -436,6 +437,7 @@ class ConvexOptAllocAlg(object):
         z : float
             The estimated rate of convergence.
         """
+        print(self.warm_start)
         # Solve optimization problem.
         res = opt.minimize(fun=self.objective_function,
                            x0=self.warm_start,
@@ -445,6 +447,8 @@ class ConvexOptAllocAlg(object):
                            bounds=self.bounds,
                            constraints=[self.equality_constraint, self.nonlinear_constraint]
                            )
+                           # options = {'disp': False}
+                           # options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000})
 
         # (Optional) If first attempt to optimize terminated improperly, warm-start at
         # final solution and try again.
@@ -480,8 +484,7 @@ class ConvexOptAllocAlg(object):
             The estimated rate of convergence.
         """
         alpha = opt_sol[0:-1]
-        # Negate z to convert back to maximization problem.
-        z = -1.0 * opt_sol[-1]
+        z = opt_sol[-1]
         return alpha, z
 
     def calc_rate(self, alphas):
