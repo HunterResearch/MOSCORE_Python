@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 from utils import create_allocation_problem
-from allocation import allocate, calc_brute_force_rate, calc_phantom_rate
+from allocation import allocate, calc_brute_force_rate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
 
 # Repeat fixed-Pareto experiments from Table 3.
 
@@ -65,7 +65,7 @@ p = 5  # Number of Pareto systems
 
 # BLOCK TO CHECK A FEW SPECIFIC PROBLEMS
 rule = "MOSCORE"
-prob_idx = 4
+prob_idx = 3
 
 obj_vals = {}
 obj_vars = {}
@@ -81,13 +81,38 @@ for system_idx in range(r):
 
 systems = create_allocation_problem(obj_vals, obj_vars)
 
+# Create a 3D scatter plot of the means.
+import matplotlib.pyplot as plt
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+
+first_objs = [obj_vals[system_idx][0] for system_idx in range(r)]
+second_objs = [obj_vals[system_idx][1] for system_idx in range(r)]
+third_objs = [obj_vals[system_idx][2] for system_idx in range(r)]
+ax.scatter(first_objs, second_objs, third_objs)
+plt.show()
+
 alpha_hat, z = allocate(method=rule, systems=systems)
+# alpha_hat, z = allocate(method="Equal", systems=systems)
+print("Calculating BF rate")
 z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=systems)
+print("Calculating Phantom rate")
 z_ph = calc_phantom_rate(alphas=alpha_hat, systems=systems)
+if rule == "MOSCORE":
+    print("Calculating MOSCORE rate")
+    z_mo = calc_moscore_rate(alphas=alpha_hat, systems=systems)
+if rule == "iMOSCORE":
+    print("Calculating iMOSCORE rate")
+    z_imo = calc_imoscore_rate(alphas=alpha_hat, systems=systems)
+
 
 print(f"Results for {rule} on Problem {prob_idx}:")
 print("Brute force convergence rate, Z^bf(alpha) x 10^5:", round(z_bf * 10**5, 4))
 print("Phantom convergence rate, Z^ph(alpha) x 10^5:", round(z_ph * 10**5, 4))
+if rule == "MOSCORE":
+    print("MOSCORE convergence rate, Z^mo(alpha) x 10^5:", round(z_mo * 10**5, 4))
+if rule == "iMOSCORE":
+    print("iMOSCORE convergence rate, Z^imo(alpha) x 10^5:", round(z_imo * 10**5, 4))
 print("Objectives:", np.array([systems["obj"][system_idx] for system_idx in range(r)]))
 print("Allocation:", alpha_hat)
 print("Sum of Allocation:", round(sum(alpha_hat), 4))

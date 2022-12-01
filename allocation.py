@@ -199,7 +199,7 @@ def equal_allocation(systems):
     n_systems = len(systems["obj"])
     alpha = [1 / n_systems for _ in range(n_systems)]
     # Associated rate is set as zero.
-    z = 0
+    z = 0  # This value won't be used.
     return alpha, z
 
 
@@ -299,7 +299,7 @@ class ConvexOptAllocAlg(object):
                                                             lb=-np.inf,
                                                             ub=0.0,
                                                             jac=constraint_jacobian,
-                                                            keep_feasible=False
+                                                            keep_feasible=True
                                                             )
 
         # Define bounds on alpha values and z (the last element of our decision variable array).
@@ -437,18 +437,23 @@ class ConvexOptAllocAlg(object):
         z : float
             The estimated rate of convergence.
         """
-        print(self.warm_start)
+        # print(self.warm_start)
         # Solve optimization problem.
         res = opt.minimize(fun=self.objective_function,
                            x0=self.warm_start,
-                           method='trust-constr',
+                           method='trust-constr',  # 'SLSQP',  # 'COBYLA'
                            jac=True,
                            hess=self.hessian_zero,
                            bounds=self.bounds,
                            constraints=[self.equality_constraint, self.nonlinear_constraint]
                            )
                            # options = {'disp': False}
-                           # options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000})
+                           # options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000}
+        print("Optimization success?", res.success)
+        print("Termination status:", res.status)
+        print("Termination message:", res.message)
+        print("Max constraint violation:", res.constr_violation)
+        print("Constraints at solution:", res.constr)
 
         # (Optional) If first attempt to optimize terminated improperly, warm-start at
         # final solution and try again.
@@ -508,6 +513,8 @@ class ConvexOptAllocAlg(object):
         MCE_rates, _ = self.MCE_rates(x)
         MCI_rates, _ = self.MCI_rates(x)
         z = min(min(-1 * MCE_rates), min(-1 * MCI_rates))
+        print("Min MCE =", min(-1 * MCE_rates))
+        print("Min MCI =", min(-1 * MCI_rates))
         return z
 
 
@@ -1637,8 +1644,8 @@ def calc_phantom_rate(alphas, systems):
     return z
 
 
-def calc_score_rate(alphas, systems):
-    """Calculate the SCORE rate of an allocation given a MORS problem.
+def calc_moscore_rate(alphas, systems):
+    """Calculate the MOSCORE rate of an allocation given a MORS problem.
 
     Parameters
     ----------
@@ -1666,14 +1673,14 @@ def calc_score_rate(alphas, systems):
     Returns
     -------
     z : float
-        SCORE convergence rate associated with alphas.
+        MOSCORE convergence rate associated with alphas.
     """
     score_problem = MOSCORE(systems=systems)
     z = score_problem.calc_rate(alphas=alphas)
     return z
 
 
-def calc_iscore_rate(alphas, systems):
+def calc_imoscore_rate(alphas, systems):
     """Calculate the IMOSCORE rate of an allocation given a MORS problem.
 
     Parameters
