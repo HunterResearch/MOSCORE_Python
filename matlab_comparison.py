@@ -64,8 +64,8 @@ p = 5  # Number of Pareto systems
 #     print("\n")
 
 # BLOCK TO CHECK A FEW SPECIFIC PROBLEMS
-rule = "MOSCORE"
-prob_idx = 3
+rule = "iMOSCORE"
+prob_idx = 7
 
 obj_vals = {}
 obj_vars = {}
@@ -81,39 +81,59 @@ for system_idx in range(r):
 
 systems = create_allocation_problem(obj_vals, obj_vars)
 
-# Create a 3D scatter plot of the means.
-import matplotlib.pyplot as plt
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
+# # Create a 3D scatter plot of the means.
+# import matplotlib.pyplot as plt
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
 
-first_objs = [obj_vals[system_idx][0] for system_idx in range(r)]
-second_objs = [obj_vals[system_idx][1] for system_idx in range(r)]
-third_objs = [obj_vals[system_idx][2] for system_idx in range(r)]
-ax.scatter(first_objs, second_objs, third_objs)
-plt.show()
+# first_objs = [obj_vals[system_idx][0] for system_idx in range(r)]
+# second_objs = [obj_vals[system_idx][1] for system_idx in range(r)]
+# third_objs = [obj_vals[system_idx][2] for system_idx in range(r)]
+# ax.scatter(first_objs, second_objs, third_objs)
+# plt.show()
 
 alpha_hat, z = allocate(method=rule, systems=systems)
+print("z:", round(z, 8))
 # alpha_hat, z = allocate(method="Equal", systems=systems)
-print("Calculating BF rate")
-z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=systems)
+# print("Calculating BF rate")
+# z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=systems)
 print("Calculating Phantom rate")
 z_ph = calc_phantom_rate(alphas=alpha_hat, systems=systems)
 if rule == "MOSCORE":
-    print("Calculating MOSCORE rate")
+    print("\nCalculating MOSCORE rate")
+    print("MOSCORE MCE/MCI rates at termination (per plugging alpha back in):")
     z_mo = calc_moscore_rate(alphas=alpha_hat, systems=systems)
 if rule == "iMOSCORE":
     print("Calculating iMOSCORE rate")
     z_imo = calc_imoscore_rate(alphas=alpha_hat, systems=systems)
 
+# If using Equal, try this.
+# print("Calculating MOSCORE rate")
+# z_mo = calc_moscore_rate(alphas=alpha_hat, systems=systems)
 
-print(f"Results for {rule} on Problem {prob_idx}:")
-print("Brute force convergence rate, Z^bf(alpha) x 10^5:", round(z_bf * 10**5, 4))
+print(f"\nResults for {rule} on Problem {prob_idx}:")
+# print("Brute force convergence rate, Z^bf(alpha) x 10^5:", round(z_bf * 10**5, 4))
 print("Phantom convergence rate, Z^ph(alpha) x 10^5:", round(z_ph * 10**5, 4))
 if rule == "MOSCORE":
     print("MOSCORE convergence rate, Z^mo(alpha) x 10^5:", round(z_mo * 10**5, 4))
 if rule == "iMOSCORE":
     print("iMOSCORE convergence rate, Z^imo(alpha) x 10^5:", round(z_imo * 10**5, 4))
-print("Objectives:", np.array([systems["obj"][system_idx] for system_idx in range(r)]))
-print("Allocation:", alpha_hat)
+# print("Objectives:", np.array([systems["obj"][system_idx] for system_idx in range(r)]))
+
+#### New print statements
+# from allocation import MOSCORE
+# print("\nCompute MCE/MCI rates.")
+# x = np.append(alpha_hat, 0)
+# moscore_object = MOSCORE(systems=systems)
+# MCE_rates, _ = moscore_object.MCE_rates(x)
+# MCI_rates, _ = moscore_object.MCI_rates(x)
+#print([MCE_rates, MCI_rates])
+#print([z - MCE_rates, z - MCI_rates])
+# print("NEXT RATES ARE EQUIVALENT TO THOSE WHEN CALCULATING z^mo")
+# print("MCE rates at termination (per plugging alpha back in)", [round(-1 * MCE_rate, 4) for MCE_rate in MCE_rates])
+# print("MCI rates at termination (per plugging alpha back in)", [round(-1 * MCI_rate, 4) for MCI_rate in MCI_rates])
+
+
+print("Allocation:", [round(a / sum(alpha_hat), 4) for a in alpha_hat])
 print("Sum of Allocation:", round(sum(alpha_hat), 4))
-print("Convergence rate:", round(z, 4))
+print("Convergence rate, z* x 10^5:", round(z * 10**5, 6))

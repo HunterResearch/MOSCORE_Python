@@ -299,7 +299,7 @@ class ConvexOptAllocAlg(object):
                                                             lb=-np.inf,
                                                             ub=0.0,
                                                             jac=constraint_jacobian,
-                                                            keep_feasible=True
+                                                            keep_feasible=False
                                                             )
 
         # Define bounds on alpha values and z (the last element of our decision variable array).
@@ -310,8 +310,9 @@ class ConvexOptAllocAlg(object):
         equality_constraint_array[-1] = 0.0
         equality_constraint_bound = 1.0
         self.equality_constraint = opt.LinearConstraint(equality_constraint_array,
+                                                        -np.inf, #equality_constraint_bound,
                                                         equality_constraint_bound,
-                                                        equality_constraint_bound
+                                                        keep_feasible=False
                                                         )
         # Set up warmstart solution.
         self.set_warmstart(warm_start)
@@ -437,7 +438,6 @@ class ConvexOptAllocAlg(object):
         z : float
             The estimated rate of convergence.
         """
-        # print(self.warm_start)
         # Solve optimization problem.
         res = opt.minimize(fun=self.objective_function,
                            x0=self.warm_start,
@@ -449,11 +449,21 @@ class ConvexOptAllocAlg(object):
                            )
                            # options = {'disp': False}
                            # options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000}
-        print("Optimization success?", res.success)
-        print("Termination status:", res.status)
-        print("Termination message:", res.message)
-        print("Max constraint violation:", res.constr_violation)
-        print("Constraints at solution:", res.constr)
+        #print("Optimization success?", res.success)
+        #print("Termination status:", res.status)
+        #print("Termination message:", res.message)
+        #print("Max constraint violation:", res.constr_violation)
+        #print("Sum to 1 constraint at solution:", res.constr[0])
+        #print("MCE/MCI constraints at solution:", res.constr[1])
+        #print("Non-negativity constraints at solution:", res.constr[2])
+
+        #print("z (per solver):", res.x[-1])
+        #print("z (per fun):", res.fun)
+
+        #print("\nMCI/MCE at optimality (per solver):", [round(res.x[-1] - rate, 4) for rate in res.constr[1]])
+
+        # # Specifically print sorted MCI/MCE values
+        # print("Sorted MCI/MCE constraint violations:", np.sort(res.constr[1]))
 
         # (Optional) If first attempt to optimize terminated improperly, warm-start at
         # final solution and try again.
@@ -468,7 +478,6 @@ class ConvexOptAllocAlg(object):
                                 bounds=self.bounds,
                                 constraints=[self.equality_constraint, self.nonlinear_constraint]
                                 )
-
         alpha, z = self.post_process(opt_sol=res.x)
         return alpha, z
 
@@ -489,6 +498,8 @@ class ConvexOptAllocAlg(object):
             The estimated rate of convergence.
         """
         alpha = opt_sol[0:-1]
+        # Normalize alpha in case it sums to > 1.        
+        alpha = [alloc / sum(alpha) for alloc in alpha]
         z = opt_sol[-1]
         return alpha, z
 
@@ -513,8 +524,10 @@ class ConvexOptAllocAlg(object):
         MCE_rates, _ = self.MCE_rates(x)
         MCI_rates, _ = self.MCI_rates(x)
         z = min(min(-1 * MCE_rates), min(-1 * MCI_rates))
-        print("Min MCE =", min(-1 * MCE_rates))
-        print("Min MCI =", min(-1 * MCI_rates))
+        print("All MCE =", [round(-1 * MCE_rate, 4) for MCE_rate in MCE_rates])
+        #print("Min MCE =", min(-1 * MCE_rates))
+        print("All MCI = ", [round(-1 * MCI_rate, 4) for MCI_rate in MCI_rates])
+        #print("Min MCI =", min(-1 * MCI_rates))
         return z
 
 
@@ -795,6 +808,7 @@ class Phantom(BruteForce):
             for m in range(self.n_phantoms):
                 # Get the pareto indices corresponding to phantom l.
                 phantom_indices = self.phantoms[m, :]
+                print("phantom indices", phantom_indices)
                 if x[j] <= tol:
                     # The rate and gradients are zero. Only have to worry about gradient
                     # wrt z since we initialize with zero.
@@ -823,10 +837,18 @@ class Phantom(BruteForce):
 
                     # Keep track of which objectives are included in phantom set.
                     phantom_objectives = phantom_objectives[phantom_indices < np.inf]
+                    #print("phantom objectives", phantom_objectives)
+                    #print(type(phantom_objectives))
+                    #print(type(phantom_objectives[0]))
                     obj_j = self.systems['obj'][j][phantom_objectives]
+                    #obj_j = self.systems['obj'][j][0]
+                    #print("ran this")
                     # Only want covariances for the phantom objectives.
                     # np.ix_ allows us to subset nicely that way.
                     cov_j = self.systems['var'][j][np.ix_(phantom_objectives, phantom_objectives)]
+                    #print(self.systems['var'][j])
+                    #cov_j = self.systems['var'][j][0][0]
+                    #print(cov_j)
 
                     # Remove unassigned objective indices for phantom variances and objectives.
                     phantom_obj = phantom_obj[phantom_objectives]
@@ -969,6 +991,8 @@ class MOSCORE(Phantom):
         alpha[self.systems['pareto_indices']] = opt_sol[0:self.n_paretos]
         for j in range(self.n_systems - self.n_paretos):
             alpha[self.systems['non_pareto_indices'][j]] = self.lambdas[j] * opt_sol[-2]
+        # Normalize alpha in case it sums to > 1.        
+        alpha = [alloc / sum(alpha) for alloc in alpha]
         z = opt_sol[-1]
         return alpha, z
 
