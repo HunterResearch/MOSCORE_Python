@@ -65,7 +65,7 @@ p = 5  # Number of Pareto systems
 
 # BLOCK TO CHECK A FEW SPECIFIC PROBLEMS
 rule = "iMOSCORE"
-prob_idx = 7
+prob_idx = 2
 
 obj_vals = {}
 obj_vars = {}
@@ -92,8 +92,13 @@ systems = create_allocation_problem(obj_vals, obj_vars)
 # ax.scatter(first_objs, second_objs, third_objs)
 # plt.show()
 
+tic = time.perf_counter()
 alpha_hat, z = allocate(method=rule, systems=systems)
-print("z:", round(z, 8))
+print(f"Alpha hat sum: {sum(alpha_hat)}.")
+toc = time.perf_counter()
+print(f"Solve time = {round(toc - tic, 4)}s.")
+
+#print("z (from solver):", round(z, 8))
 # alpha_hat, z = allocate(method="Equal", systems=systems)
 # print("Calculating BF rate")
 # z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=systems)

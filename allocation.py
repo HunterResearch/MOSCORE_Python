@@ -295,25 +295,37 @@ class ConvexOptAllocAlg(object):
 
         # Define nonlinear constraint object for the optimizer.
         # Will not work if we switch away from trust-constr, but the syntax isn't that different if we do.
-        self.nonlinear_constraint = opt.NonlinearConstraint(constraint_values,
-                                                            lb=-np.inf,
-                                                            ub=0.0,
-                                                            jac=constraint_jacobian,
-                                                            keep_feasible=False
-                                                            )
+                
+        # FOR SLSQP
+        self.SLSQP_inequality_constraints = {'type': 'ineq',
+                                             'fun': lambda x: -1 * constraint_values(x),
+                                             }#'jac': lambda x: -1 * constraint_jacobian(x)}
+        # FOR TRUST-CONSTR
+        self.TRCON_nonlinear_constraint = opt.NonlinearConstraint(constraint_values,
+                                                                  lb=-np.inf,
+                                                                  ub=0.0,
+                                                                  jac=constraint_jacobian,
+                                                                  keep_feasible=False
+                                                                  )
 
         # Define bounds on alpha values and z (the last element of our decision variable array).
-        self.bounds = [(10**-12, 1.0) for i in range(self.n_system_decision_variables)] + [(0.0, np.inf)]
+        #self.bounds = [(10**-12, 1.0) for i in range(self.n_system_decision_variables)] + [(0, np.inf)]
+        self.bounds = [(0.0, 1.0) for i in range(self.n_system_decision_variables)] + [(0.0, np.inf)]
 
         # Set sum of alphas (not z) to 1.
         equality_constraint_array = np.ones(self.n_system_decision_variables + 1)
         equality_constraint_array[-1] = 0.0
         equality_constraint_bound = 1.0
-        self.equality_constraint = opt.LinearConstraint(equality_constraint_array,
-                                                        -np.inf, #equality_constraint_bound,
-                                                        equality_constraint_bound,
-                                                        keep_feasible=False
-                                                        )
+        
+        self.SLSQP_equality_constraint = {'type': 'eq', # temporarily changed to be an inequality constraint
+                                          'fun': lambda x: 1 - np.dot(equality_constraint_array, x),
+                                          'jac': lambda x: -1 * equality_constraint_array}
+        # FOR TRUST-CONSTR
+        self.TRCON_equality_constraint = opt.LinearConstraint(equality_constraint_array,
+                                                              -np.inf, #equality_constraint_bound,
+                                                              equality_constraint_bound,
+                                                              keep_feasible=False
+                                                              )
         # Set up warmstart solution.
         self.set_warmstart(warm_start)
 
@@ -438,27 +450,51 @@ class ConvexOptAllocAlg(object):
         z : float
             The estimated rate of convergence.
         """
-        # Solve optimization problem.
+        print("warm start:", self.warm_start)
+        # Solve optimization problem with SLSQP.
         res = opt.minimize(fun=self.objective_function,
                            x0=self.warm_start,
-                           method='trust-constr',  # 'SLSQP',  # 'COBYLA'
+                           method='SLSQP',
                            jac=True,
-                           hess=self.hessian_zero,
                            bounds=self.bounds,
-                           constraints=[self.equality_constraint, self.nonlinear_constraint]
+                           constraints=[self.SLSQP_equality_constraint, self.SLSQP_inequality_constraints],
+                           options = {'maxiter': 300,
+                                      'ftol': 1e-12,
+                                      'disp': True}
                            )
-                           # options = {'disp': False}
+        # # # Solve optimization problem with Trust-Constr.
+        # res = opt.minimize(fun=self.objective_function,
+        #                    x0=self.warm_start,
+        #                    method='trust-constr',
+        #                    jac=True,
+        #                    hess=self.hessian_zero,
+        #                    bounds=self.bounds,
+        #                    constraints=[self.TRCON_equality_constraint, self.TRCON_nonlinear_constraint]
+        #                    )
+# #                           options = {'disp': False}
                            # options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000}
         #print("Optimization success?", res.success)
         #print("Termination status:", res.status)
         #print("Termination message:", res.message)
+        #print("Number of iterations:", res.nit)
+        #print("Maximum constraint violation:", res.maxcv)
         #print("Max constraint violation:", res.constr_violation)
-        #print("Sum to 1 constraint at solution:", res.constr[0])
-        #print("MCE/MCI constraints at solution:", res.constr[1])
-        #print("Non-negativity constraints at solution:", res.constr[2])
+        # print("Sum to 1 constraint at solution:", res.constr[0])
+        # print("MCE/MCI constraints at solution:", res.constr[1])
+        # print("Non-negativity constraints at solution:", res.constr[2])
+        print("optimal alpha_vec (from solver)", [round(alpha_opt, 6) for alpha_opt in res.x[0:-1]])
+        #print("Pareto indices:", self.systems['pareto_indices'])
+        print("z (per solver):", round(res.x[-1], 6))
+#        print("z (per fun):", round(-1 * res.fun, 6))
+#        print("obj fun (plugged in):", round(-1 * self.objective_function(res.x)[0], 6))
+        #print("MCE/MCI constraints at optimality (= MCI(or MCE) - z, should be >= 0):\n", [round(const, 4) for const in self.SLSQP_inequality_constraints["fun"](res.x)])
+        #print("MCE/MCI constraints at optimality (double-checking):\n", self.constraints_wrapper(res.x)[0])
+        #print("MCE constraints given recommended alpha:", [round(rate, 6) for rate in self.MCE_rates(res.x)[0]])
+        #print("MCE values given recommended alpha:", [round(res.x[-1] - rate, 6) for rate in self.MCE_rates(res.x)[0]])
+        #print("MCI constraints given recommended alpha:", [round(rate, 6) for rate in self.MCI_rates(res.x)[0]])
+        #print("MCI values given recommended alpha:", [round(res.x[-1] - rate, 6) for rate in self.MCI_rates(res.x)[0]])
 
-        #print("z (per solver):", res.x[-1])
-        #print("z (per fun):", res.fun)
+        #print("Objective Jacobian at solution:", res.jac)
 
         #print("\nMCI/MCE at optimality (per solver):", [round(res.x[-1] - rate, 4) for rate in res.constr[1]])
 
@@ -468,16 +504,28 @@ class ConvexOptAllocAlg(object):
         # (Optional) If first attempt to optimize terminated improperly, warm-start at
         # final solution and try again.
         if resolve:
-            if res.status == 0:
+            if res.status != 0:
+        # if True: # if resolve
+        #     if res.status == 0:  # Previously =0 for trust-constr, != 0 for SLSQP
                 print("cycling")
                 res = opt.minimize(fun=self.objective_function,
-                                x0=res.x,
-                                method='trust-constr',
-                                jac=True,
-                                hess=self.hessian_zero,
-                                bounds=self.bounds,
-                                constraints=[self.equality_constraint, self.nonlinear_constraint]
-                                )
+                    x0=res.x,
+                    method='SLSQP',
+                    jac=True,
+                    bounds=self.bounds,
+                    constraints=[self.SLSQP_equality_constraint, self.SLSQP_inequality_constraints],
+                    options = {'maxiter': 300,
+                                'ftol': 1e-12,
+                                'disp': True}
+                    )        
+                # res = opt.minimize(fun=self.objective_function,
+        #                         x0=res.x,
+        #                         method='trust-constr',
+        #                         jac=True,
+        #                         hess=self.hessian_zero,
+        #                         bounds=self.bounds,
+        #                         constraints=[self.equality_constraint, self.nonlinear_constraint]
+        #                         )
         alpha, z = self.post_process(opt_sol=res.x)
         return alpha, z
 
@@ -523,10 +571,13 @@ class ConvexOptAllocAlg(object):
         x = np.append(alphas, 0)
         MCE_rates, _ = self.MCE_rates(x)
         MCI_rates, _ = self.MCI_rates(x)
+        #print(f"MCE_rates (re-eval): {MCE_rates}")
+        #print(f"MCI_rates (re-eval): {MCI_rates}")
         z = min(min(-1 * MCE_rates), min(-1 * MCI_rates))
-        print("All MCE =", [round(-1 * MCE_rate, 4) for MCE_rate in MCE_rates])
+        #print(f"z (re-eval): {z}")
+        #print("All MCE =", [round(-1 * MCE_rate, 4) for MCE_rate in MCE_rates])
         #print("Min MCE =", min(-1 * MCE_rates))
-        print("All MCI = ", [round(-1 * MCI_rate, 4) for MCI_rate in MCI_rates])
+        #print("All MCI = ", [round(-1 * MCI_rate, 4) for MCI_rate in MCI_rates])
         #print("Min MCI =", min(-1 * MCI_rates))
         return z
 
@@ -632,6 +683,7 @@ class BruteForce(ConvexOptAllocAlg):
                                                                            inv_var_j=self.systems["inv_var"][j],
                                                                            n_obj=self.n_obj
                                                                            )
+                        # print("actual MCE = ", rate)
                         rate = x[-1] - rate
                     MCE_rates[count] = rate
                     MCE_grads[count, i] = -1.0 * d_rate_d_i
@@ -808,7 +860,7 @@ class Phantom(BruteForce):
             for m in range(self.n_phantoms):
                 # Get the pareto indices corresponding to phantom l.
                 phantom_indices = self.phantoms[m, :]
-                print("phantom indices", phantom_indices)
+                # print("phantom indices", phantom_indices)
                 if x[j] <= tol:
                     # The rate and gradients are zero. Only have to worry about gradient
                     # wrt z since we initialize with zero.
@@ -1155,6 +1207,7 @@ class MOSCORE(Phantom):
 
         Parameters
         ----------
+        !!! NOT TRUE: REVISE !!!
         x : numpy array of length n_systems + 1
             allocation for each system and estimated convergence rate
 
@@ -1700,7 +1753,12 @@ def calc_moscore_rate(alphas, systems):
         MOSCORE convergence rate associated with alphas.
     """
     score_problem = MOSCORE(systems=systems)
-    z = score_problem.calc_rate(alphas=alphas)
+    # Convert alpha allocation into alpha vector for optimization problem
+    # Get the allocations from the Pareto systems.
+    alpha_opt_pareto = [alphas[score_problem.systems["pareto_indices"][idx]] for idx in range(score_problem.n_paretos)]
+    # Append the proportion of the (unity) allocation allocated to non-Pareto systems.
+    alpha_opt = alpha_opt_pareto + [1 - np.sum(alpha_opt_pareto)]
+    z = score_problem.calc_rate(alphas=alpha_opt)
     return z
 
 
@@ -1736,5 +1794,10 @@ def calc_imoscore_rate(alphas, systems):
         IMOSCORE convergence rate associated with alphas.
     """
     iscore_problem = IMOSCORE(systems=systems)
-    z = iscore_problem.calc_rate(alphas=alphas)
+    # Convert alpha allocation into alpha vector for optimization problem
+    # Get the allocations from the Pareto systems.
+    alpha_opt_pareto = [alphas[iscore_problem.systems["pareto_indices"][idx]] for idx in range(iscore_problem.n_paretos)]
+    # Append the proportion of the (unity) allocation allocated to non-Pareto systems.
+    alpha_opt = alpha_opt_pareto + [1 - np.sum(alpha_opt_pareto)]
+    z = iscore_problem.calc_rate(alphas=alpha_opt)
     return z
