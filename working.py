@@ -7,7 +7,7 @@ A script for interacting with the MORS Problem, Solver, and Tester classes.
 """
 
 #from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
-from mrg32k3a import MRG32k3a
+from mrg32k3a.mrg32k3a import MRG32k3a
 
 from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots, make_phantom_rate_plots
 from example import TestProblem, TestProblem2, TestProblem3

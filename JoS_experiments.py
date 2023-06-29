@@ -8,10 +8,10 @@ A script for reproducing the experiments in the Applegate et al. (2020, JoS) pap
 
 import numpy as np
 import time
+from mrg32k3a.mrg32k3a import MRG32k3a
 
-from mrg32k3a import MRG32k3a
 from utils import create_allocation_problem, is_pareto_efficient, find_phantoms
-from allocation import allocate, smart_allocate, calc_brute_force_rate, calc_phantom_rate
+from allocate import allocate, smart_allocate, calc_brute_force_rate, calc_phantom_rate
 from example import create_fixed_pareto_random_problem, create_variable_pareto_random_problem
 
 # 3-objective, 3-system example from Li et al. (2018).

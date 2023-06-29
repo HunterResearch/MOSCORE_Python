@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 from utils import create_allocation_problem
-from allocation import allocate, calc_brute_force_rate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
+from allocate import allocate, calc_brute_force_rate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
 
 # Repeat fixed-Pareto experiments from Table 3.
 
