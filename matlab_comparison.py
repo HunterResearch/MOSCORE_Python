@@ -65,7 +65,7 @@ p = 5  # Number of Pareto systems
 
 # BLOCK TO CHECK A FEW SPECIFIC PROBLEMS
 rule = "iMOSCORE"
-prob_idx = 2
+prob_idx = 1
 
 obj_vals = {}
 obj_vars = {}

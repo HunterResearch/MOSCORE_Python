@@ -23,10 +23,10 @@ import time
 # import copy
 # import multiprocessing as mp
 
-# import pymoso.chnutils as utils
+import pymoso.chnutils as chnutils
 from mrg32k3a import MRG32k3a
 
-from allocation import smart_allocate, calc_phantom_rate
+from allocation import smart_allocate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
 from utils import create_allocation_problem, is_pareto_efficient  # _mp_objmethod
 
 
@@ -363,6 +363,20 @@ class MORS_Solver(object):
                     toc = time.perf_counter()
                     # In subsequent iterations, use previous alpha_hat as warm start
                     warm_start = alpha_hat
+                    
+                    # Compare recommended allocation to equal allocation, in case solver struggled.
+                    alpha_eq = np.array([1 / problem.n_systems for _ in range(problem.n_systems)])
+                    # If 4+ objectives or 100+ systems, use z^imo for comparisons. Otherwise use z^mo.
+                    if problem.n_obj >= 4 or problem.n_systems >= 100:
+                        z_alpha_hat = calc_imoscore_rate(alphas=alpha_hat, systems=allocation_problem)
+                        z_alpha_eq = calc_imoscore_rate(alphas=alpha_eq, systems=allocation_problem)
+                    else:
+                        z_alpha_hat = calc_moscore_rate(alphas=alpha_hat, systems=allocation_problem)
+                        z_alpha_eq = calc_moscore_rate(alphas=alpha_eq, systems=allocation_problem) 
+                    # Use equal allocation if it's better than what solver recommends.
+                    if z_alpha_hat < z_alpha_eq:
+                        alpha_hat = alpha_eq
+
                     # Record timing.
                     metrics["timings"].append(toc - tic)
                     # Sequentially choose systems to simulate by drawing independently from allocation distribution.
@@ -489,7 +503,7 @@ def record_metrics(metrics, problem, alpha_hat):
 
     # Record systems that look Pareto efficient.
     est_obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
-    est_pareto = list(utils.get_nondom(est_obj_vals))
+    est_pareto = list(chnutils.get_nondom(est_obj_vals))
     metrics['paretos'].append(est_pareto)
 
     # If true objectives are known, compute error statistics.
