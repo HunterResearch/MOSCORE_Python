@@ -307,7 +307,7 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
     variances = {}
     for i in range(n_systems):
         variances[i] = cp
-        objectives[i] = list(objectives[i])
+        objectives[i] = np.array(objectives[i])
     return create_allocation_problem(objectives, variances)
 
 

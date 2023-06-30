@@ -451,7 +451,7 @@ class ConvexOptAllocAlg(object):
         z : float
             The estimated rate of convergence.
         """
-        print("warm start:", self.warm_start)
+        # print("warm start:", self.warm_start)
         # Solve optimization problem with SLSQP.
         res = opt.minimize(fun=self.objective_function,
                            x0=self.warm_start,
@@ -461,7 +461,7 @@ class ConvexOptAllocAlg(object):
                            constraints=[self.SLSQP_equality_constraint, self.SLSQP_inequality_constraints],
                            options={'maxiter': 300,
                                     'ftol': 1e-12,
-                                    'disp': True}
+                                    'disp': False}
                            )
         # Solve optimization problem with Trust-Constr.
         # res = opt.minimize(fun=self.objective_function,
@@ -483,9 +483,9 @@ class ConvexOptAllocAlg(object):
         # print("Sum to 1 constraint at solution:", res.constr[0])
         # print("MCE/MCI constraints at solution:", res.constr[1])
         # print("Non-negativity constraints at solution:", res.constr[2])
-        print("optimal alpha_vec (from solver)", [round(alpha_opt, 6) for alpha_opt in res.x[0:-1]])
+        # print("optimal alpha_vec (from solver)", [round(alpha_opt, 6) for alpha_opt in res.x[0:-1]])
         # print("Pareto indices:", self.systems['pareto_indices'])
-        print("z (per solver):", round(res.x[-1], 6))
+        # print("z (per solver):", round(res.x[-1], 6))
         # print("z (per fun):", round(-1 * res.fun, 6))
         # print("obj fun (plugged in):", round(-1 * self.objective_function(res.x)[0], 6))
         # print("MCE/MCI constraints at optimality (= MCI(or MCE) - z, should be >= 0):\n", [round(const, 4) for const in self.SLSQP_inequality_constraints["fun"](res.x)])
@@ -1081,7 +1081,6 @@ class MOSCORE(Phantom):
             j_indices = np.ones(self.n_obj) * np.inf
             size = len(objectives_playing)
             for j in range(self.n_systems - self.n_paretos):
-                print(self.systems)
                 j_ind = self.systems['non_pareto_indices'][j]
                 obj_j = self.systems['obj'][j_ind][objectives_playing]
                 cov_j = self.systems['var'][j_ind][np.ix_(objectives_playing, objectives_playing)]
