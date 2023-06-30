@@ -103,14 +103,14 @@ print(f"Solve time = {round(toc - tic, 4)}s.")
 # print("Calculating BF rate")
 # z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=systems)
 print("Calculating Phantom rate")
-z_ph = calc_phantom_rate(alphas=alpha_hat, systems=systems)
+z_ph = calc_phantom_rate(alpha=alpha_hat, systems=systems)
 if rule == "MOSCORE":
     print("\nCalculating MOSCORE rate")
     print("MOSCORE MCE/MCI rates at termination (per plugging alpha back in):")
-    z_mo = calc_moscore_rate(alphas=alpha_hat, systems=systems)
+    z_mo = calc_moscore_rate(alpha=alpha_hat, systems=systems)
 if rule == "iMOSCORE":
     print("Calculating iMOSCORE rate")
-    z_imo = calc_imoscore_rate(alphas=alpha_hat, systems=systems)
+    z_imo = calc_imoscore_rate(alpha=alpha_hat, systems=systems)
 
 # If using Equal, try this.
 # print("Calculating MOSCORE rate")

@@ -241,12 +241,12 @@ class ConvexOptAllocAlg(object):
         # of some subclasses.
         self.n_system_decision_variables = self.n_systems
 
-    def objective_function(self, x):
+    def objective_function(self, alpha_z_decide):
         """Return the objective function value and associated gradient at a given solution.
 
         Parameters
         ----------
-        x : a numpy array
+        alpha_z_decide : a numpy array
             A feasible solution for the optimization problem.
 
         Returns
@@ -260,16 +260,16 @@ class ConvexOptAllocAlg(object):
         # The objective is -z and its derivative wrt z is -1.
         # The objective function is -1 times the convergence rate.
         # The gradient is zero with respect to alphas and -1 with respect to the convergence rate (the last term).
-        gradient = np.zeros(len(x))
+        gradient = np.zeros(len(alpha_z_decide))
         gradient[-1] = -1
-        return -1 * x[-1], gradient
+        return -1 * alpha_z_decide[-1], gradient
 
-    def hessian_zero(self, x):
+    def hessian_zero(self, alpha_z_decide):
         """Return the Hessian of the objective function at a given solution.
 
         Parameters
         ----------
-        x : a numpy array
+        alpha_z_decide : a numpy array
             A feasible solution for the optimization problem.
 
         Returns
@@ -278,7 +278,7 @@ class ConvexOptAllocAlg(object):
         """
         # Hessian of the objective function is just a matrix of zeros.
         # Return a square matrix of zeros with len(alpha) rows and columns.
-        return np.zeros([len(x), len(x)])
+        return np.zeros([len(alpha_z_decide), len(alpha_z_decide)])
 
     def setup_opt_problem(self, warm_start=None):
         """Setup optimization problem."""
@@ -288,19 +288,19 @@ class ConvexOptAllocAlg(object):
         self.constraints_wrapper.__func__.last_x = None
 
         # We define a callable for the constraint values and another for the constraint jacobian.
-        def constraint_values(x):
-            return self.constraints_wrapper(x)[0]
+        def constraint_values(alpha_z_decide):
+            return self.constraints_wrapper(alpha_z_decide)[0]
 
-        def constraint_jacobian(x):
-            return self.constraints_wrapper(x)[1]
+        def constraint_jacobian(alpha_z_decide):
+            return self.constraints_wrapper(alpha_z_decide)[1]
 
         # Define nonlinear constraint object for the optimizer.
         # Will not work if we switch away from trust-constr, but the syntax isn't that different if we do.
 
         # FOR SLSQP
         self.SLSQP_inequality_constraints = {'type': 'ineq',
-                                             'fun': lambda x: -1 * constraint_values(x),
-                                             }  # 'jac': lambda x: -1 * constraint_jacobian(x)}
+                                             'fun': lambda alpha_z_decide: -1 * constraint_values(alpha_z_decide),
+                                             }  # 'jac': lambda alpha_z_decide: -1 * constraint_jacobian(alpha_z_decide)}
         # FOR TRUST-CONSTR
         self.TRCON_nonlinear_constraint = opt.NonlinearConstraint(constraint_values,
                                                                   lb=-np.inf,
@@ -319,8 +319,8 @@ class ConvexOptAllocAlg(object):
         equality_constraint_bound = 1.0
 
         self.SLSQP_equality_constraint = {'type': 'eq',
-                                          'fun': lambda x: 1 - np.dot(equality_constraint_array, x),
-                                          'jac': lambda x: -1 * equality_constraint_array}
+                                          'fun': lambda alpha_z_decide: 1 - np.dot(equality_constraint_array, alpha_z_decide),
+                                          'jac': lambda alpha_z_decide: -1 * equality_constraint_array}
         # FOR TRUST-CONSTR
         self.TRCON_equality_constraint = opt.LinearConstraint(equality_constraint_array,
                                                               -np.inf,
@@ -330,7 +330,7 @@ class ConvexOptAllocAlg(object):
         # Set up warmstart solution.
         self.set_warmstart(warm_start)
 
-    def constraints_wrapper(self, x):
+    def constraints_wrapper(self, alpha_z_decide):
         """Wrapper to go around self.constraint().
 
         Notes
@@ -342,8 +342,8 @@ class ConvexOptAllocAlg(object):
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
-            Consists of an allocation for each system and estimated convergence rate.
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -352,15 +352,15 @@ class ConvexOptAllocAlg(object):
         jacobian : 2d numpy array
             The jacobian of the rates with respect to the vector alpha (including the final element z).
         """
-        if all(x == self.constraints_wrapper.last_x):
+        if all(alpha_z_decide == self.constraints_wrapper.last_x):
             return self.constraints_wrapper.last_outputs
         else:
-            rates, jacobian = self.constraints(x)
-            self.constraints_wrapper.__func__.last_x = x
+            rates, jacobian = self.constraints(alpha_z_decide)
+            self.constraints_wrapper.__func__.last_x = alpha_z_decide
             self.constraints_wrapper.__func__.last_outputs = rates, jacobian
             return rates, jacobian
 
-    def constraints(self, x):
+    def constraints(self, alpha_z_decide):
         """Calculates MCE constraints and MCI constraints on the convergence rate and appends them together,
         where the value of each constraint is equal to z, the total rate estimator,
         minus the rate associated with each possible MCI and MCE event, each of which serves as an
@@ -368,8 +368,8 @@ class ConvexOptAllocAlg(object):
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
-            allocation for each system and estimated convergence rate
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -379,21 +379,21 @@ class ConvexOptAllocAlg(object):
             The jacobian of the constraint values with respect to the vector alpha (including the final element z)
         """
         # tol = 10**-12
-        # x[0:-1][x[0:-1] < tol] = 0
+        # alpha_z_decide[0:-1][alpha_z_decide[0:-1] < tol] = 0
         # Compose MCE and MCI constraint values and gradients.
-        MCE_rates, MCE_grads = self.MCE_rates(x)
-        MCI_rates, MCI_grads = self.MCI_rates(x)
+        MCE_rates, MCE_grads = self.MCE_rates(alpha_z_decide)
+        MCI_rates, MCI_grads = self.MCI_rates(alpha_z_decide)
         rates = np.append(MCE_rates, MCI_rates, axis=0)
         grads = np.append(MCE_grads, MCI_grads, axis=0)
         return rates, grads
 
-    def MCE_rates(self, x):
+    def MCE_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
-            allocation for each system and estimated convergence rate
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -404,13 +404,13 @@ class ConvexOptAllocAlg(object):
         """
         raise NotImplementedError
 
-    def MCI_rates(self, x):
+    def MCI_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
-            allocation for each system and estimated convergence rate
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -552,26 +552,24 @@ class ConvexOptAllocAlg(object):
         z = opt_sol[-1]
         return alpha, z
 
-    def calc_rate(self, alphas):
+    def calc_rate(self, alpha_decide):
         """Calculate the rate of an allocation given a MORS problem.
         Use the estimated rate associated with the convex optimization problem.
 
         Parameters
         ----------
-        alphas : list of float
-            An initial simulation allocation which sets the starting point for
-            determining the optimal allocation. Length must be equal to the
-            number of systems.
+        alpha_decide : list of float
+            Alpha decision variables of the convex optimization problem.
 
         Returns
         -------
         z : float
-            Convergence rate associated with alphas.
+            Convergence rate associated with alpha_decide.
         """
         # Append a zero for the convergence rate.
-        x = np.append(alphas, 0)
-        MCE_rates, _ = self.MCE_rates(x)
-        MCI_rates, _ = self.MCI_rates(x)
+        alpha_z_decide = np.append(alpha_decide, 0)
+        MCE_rates, _ = self.MCE_rates(alpha_z_decide)
+        MCI_rates, _ = self.MCI_rates(alpha_z_decide)
         # print(f"MCE_rates (re-eval): {MCE_rates}")
         # print(f"MCI_rates (re-eval): {MCI_rates}")
         z = min(min(-1 * MCE_rates), min(-1 * MCI_rates))
@@ -613,12 +611,12 @@ class BruteForce(ConvexOptAllocAlg):
         v = range(self.n_objectives)
         self.kappas = list(it.product(v, repeat=self.n_paretos))
 
-    def MCE_rates(self, x):
+    def MCE_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
+        alpha_z_decide : numpy array of length n_systems + 1
             allocation for each system and estimated convergence rate
 
         Returns
@@ -631,7 +629,7 @@ class BruteForce(ConvexOptAllocAlg):
         # Negative alphas break the quadratic optimizer called below.
         # alphas that are too small may give us numerical precision issues.
         tol = 10**-12
-        x[0:-1][x[0:-1] <= tol] = 0
+        alpha_z_decide[0:-1][alpha_z_decide[0:-1] <= tol] = 0
 
         # There is an MCE constraint for every non-diagonal element of a (paretos x paretos) matrix.
         n_MCE = self.n_paretos * (self.n_paretos - 1)
@@ -646,17 +644,17 @@ class BruteForce(ConvexOptAllocAlg):
         for i in self.systems['pareto_indices']:
             for j in self.systems['pareto_indices']:
                 if i != j:
-                    if x[i] <= tol or x[j] <= tol:
+                    if alpha_z_decide[i] <= tol or alpha_z_decide[j] <= tol:
                         # It can be shown that if either alpha is zero,
                         # the rate is zero and the derivatives are zero.
                         # Constraint values are z - rate, so set "rate" here to z.
-                        rate = x[-1]
+                        rate = alpha_z_decide[-1]
                         d_rate_d_i = 0
                         d_rate_d_j = 0
                     else:
                         if self.n_objectives == 2:  # 2-objective case.
-                            rate, d_rate_d_i, d_rate_d_j = MCE_2d(aI=x[i],
-                                                                  aJ=x[j],
+                            rate, d_rate_d_i, d_rate_d_j = MCE_2d(aI=alpha_z_decide[i],
+                                                                  aJ=alpha_z_decide[j],
                                                                   Iobj=self.systems["obj"][i],
                                                                   Isig=self.systems["var"][i],
                                                                   Jobj=self.systems["obj"][j],
@@ -665,8 +663,8 @@ class BruteForce(ConvexOptAllocAlg):
                                                                   inv_var_j=self.systems["inv_var"][j]
                                                                   )
                         elif self.n_objectives == 3:  # 3-objective case.
-                            rate, d_rate_d_i, d_rate_d_j = MCE_3d(aI=x[i],
-                                                                  aJ=x[j],
+                            rate, d_rate_d_i, d_rate_d_j = MCE_3d(aI=alpha_z_decide[i],
+                                                                  aJ=alpha_z_decide[j],
                                                                   Iobj=self.systems["obj"][i],
                                                                   Isig=self.systems["var"][i],
                                                                   Jobj=self.systems["obj"][j],
@@ -675,8 +673,8 @@ class BruteForce(ConvexOptAllocAlg):
                                                                   inv_var_j=self.systems["inv_var"][j]
                                                                   )
                         else:
-                            rate, d_rate_d_i, d_rate_d_j = MCE_four_d_plus(alpha_i=x[i],
-                                                                           alpha_j=x[j],
+                            rate, d_rate_d_i, d_rate_d_j = MCE_four_d_plus(alpha_i=alpha_z_decide[i],
+                                                                           alpha_j=alpha_z_decide[j],
                                                                            obj_i=self.systems["obj"][i],
                                                                            inv_var_i=self.systems["inv_var"][i],
                                                                            obj_j=self.systems["obj"][j],
@@ -684,19 +682,19 @@ class BruteForce(ConvexOptAllocAlg):
                                                                            n_objectives=self.n_objectives
                                                                            )
                         # print("actual MCE = ", rate)
-                        rate = x[-1] - rate
+                        rate = alpha_z_decide[-1] - rate
                     MCE_rates[count] = rate
                     MCE_grads[count, i] = -1.0 * d_rate_d_i
                     MCE_grads[count, j] = -1.0 * d_rate_d_j
                     count = count + 1
         return MCE_rates, MCE_grads
 
-    def MCI_rates(self, x):
+    def MCI_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
+        alpha_z_decide : numpy array of length n_systems + 1
             allocation for each system and estimated convergence rate
 
         Returns
@@ -718,7 +716,7 @@ class BruteForce(ConvexOptAllocAlg):
 
         # Set alphas of  systems to zero if they are less than tol.
         # However, zeros break the optimizer, instead use tiny value.
-        x[0:-1][x[0:-1] <= tol] = tol
+        alpha_z_decide[0:-1][alpha_z_decide[0:-1] <= tol] = tol
 
         count = 0
         for j in self.systems['non_pareto_indices']:
@@ -745,12 +743,12 @@ class BruteForce(ConvexOptAllocAlg):
                         relevant_objectives[p] = self.systems['obj'][pareto_system_ind][kap[p]]
                         relevant_variances[p] = self.systems['var'][pareto_system_ind][kap[p], kap[p]]
                     # Get the alpha of the pareto system.
-                    pareto_alphas = x[self.systems['pareto_indices']]
+                    pareto_alphas = alpha_z_decide[self.systems['pareto_indices']]
 
                     # Quadratic optimization step.
                     # Setup.
-                    P = linalg.block_diag(x[j] * inv_var_j, np.diag(pareto_alphas * (1 / relevant_variances)))
-                    q = matrix(-1 * np.append(x[j] * inv_var_j @ obj_j,
+                    P = linalg.block_diag(alpha_z_decide[j] * inv_var_j, np.diag(pareto_alphas * (1 / relevant_variances)))
+                    q = matrix(-1 * np.append(alpha_z_decide[j] * inv_var_j @ obj_j,
                                               pareto_alphas * 1 / relevant_variances * relevant_objectives))
                     G_left_side = np.zeros([self.n_paretos, self.n_objectives])
                     G_left_side[range(self.n_paretos), kap] = 1
@@ -760,14 +758,14 @@ class BruteForce(ConvexOptAllocAlg):
 
                     # Solve.
                     solvers.options['show_progress'] = False
-                    x_star = np.array(solvers.qp(P, q, G, h)['x']).flatten()
+                    alpha_z_decide_star = np.array(solvers.qp(P, q, G, h)['x']).flatten()
 
                     # Reformat results of optimization.
-                    rate = 0.5 * x[j] * (obj_j - x_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - x_star[0:self.n_objectives]) +\
-                        0.5 * np.sum(pareto_alphas * (x_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (x_star[self.n_objectives:] - relevant_objectives))
-                    MCI_grad[count, j] = -1.0 * 0.5 * (obj_j - x_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - x_star[0:self.n_objectives])
-                    MCI_grad[count, self.systems['pareto_indices']] = -1.0 * 0.5 * (x_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (x_star[self.n_objectives:] - relevant_objectives)
-                    MCI_rates[count] = x[-1] - rate
+                    rate = 0.5 * alpha_z_decide[j] * (obj_j - alpha_z_decide_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - alpha_z_decide_star[0:self.n_objectives]) +\
+                        0.5 * np.sum(pareto_alphas * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives))
+                    MCI_grad[count, j] = -1.0 * 0.5 * (obj_j - alpha_z_decide_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - alpha_z_decide_star[0:self.n_objectives])
+                    MCI_grad[count, self.systems['pareto_indices']] = -1.0 * 0.5 * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives)
+                    MCI_rates[count] = alpha_z_decide[-1] - rate
 
                 count = count + 1
 
@@ -832,12 +830,12 @@ class Phantom(BruteForce):
                     if pareto_array[k, j] == phantom_values[i, j]:
                         self.phantoms[i, j] = systems['pareto_indices'][k]
 
-    def MCI_rates(self, x):
+    def MCI_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
+        alpha_z_decide : numpy array of length n_systems + 1
             allocation for each system and estimated convergence rate
 
         Returns
@@ -855,13 +853,13 @@ class Phantom(BruteForce):
         MCI_grads = np.zeros([n_MCI, self.n_systems + 1])
 
         count = 0
-        x[0:-1][x[0:-1] <= tol] = 0
+        alpha_z_decide[0:-1][alpha_z_decide[0:-1] <= tol] = 0
         for j in self.systems['non_pareto_indices']:
             for m in range(self.n_phantoms):
                 # Get the pareto indices corresponding to phantom l.
                 phantom_indices = self.phantoms[m, :]
                 # print("phantom indices", phantom_indices)
-                if x[j] <= tol:
+                if alpha_z_decide[j] <= tol:
                     # The rate and gradients are zero. Only have to worry about gradient
                     # wrt z since we initialize with zero.
                     MCI_grads[count, -1] = 1
@@ -879,11 +877,11 @@ class Phantom(BruteForce):
                             pareto_system = int(phantom_indices[b])
                             phantom_obj[b] = self.systems['obj'][pareto_system][b]
                             phantom_var[b] = self.systems['var'][pareto_system][b, b]
-                            if x[pareto_system] <= tol:
+                            if alpha_z_decide[pareto_system] <= tol:
                                 phantom_alphas[b] = 0
                                 alpha_zeros = alpha_zeros + 1
                             else:
-                                phantom_alphas[b] = x[pareto_system]
+                                phantom_alphas[b] = alpha_z_decide[pareto_system]
                         else:
                             phantom_objective_count -= 1
 
@@ -910,23 +908,23 @@ class Phantom(BruteForce):
                         # Need to convert.
                         MCI_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
                         MCI_grads[count, -1] = 1
-                        MCI_rates[count] = x[-1] - rate
+                        MCI_rates[count] = alpha_z_decide[-1] - rate
                     else:
                         length = len(phantom_objectives)
                         if length == 1:
-                            rate, grad_j, phantom_grads = MCI_1d(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                            rate, grad_j, phantom_grads = MCI_1d(alpha_z_decide[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
                         elif length == 2:
-                            rate, grad_j, phantom_grads = MCI_2d(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                            rate, grad_j, phantom_grads = MCI_2d(alpha_z_decide[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
                         elif length == 3:
-                            rate, grad_j, phantom_grads = MCI_3d(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                            rate, grad_j, phantom_grads = MCI_3d(alpha_z_decide[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
                         else:
-                            rate, grad_j, phantom_grads = MCI_four_d_plus(x[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
+                            rate, grad_j, phantom_grads = MCI_four_d_plus(alpha_z_decide[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
 
                         # TODO: Hard-code solutions for 1-3 objectives.
                         MCI_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
                         MCI_grads[count, -1] = 1
                         MCI_grads[count, j] = -1.0 * grad_j
-                        MCI_rates[count] = x[-1] - rate
+                        MCI_rates[count] = alpha_z_decide[-1] - rate
 
                 count = count + 1
         return MCI_rates, MCI_grads
@@ -1195,14 +1193,13 @@ class MOSCORE(Phantom):
         M_star = np.unique(M_star, axis=0)
         return M_star
 
-    def MCI_rates(self, x):
+    def MCI_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        !!! NOT TRUE: REVISE !!!
-        x : numpy array of length n_systems + 1
-            allocation for each system and estimated convergence rate
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -1215,13 +1212,13 @@ class MOSCORE(Phantom):
 
         n_MCI = len(self.j_star)
         MCI_rates = np.zeros(n_MCI)
-        MCI_grads = np.zeros([n_MCI, len(x)])
+        MCI_grads = np.zeros([n_MCI, len(alpha_z_decide)])
 
         for i in range(n_MCI):
             j = int(self.j_star[i, 0])
             j_ind = self.systems['non_pareto_indices'][j]
             lambda_j = self.lambdas[j]
-            alpha_j = lambda_j * x[-2]
+            alpha_j = lambda_j * alpha_z_decide[-2]
             obj_j = self.systems['obj'][j_ind]
             cov_j = self.systems['var'][j_ind]
 
@@ -1230,7 +1227,7 @@ class MOSCORE(Phantom):
 
             if alpha_j < tol:
                 # Rate is 0. Returned rate is z. Grads wrt anything but z are left as zero.
-                MCI_rates[i] = x[-1]
+                MCI_rates[i] = alpha_z_decide[-1]
                 MCI_grads[i, -1] = 1
             else:
                 phantom_objectives = np.zeros(self.n_objectives)
@@ -1246,11 +1243,11 @@ class MOSCORE(Phantom):
                         pareto_system_ind = self.systems['pareto_indices'][pareto_system_num]
                         phantom_objectives[b] = self.systems['obj'][pareto_system_ind][b]
                         phantom_vars[b] = self.systems['var'][pareto_system_ind][b, b]
-                        if x[pareto_system_num] < tol:
+                        if alpha_z_decide[pareto_system_num] < tol:
                             phantom_alphas[b] = 0
                             alpha_zeros += 1
                         else:
-                            phantom_alphas[b] = x[pareto_system_num]
+                            phantom_alphas[b] = alpha_z_decide[pareto_system_num]
                     else:
                         n_objectives_playing -= 1
 
@@ -1264,7 +1261,7 @@ class MOSCORE(Phantom):
                 phantom_alphas = phantom_alphas[objectives_playing]
 
                 if alpha_zeros == n_objectives_playing:
-                    MCI_rates[i] = x[-1]
+                    MCI_rates[i] = alpha_z_decide[-1]
                     MCI_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -0.5 * ((obj_j - phantom_objectives) ** 2) / phantom_vars
                     MCI_grads[i, -1] = 1
                 else:
@@ -1279,7 +1276,7 @@ class MOSCORE(Phantom):
                     else:
                         rate, grad_j, phantom_grads = MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_objectives, phantom_vars)
 
-                    MCI_rates[i] = x[-1] - rate
+                    MCI_rates[i] = alpha_z_decide[-1] - rate
                     phantom_grads[phantom_grads < tol] = 0
                     MCI_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -1.0 * phantom_grads
                     MCI_grads[i, -2] = -1 * lambda_j * grad_j
@@ -1287,13 +1284,13 @@ class MOSCORE(Phantom):
 
         return MCI_rates, MCI_grads
 
-    def MCE_rates(self, x):
+    def MCE_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
-            allocation for each system and estimated convergence rate
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -1305,14 +1302,14 @@ class MOSCORE(Phantom):
         tol = 10**-12
         n_MCE = len(self.M_star)
         MCE_rates = np.zeros(n_MCE)
-        MCE_grads = np.zeros([n_MCE, len(x)])
+        MCE_grads = np.zeros([n_MCE, len(alpha_z_decide)])
 
         for k in range(n_MCE):
             i = int(self.M_star[k, 0])
             j = int(self.M_star[k, 1])
 
-            if (x[i] < tol or x[j] < tol):
-                rate = x[-1]
+            if (alpha_z_decide[i] < tol or alpha_z_decide[j] < tol):
+                rate = alpha_z_decide[-1]
                 grad_i = 0
                 grad_j = 0
             else:
@@ -1325,8 +1322,8 @@ class MOSCORE(Phantom):
 
                 # TODO: Hard code solutions for <4 dimensions.
                 if self.n_objectives == 2:
-                    rate, grad_i, grad_j = MCE_2d(aI=x[i],
-                                                  aJ=x[j],
+                    rate, grad_i, grad_j = MCE_2d(aI=alpha_z_decide[i],
+                                                  aJ=alpha_z_decide[j],
                                                   Iobj=obj_i,
                                                   Isig=self.systems["var"][i_ind],
                                                   Jobj=obj_j,
@@ -1335,8 +1332,8 @@ class MOSCORE(Phantom):
                                                   inv_var_j=inv_cov_j
                                                   )
                 elif self.n_objectives == 3:
-                    rate, grad_i, grad_j = MCE_3d(aI=x[i],
-                                                  aJ=x[j],
+                    rate, grad_i, grad_j = MCE_3d(aI=alpha_z_decide[i],
+                                                  aJ=alpha_z_decide[j],
                                                   Iobj=obj_i,
                                                   Isig=self.systems["var"][i_ind],
                                                   Jobj=obj_j,
@@ -1345,15 +1342,15 @@ class MOSCORE(Phantom):
                                                   inv_var_j=inv_cov_j
                                                   )
                 else:
-                    rate, grad_i, grad_j = MCE_four_d_plus(alpha_i=x[i],
-                                                           alpha_j=x[j],
+                    rate, grad_i, grad_j = MCE_four_d_plus(alpha_i=alpha_z_decide[i],
+                                                           alpha_j=alpha_z_decide[j],
                                                            obj_i=obj_i,
                                                            inv_var_i=inv_cov_i,
                                                            obj_j=obj_j,
                                                            inv_var_j=inv_cov_j,
                                                            n_objectives=self.n_objectives
                                                            )
-                rate = x[-1] - rate
+                rate = alpha_z_decide[-1] - rate
 
             MCE_rates[k] = rate
             MCE_grads[k, i] = -1 * grad_i
@@ -1522,13 +1519,13 @@ class IMOSCORE(MOSCORE):
         M_star = np.unique(M_star, axis=0)
         return M_star
 
-    def MCI_rates(self, x):
+    def MCI_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
-            allocation for each system and estimated convergence rate
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -1540,13 +1537,13 @@ class IMOSCORE(MOSCORE):
         tol = 10**-50
         n_MCI = len(self.j_star)
         MCI_rates = np.zeros(n_MCI)
-        MCI_grads = np.zeros([n_MCI, len(x)])
+        MCI_grads = np.zeros([n_MCI, len(alpha_z_decide)])
 
         for i in range(n_MCI):
             j = int(self.j_star[i, 0])
             j_ind = self.systems['non_pareto_indices'][j]
             lambda_j = self.lambdas[j]
-            alpha_j = lambda_j * x[-2]
+            alpha_j = lambda_j * alpha_z_decide[-2]
 
             obj_j = self.systems['obj'][j_ind]
             cov_j = self.systems['var'][j_ind]
@@ -1555,7 +1552,7 @@ class IMOSCORE(MOSCORE):
             phantom_pareto_nums = self.phantoms[phantom_ind, :]
 
             if alpha_j < tol:
-                MCI_rates[i] = x[-1]
+                MCI_rates[i] = alpha_z_decide[-1]
                 MCI_grads[i, -1] = 1
                 # All the grads aside from z are zero here, already zero from initialization
             else:
@@ -1569,7 +1566,7 @@ class IMOSCORE(MOSCORE):
                         phantom_pareto_ind = self.systems['pareto_indices'][phantom_pareto_num]
                         phantom_objectives[b] = self.systems['obj'][phantom_pareto_ind][b]
                         phantom_vars[b] = self.systems['var'][phantom_pareto_ind][b, b]
-                        phantom_alphas[b] = x[phantom_pareto_num]
+                        phantom_alphas[b] = alpha_z_decide[phantom_pareto_num]
 
                 rate = 0
                 grad_j = 0
@@ -1580,19 +1577,19 @@ class IMOSCORE(MOSCORE):
                         grad = (alpha_j**2 * phantom_vars[m] * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m])**2)
                         MCI_grads[i, int(phantom_pareto_nums[m])] = -1.0 * grad
 
-                MCI_rates[i] = x[-1] - rate
+                MCI_rates[i] = alpha_z_decide[-1] - rate
                 MCI_grads[i, -1] = 1
                 MCI_grads[i, -2] = -1.0 * lambda_j * grad_j
 
         return MCI_rates, MCI_grads
 
-    def MCE_rates(self, x):
+    def MCE_rates(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
         ----------
-        x : numpy array of length n_systems + 1
-            allocation for each system and estimated convergence rate
+        alpha_z_decide : numpy array
+            A feasible solution for the optimization problem.
 
         Returns
         -------
@@ -1604,14 +1601,14 @@ class IMOSCORE(MOSCORE):
         tol = 10**-50
         n_MCE = len(self.M_star)
         MCE_rates = np.zeros(n_MCE)
-        MCE_grads = np.zeros([n_MCE, len(x)])
+        MCE_grads = np.zeros([n_MCE, len(alpha_z_decide)])
 
         for k in range(n_MCE):
             i = int(self.M_star[k, 0])
             j = int(self.M_star[k, 1])
 
-            if (x[i] < tol or x[j] < tol):
-                rate = x[-1]
+            if (alpha_z_decide[i] < tol or alpha_z_decide[j] < tol):
+                rate = alpha_z_decide[-1]
                 grad_i = 0
                 grad_j = 0
             else:
@@ -1629,11 +1626,11 @@ class IMOSCORE(MOSCORE):
                 # TODO: vectorize.
                 for m in range(self.n_objectives):
                     if obj_i[m] > obj_j[m]:
-                        rate = rate + (x[i] * x[j] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m]))
-                        grad_i = grad_i + (x[j]**2 * cov_i[m, m] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m])**2)
-                        grad_j = grad_j + (x[i]**2 * cov_j[m, m] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m])**2)
+                        rate = rate + (alpha_z_decide[i] * alpha_z_decide[j] * (obj_i[m] - obj_j[m])**2) / (2 * (alpha_z_decide[j] * cov_i[m, m] + alpha_z_decide[i] * cov_j[m, m]))
+                        grad_i = grad_i + (alpha_z_decide[j]**2 * cov_i[m, m] * (obj_i[m] - obj_j[m])**2) / (2 * (alpha_z_decide[j] * cov_i[m, m] + alpha_z_decide[i] * cov_j[m, m])**2)
+                        grad_j = grad_j + (alpha_z_decide[i]**2 * cov_j[m, m] * (obj_i[m] - obj_j[m])**2) / (2 * (alpha_z_decide[j] * cov_i[m, m] + alpha_z_decide[i] * cov_j[m, m])**2)
 
-                rate = x[-1] - rate
+                rate = alpha_z_decide[-1] - rate
 
             MCE_rates[k] = rate
             MCE_grads[k, i] = -1 * grad_i
@@ -1642,15 +1639,13 @@ class IMOSCORE(MOSCORE):
         return MCE_rates, MCE_grads
 
 
-def calc_brute_force_rate(alphas, systems):
+def calc_brute_force_rate(alpha, systems):
     """Calculate the brute force rate of an allocation given a MORS problem.
 
     Parameters
     ----------
-    alphas : list of float
-        An initial simulation allocation which sets the starting point for
-        determining the optimal allocation. Length must be equal to the
-        number of systems.
+    alpha : list of float
+        A simulation allocation. Length must be equal to the number of systems.
 
     systems : dict
         ``"obj"``:
@@ -1674,19 +1669,17 @@ def calc_brute_force_rate(alphas, systems):
         Brute force convergence rate associated with alphas.
     """
     bf_problem = BruteForce(systems=systems)
-    z = bf_problem.calc_rate(alphas=alphas)
+    z = bf_problem.calc_rate(alpha_decide=alpha)
     return z
 
 
-def calc_phantom_rate(alphas, systems):
+def calc_phantom_rate(alpha, systems):
     """Calculate the phantom rate of an allocation given a MORS problem.
 
     Parameters
     ----------
-    alphas : list of float
-        An initial simulation allocation which sets the starting point for
-        determining the optimal allocation. Length must be equal to the
-        number of systems.
+    alpha : list of float
+        A simulation allocation. Length must be equal to the number of systems.
 
     systems : dict
         ``"obj"``:
@@ -1710,19 +1703,17 @@ def calc_phantom_rate(alphas, systems):
         Phantom convergence rate associated with alphas.
     """
     phantom_problem = Phantom(systems=systems)
-    z = phantom_problem.calc_rate(alphas=alphas)
+    z = phantom_problem.calc_rate(alpha_decide=alpha)
     return z
 
 
-def calc_moscore_rate(alphas, systems):
+def calc_moscore_rate(alpha, systems):
     """Calculate the MOSCORE rate of an allocation given a MORS problem.
 
     Parameters
     ----------
-    alphas : list of float
-        An initial simulation allocation which sets the starting point for
-        determining the optimal allocation. Length must be equal to the
-        number of systems.
+    alpha : list of float
+        A simulation allocation. Length must be equal to the number of systems.
 
     systems : dict
         ``"obj"``:
@@ -1748,22 +1739,20 @@ def calc_moscore_rate(alphas, systems):
     score_problem = MOSCORE(systems=systems)
     # Convert alpha allocation into alpha vector for optimization problem
     # Get the allocations from the Pareto systems.
-    alpha_opt_pareto = [alphas[score_problem.systems["pareto_indices"][idx]] for idx in range(score_problem.n_paretos)]
+    alpha_decide_pareto = [alpha[score_problem.systems["pareto_indices"][idx]] for idx in range(score_problem.n_paretos)]
     # Append the proportion of the (unity) allocation allocated to non-Pareto systems.
-    alpha_opt = alpha_opt_pareto + [1 - np.sum(alpha_opt_pareto)]
-    z = score_problem.calc_rate(alphas=alpha_opt)
+    alpha_decide = alpha_decide_pareto + [1 - np.sum(alpha_decide_pareto)]
+    z = score_problem.calc_rate(alpha=alpha_decide)
     return z
 
 
-def calc_imoscore_rate(alphas, systems):
+def calc_imoscore_rate(alpha, systems):
     """Calculate the IMOSCORE rate of an allocation given a MORS problem.
 
     Parameters
     ----------
-    alphas : list of float
-        An initial simulation allocation which sets the starting point for
-        determining the optimal allocation. Length must be equal to the
-        number of systems.
+    alpha : list of float
+        A simulation allocation. Length must be equal to the number of systems.
 
     systems : dict
         ``"obj"``:
@@ -1789,8 +1778,8 @@ def calc_imoscore_rate(alphas, systems):
     iscore_problem = IMOSCORE(systems=systems)
     # Convert alpha allocation into alpha vector for optimization problem
     # Get the allocations from the Pareto systems.
-    alpha_opt_pareto = [alphas[iscore_problem.systems["pareto_indices"][idx]] for idx in range(iscore_problem.n_paretos)]
+    alpha_decide_pareto = [alpha[iscore_problem.systems["pareto_indices"][idx]] for idx in range(iscore_problem.n_paretos)]
     # Append the proportion of the (unity) allocation allocated to non-Pareto systems.
-    alpha_opt = alpha_opt_pareto + [1 - np.sum(alpha_opt_pareto)]
-    z = iscore_problem.calc_rate(alphas=alpha_opt)
+    alpha_decide = alpha_decide_pareto + [1 - np.sum(alpha_decide_pareto)]
+    z = iscore_problem.calc_rate(alpha_decide=alpha_decide)
     return z

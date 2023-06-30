@@ -77,8 +77,8 @@ for problem_idx in range(n_problems):
         toc = time.perf_counter()
         solve_time = toc - tic
         if r <= 10:  # Skip brute force if too expensive.
-            z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=random_problem)
-        z_ph = calc_phantom_rate(alphas=alpha_hat, systems=random_problem)
+            z_bf = calc_brute_force_rate(alpha=alpha_hat, systems=random_problem)
+        z_ph = calc_phantom_rate(alpha=alpha_hat, systems=random_problem)
 
         # Record statistics.
         solve_times[rule].append(solve_time)
