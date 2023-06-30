@@ -164,7 +164,7 @@ def score_four_d_plus(phantom_objectives,obj_j, cov_j):
             }
 
     
-    n_obj = len(phantom_objectives)
+    n_objectives = len(phantom_objectives)
     
     inv_cov_j = np.linalg.inv(cov_j)
     
@@ -172,7 +172,7 @@ def score_four_d_plus(phantom_objectives,obj_j, cov_j):
     
     q = matrix(-1*inv_cov_j@obj_j)
     
-    G = matrix(np.identity(n_obj))
+    G = matrix(np.identity(n_objectives))
     
     h = matrix(phantom_objectives)
     

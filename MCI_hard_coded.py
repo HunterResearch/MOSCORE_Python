@@ -459,7 +459,7 @@ def MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_obj, phantom_
     #zero var could break the optimizer, replace with tiny var
     phantom_var[phantom_var==0] = 10**-100
     
-    n_obj = len(obj_j)
+    n_objectives = len(obj_j)
     
     inv_cov_j = np.linalg.inv(cov_j)
     
@@ -469,16 +469,16 @@ def MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_obj, phantom_
     
     q = -1*alpha_j*inv_cov_j @ obj_j
     
-    G = np.identity(n_obj)
+    G = np.identity(n_objectives)
     
-    h = np.ones(n_obj)*np.inf
+    h = np.ones(n_objectives)*np.inf
     
     #add phantom data, looping through objectives
     
     indices = []
     
-    for p in range(n_obj):
-        G_vector = np.zeros([n_obj,1])
+    for p in range(n_objectives):
+        G_vector = np.zeros([n_objectives,1])
         if phantom_obj[p]< np.inf:
             indices = indices + [p]
             G_vector[p] = -1.0
@@ -498,19 +498,19 @@ def MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_obj, phantom_
     solvers.options['show_progress'] = False 
     x_star = np.array(solvers.qp(P,q,G,h)['x']).flatten()
 
-    rate = 0.5*alpha_j*(obj_j - x_star[0:n_obj]).transpose() @ inv_cov_j @ (obj_j - x_star[0:n_obj])
+    rate = 0.5*alpha_j*(obj_j - x_star[0:n_objectives]).transpose() @ inv_cov_j @ (obj_j - x_star[0:n_objectives])
     
-    grad_j = 0.5*( x_star[0:n_obj]-obj_j).transpose() @ inv_cov_j @ ( x_star[0:n_obj]-obj_j)
+    grad_j = 0.5*( x_star[0:n_objectives]-obj_j).transpose() @ inv_cov_j @ ( x_star[0:n_objectives]-obj_j)
     
 
-    phantom_grads = np.zeros(n_obj)
+    phantom_grads = np.zeros(n_objectives)
     
       
     
     for o in range(len(indices)):
         ind = indices[o]
-        rate =  rate + 0.5*phantom_alphas[ind]*(x_star[n_obj + o] - phantom_obj[ind]).transpose() * (phantom_var[ind]**-1) *(x_star[n_obj + o] - phantom_obj[ind])
-        phantom_grads[o] = 0.5*(x_star[n_obj + o] - phantom_obj[ind]).transpose() * (phantom_var[ind]**-1) *(x_star[n_obj + o] - phantom_obj[ind])
+        rate =  rate + 0.5*phantom_alphas[ind]*(x_star[n_objectives + o] - phantom_obj[ind]).transpose() * (phantom_var[ind]**-1) *(x_star[n_objectives + o] - phantom_obj[ind])
+        phantom_grads[o] = 0.5*(x_star[n_objectives + o] - phantom_obj[ind]).transpose() * (phantom_var[ind]**-1) *(x_star[n_objectives + o] - phantom_obj[ind])
         
     return rate, grad_j, phantom_grads
 

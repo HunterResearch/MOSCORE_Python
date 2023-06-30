@@ -19,7 +19,7 @@ calc_min_paired_obj_gap : function
 import numpy as np
 import itertools as it
 
-import pymoso.chnutils as moso_utils
+# import pymoso.chnutils as moso_utils
 # from pymoso.chnutils import do_work
 # from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream
 
@@ -146,7 +146,7 @@ def create_allocation_problem(obj_vals, obj_vars):
     """
 
     # TODO: Check for positive semidefinite?
-    # Replacing the following line with call to is_pareto_efficient(). 
+    # Replacing the following line with call to is_pareto_efficient().
     # pareto_indices = list(moso_utils.get_nondom(obj_vals))
     n_systems = len(obj_vals)
     obj_vals_matrix = np.array([list(obj_vals[system]) for system in range(n_systems)])
@@ -260,7 +260,7 @@ def sweep(paretos):
 
 
 def calc_min_obj_gap(systems):
-    """Calculate the minimum gap between objectives of any pareto 
+    """Calculate the minimum gap between objectives of any pareto
     and any pareto/nonpareto system.
 
     Parameters
@@ -299,7 +299,7 @@ def calc_min_obj_gap(systems):
 def calc_min_paired_obj_gap(obj_vals, group1, group2):
     """Calculate the minimum gap between objectives of any pair between
     two groups of systems.
-    
+
     Parameters
     ----------
     obj_vals : numpy array of size (n_systems, n_obj).

@@ -224,7 +224,7 @@ class ConvexOptAllocAlg(object):
         A list of pareto systems ordered by the first objective.
         ``"non_pareto_indices"``
         A list of non-pareto systems ordered by the first objective.
-    n_obj : int
+    n_objectives : int
         Number of objectives
     n_systems : int
         Number of systems.
@@ -234,7 +234,7 @@ class ConvexOptAllocAlg(object):
     def __init__(self, systems):
         self.systems = systems
         # Extract number of objectives, number of systems, and number of pareto systems.
-        self.n_obj = len(systems["obj"][0])
+        self.n_objectives = len(systems["obj"][0])
         self.n_systems = len(systems["obj"])
         self.n_paretos = len(systems["pareto_indices"])
         # The following attribute may be overwritten in the __init__ function
@@ -348,7 +348,7 @@ class ConvexOptAllocAlg(object):
         Returns
         -------
         rates : numpy array
-            The value of z(estimated convergence rate) minus the convergence rate upper bound associated with each constraint.
+            The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each constraint.
         jacobian : 2d numpy array
             The jacobian of the rates with respect to the vector alpha (including the final element z).
         """
@@ -472,8 +472,8 @@ class ConvexOptAllocAlg(object):
         #                    bounds=self.bounds,
         #                    constraints=[self.TRCON_equality_constraint, self.TRCON_nonlinear_constraint]
         #                    )
-                           # options = {'disp': False}
-                           # options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000}
+        #                    options = {'disp': False}
+        #                    options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000}
         # print("Optimization success?", res.success)
         # print("Termination status:", res.status)
         # print("Termination message:", res.message)
@@ -519,14 +519,14 @@ class ConvexOptAllocAlg(object):
         #                                     'ftol': 1e-12,
         #                                     'disp': True}
         #                            )
-        #         # res = opt.minimize(fun=self.objective_function,
-                #     x0=res.x,
-                #     method='trust-constr',
-                #     jac=True,
-                #     hess=self.hessian_zero,
-                #     bounds=self.bounds,
-                #     constraints=[self.equality_constraint, self.nonlinear_constraint]
-                #     )
+        #         res = opt.minimize(fun=self.objective_function,
+        #             x0=res.x,
+        #             method='trust-constr',
+        #             jac=True,
+        #             hess=self.hessian_zero,
+        #             bounds=self.bounds,
+        #             constraints=[self.equality_constraint, self.nonlinear_constraint]
+        #           )
         alpha, z = self.post_process(opt_sol=res.x)
         return alpha, z
 
@@ -601,7 +601,7 @@ class BruteForce(ConvexOptAllocAlg):
         A list of pareto systems ordered by the first objective.
         ``"non_pareto_indices"``
         A list of non-pareto systems ordered by the first objective.
-    kappas : numpy list (length n_obj^n_paretos) of tuples (length n_paretos)
+    kappas : numpy list (length n_objectives^n_paretos) of tuples (length n_paretos)
         each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
     """
     def __init__(self, systems):
@@ -610,7 +610,7 @@ class BruteForce(ConvexOptAllocAlg):
         # corresponding to objective indices.
         # To exclude a pareto, a non-pareto must dominate the pareto with number equal to the kappa index
         # along objective equal to the kappa value, for some kappa.
-        v = range(self.n_obj)
+        v = range(self.n_objectives)
         self.kappas = list(it.product(v, repeat=self.n_paretos))
 
     def MCE_rates(self, x):
@@ -654,7 +654,7 @@ class BruteForce(ConvexOptAllocAlg):
                         d_rate_d_i = 0
                         d_rate_d_j = 0
                     else:
-                        if self.n_obj == 2:  # 2-objective case.
+                        if self.n_objectives == 2:  # 2-objective case.
                             rate, d_rate_d_i, d_rate_d_j = MCE_2d(aI=x[i],
                                                                   aJ=x[j],
                                                                   Iobj=self.systems["obj"][i],
@@ -664,7 +664,7 @@ class BruteForce(ConvexOptAllocAlg):
                                                                   inv_var_i=self.systems["inv_var"][i],
                                                                   inv_var_j=self.systems["inv_var"][j]
                                                                   )
-                        elif self.n_obj == 3:  # 3-objective case.
+                        elif self.n_objectives == 3:  # 3-objective case.
                             rate, d_rate_d_i, d_rate_d_j = MCE_3d(aI=x[i],
                                                                   aJ=x[j],
                                                                   Iobj=self.systems["obj"][i],
@@ -681,7 +681,7 @@ class BruteForce(ConvexOptAllocAlg):
                                                                            inv_var_i=self.systems["inv_var"][i],
                                                                            obj_j=self.systems["obj"][j],
                                                                            inv_var_j=self.systems["inv_var"][j],
-                                                                           n_obj=self.n_obj
+                                                                           n_objectives=self.n_objectives
                                                                            )
                         # print("actual MCE = ", rate)
                         rate = x[-1] - rate
@@ -752,7 +752,7 @@ class BruteForce(ConvexOptAllocAlg):
                     P = linalg.block_diag(x[j] * inv_var_j, np.diag(pareto_alphas * (1 / relevant_variances)))
                     q = matrix(-1 * np.append(x[j] * inv_var_j @ obj_j,
                                               pareto_alphas * 1 / relevant_variances * relevant_objectives))
-                    G_left_side = np.zeros([self.n_paretos, self.n_obj])
+                    G_left_side = np.zeros([self.n_paretos, self.n_objectives])
                     G_left_side[range(self.n_paretos), kap] = 1
                     G = matrix(np.append(G_left_side, -1 * np.identity(self.n_paretos), axis=1))
                     h = matrix(np.zeros(self.n_paretos))
@@ -763,10 +763,10 @@ class BruteForce(ConvexOptAllocAlg):
                     x_star = np.array(solvers.qp(P, q, G, h)['x']).flatten()
 
                     # Reformat results of optimization.
-                    rate = 0.5 * x[j] * (obj_j - x_star[0:self.n_obj]) @ inv_var_j @ (obj_j - x_star[0:self.n_obj]) +\
-                        0.5 * np.sum(pareto_alphas * (x_star[self.n_obj:] - relevant_objectives) * (1 / relevant_variances) * (x_star[self.n_obj:] - relevant_objectives))
-                    MCI_grad[count, j] = -1.0 * 0.5 * (obj_j - x_star[0:self.n_obj]) @ inv_var_j @ (obj_j - x_star[0:self.n_obj])
-                    MCI_grad[count, self.systems['pareto_indices']] = -1.0 * 0.5 * (x_star[self.n_obj:] - relevant_objectives) * (1 / relevant_variances) * (x_star[self.n_obj:] - relevant_objectives)
+                    rate = 0.5 * x[j] * (obj_j - x_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - x_star[0:self.n_objectives]) +\
+                        0.5 * np.sum(pareto_alphas * (x_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (x_star[self.n_objectives:] - relevant_objectives))
+                    MCI_grad[count, j] = -1.0 * 0.5 * (obj_j - x_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - x_star[0:self.n_objectives])
+                    MCI_grad[count, self.systems['pareto_indices']] = -1.0 * 0.5 * (x_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (x_star[self.n_objectives:] - relevant_objectives)
                     MCI_rates[count] = x[-1] - rate
 
                 count = count + 1
@@ -802,15 +802,15 @@ class Phantom(BruteForce):
         super().__init__(systems=systems)
 
         # Get array of pareto values for the phantom finder.
-        pareto_array = np.zeros([self.n_paretos, self.n_obj])
+        pareto_array = np.zeros([self.n_paretos, self.n_objectives])
         for i in range(self.n_paretos):
             pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
         # Get the phantom systems.
-        phantom_values = find_phantoms(pareto_array, self.n_obj)
+        phantom_values = find_phantoms(pareto_array, self.n_objectives)
 
         # Sort the phantom system.
-        for i in range(self.n_obj):
-            phantom_values = phantom_values[(phantom_values[:, self.n_obj - 1 - i]).argsort(kind='mergesort')]
+        for i in range(self.n_objectives):
+            phantom_values = phantom_values[(phantom_values[:, self.n_objectives - 1 - i]).argsort(kind='mergesort')]
         self.n_phantoms = len(phantom_values)
 
         # The commented part doesn't give different results, but this makes the constraint
@@ -823,11 +823,11 @@ class Phantom(BruteForce):
         # Right now we're casting as ints for indexing, but that's a little gross.
         # Also, inf doesn't cast to intmax if you cast as int.
         # It ends up being very negative for some reason.
-        self.phantoms = np.ones([self.n_phantoms, self.n_obj]) * np.inf
+        self.phantoms = np.ones([self.n_phantoms, self.n_objectives]) * np.inf
 
         # TODO: Vectorize?
         for i in range(self.n_phantoms):
-            for j in range(self.n_obj):
+            for j in range(self.n_objectives):
                 for k in range(self.n_paretos):
                     if pareto_array[k, j] == phantom_values[i, j]:
                         self.phantoms[i, j] = systems['pareto_indices'][k]
@@ -866,15 +866,15 @@ class Phantom(BruteForce):
                     # wrt z since we initialize with zero.
                     MCI_grads[count, -1] = 1
                 else:
-                    phantom_obj = np.zeros(self.n_obj)
-                    phantom_var = np.zeros(self.n_obj)
-                    phantom_alphas = np.zeros(self.n_obj)
-                    phantom_objectives = np.array(range(self.n_obj))
-                    phantom_objective_count = self.n_obj
+                    phantom_obj = np.zeros(self.n_objectives)
+                    phantom_var = np.zeros(self.n_objectives)
+                    phantom_alphas = np.zeros(self.n_objectives)
+                    phantom_objectives = np.array(range(self.n_objectives))
+                    phantom_objective_count = self.n_objectives
                     alpha_zeros = 0
 
                     # Extract objective and variance values for the phantom pareto system.
-                    for b in range(self.n_obj):
+                    for b in range(self.n_objectives):
                         if phantom_indices[b] < np.inf:
                             pareto_system = int(phantom_indices[b])
                             phantom_obj[b] = self.systems['obj'][pareto_system][b]
@@ -963,15 +963,15 @@ class MOSCORE(Phantom):
         # The only difference is one line in the creation of the phantoms matrix.
 
         # Get array of pareto values for the phantom finder.
-        pareto_array = np.zeros([self.n_paretos, self.n_obj])
+        pareto_array = np.zeros([self.n_paretos, self.n_objectives])
         for i in range(self.n_paretos):
             pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
         # Get the phantom systems.
-        phantom_values = find_phantoms(pareto_array, self.n_obj)
+        phantom_values = find_phantoms(pareto_array, self.n_objectives)
 
         # Sort the phantom system.
-        for i in range(self.n_obj):
-            phantom_values = phantom_values[(phantom_values[:, self.n_obj - 1 - i]).argsort(kind='mergesort')]
+        for i in range(self.n_objectives):
+            phantom_values = phantom_values[(phantom_values[:, self.n_objectives - 1 - i]).argsort(kind='mergesort')]
         self.n_phantoms = len(phantom_values)
 
         # The commented part doesn't give different results, but this makes the constraint
@@ -984,11 +984,11 @@ class MOSCORE(Phantom):
         # Right now we're casting as ints for indexing, but that's a little gross.
         # Also, inf doesn't cast to intmax if you cast as int.
         # It ends up being very negative for some reason.
-        self.phantoms = np.ones([self.n_phantoms, self.n_obj]) * np.inf
+        self.phantoms = np.ones([self.n_phantoms, self.n_objectives]) * np.inf
 
         # TODO: Vectorize?
         for i in range(self.n_phantoms):
-            for j in range(self.n_obj):
+            for j in range(self.n_objectives):
                 for k in range(self.n_paretos):
                     if pareto_array[k, j] == phantom_values[i, j]:
                         self.phantoms[i, j] = k
@@ -1052,7 +1052,7 @@ class MOSCORE(Phantom):
             ???
         """
         scores = np.zeros([self.n_phantoms, self.n_systems - self.n_paretos])
-        j_star = np.zeros([self.n_phantoms * self.n_obj, 2])
+        j_star = np.zeros([self.n_phantoms * self.n_objectives, 2])
         # Note: the matlab code pre-computes several vectors for speed here
         # which I instead initialize individually.
         # This is because initializing vector v at this point, setting v_instance = v
@@ -1065,20 +1065,20 @@ class MOSCORE(Phantom):
             # gets its value. We drop objectives that are infinity in the phantom
             # and keep track of the rest of the objectives in objectives_playing.
             phantom_pareto_nums = self.phantoms[i, :]
-            objectives_playing = np.array(range(self.n_obj))[phantom_pareto_nums < np.inf]
+            objectives_playing = np.array(range(self.n_objectives))[phantom_pareto_nums < np.inf]
             phantom_pareto_nums = phantom_pareto_nums[phantom_pareto_nums < np.inf]
             # pareto_phantom_inds refers to the actual system indices.
 
-            n_obj_playing = len(objectives_playing)
+            n_objectives_playing = len(objectives_playing)
 
-            phantom_objectives = np.zeros(n_obj_playing)
+            phantom_objectives = np.zeros(n_objectives_playing)
             # Extract the objectives for the phantoms.
-            for obj in range(n_obj_playing):
+            for obj in range(n_objectives_playing):
                 phantom_pareto_ind = self.systems['pareto_indices'][int(phantom_pareto_nums[obj])]
                 phantom_objectives[obj] = self.systems['obj'][phantom_pareto_ind][objectives_playing[obj]]
 
-            j_comps = np.ones(self.n_obj) * np.inf
-            j_indices = np.ones(self.n_obj) * np.inf
+            j_comps = np.ones(self.n_objectives) * np.inf
+            j_indices = np.ones(self.n_objectives) * np.inf
             size = len(objectives_playing)
             for j in range(self.n_systems - self.n_paretos):
                 j_ind = self.systems['non_pareto_indices'][j]
@@ -1095,24 +1095,24 @@ class MOSCORE(Phantom):
                 else:
                     score, binds = score_four_d_plus(phantom_objectives, obj_j, cov_j)
 
-                j_current = np.ones(self.n_obj) * np.inf
+                j_current = np.ones(self.n_objectives) * np.inf
                 j_current[objectives_playing] = binds
                 scores[i, j] = score
 
-                for m in range(self.n_obj):
+                for m in range(self.n_objectives):
                     if j_current[m] < j_comps[m]:
                         j_comps[m] = j_current[m]
                         j_indices[m] = j
 
-            L_indices = np.ones(self.n_obj) * i
+            L_indices = np.ones(self.n_objectives) * i
 
-            # For every constraint (with n_obj rows in J_star), we want the non-pareto index
+            # For every constraint (with n_objectives rows in J_star), we want the non-pareto index
             # per objective and the phantom index
             # TODO: consider instead having one row per constraint, one column per objective
             # and separate matrices (arrays) for J indices and L indices. Or actually we wouldn't
             # need L indices I think because the J matrix would then be ordered as such.
 
-            j_star[self.n_obj * i:self.n_obj * (i + 1), :] = np.vstack((j_indices, L_indices)).T
+            j_star[self.n_objectives * i:self.n_objectives * (i + 1), :] = np.vstack((j_indices, L_indices)).T
 
         # inv_scores is the inverse of the minimum of each column in scores, resulting in one
         # value per non-pareto system.
@@ -1136,14 +1136,14 @@ class MOSCORE(Phantom):
         """
         scores = np.zeros([self.n_paretos, self.n_paretos])
         all_scores = np.zeros(self.n_paretos * (self.n_paretos - 1))
-        M_star = np.zeros([self.n_paretos * self.n_obj, 2])
+        M_star = np.zeros([self.n_paretos * self.n_objectives, 2])
 
         count = 0
         for i in range(self.n_paretos):
             i_ind = self.systems['pareto_indices'][i]
             obj_i = self.systems['obj'][i_ind]
-            j_comps = np.ones(self.n_obj) * np.inf
-            j_inds = np.ones(self.n_obj) * np.inf
+            j_comps = np.ones(self.n_objectives) * np.inf
+            j_inds = np.ones(self.n_objectives) * np.inf
 
             for j in range(self.n_paretos):
                 if i != j:
@@ -1152,11 +1152,11 @@ class MOSCORE(Phantom):
                     cov_j = self.systems['var'][j_ind]
 
                     # TODO: Hard code solutions for <4 objectives.
-                    if self.n_obj == 1:
+                    if self.n_objectives == 1:
                         score, binds = SCORE_1d(obj_i, obj_j, cov_j)
-                    elif self.n_obj == 2:
+                    elif self.n_objectives == 2:
                         score, binds = SCORE_2d(obj_i, obj_j, cov_j)
-                    elif self.n_obj == 3:
+                    elif self.n_objectives == 3:
                         score, binds = SCORE_3d(obj_i, obj_j, cov_j)
                     else:
                         score, binds = score, binds = score_four_d_plus(obj_i, obj_j, cov_j)
@@ -1168,13 +1168,13 @@ class MOSCORE(Phantom):
 
                     j_current = binds
                     # TODO: Vectorize?
-                    for m in range(self.n_obj):
+                    for m in range(self.n_objectives):
                         if j_current[m] < j_comps[m]:
                             j_comps[m] = j_current[m]
                             j_inds[m] = j
 
-            L_inds = np.ones(self.n_obj) * i
-            M_star[self.n_obj * i:self.n_obj * (i + 1), :] = np.vstack((j_inds, L_inds)).T
+            L_inds = np.ones(self.n_objectives) * i
+            M_star[self.n_objectives * i:self.n_objectives * (i + 1), :] = np.vstack((j_inds, L_inds)).T
 
         # TODO: Not sure why we're doing this, but we remove the rows of M_star where
         # the first column is infinity.
@@ -1233,14 +1233,14 @@ class MOSCORE(Phantom):
                 MCI_rates[i] = x[-1]
                 MCI_grads[i, -1] = 1
             else:
-                phantom_objectives = np.zeros(self.n_obj)
-                phantom_vars = np.zeros(self.n_obj)
-                phantom_alphas = np.zeros(self.n_obj)
-                objectives_playing = np.array(range(self.n_obj))
+                phantom_objectives = np.zeros(self.n_objectives)
+                phantom_vars = np.zeros(self.n_objectives)
+                phantom_alphas = np.zeros(self.n_objectives)
+                objectives_playing = np.array(range(self.n_objectives))
                 alpha_zeros = 0
-                n_objectives_playing = self.n_obj
+                n_objectives_playing = self.n_objectives
 
-                for b in range(self.n_obj):
+                for b in range(self.n_objectives):
                     if phantom_pareto_inds[b] < np.inf:
                         pareto_system_num = int(phantom_pareto_inds[b])
                         pareto_system_ind = self.systems['pareto_indices'][pareto_system_num]
@@ -1324,7 +1324,7 @@ class MOSCORE(Phantom):
                 inv_cov_j = self.systems['inv_var'][j_ind]
 
                 # TODO: Hard code solutions for <4 dimensions.
-                if self.n_obj == 2:
+                if self.n_objectives == 2:
                     rate, grad_i, grad_j = MCE_2d(aI=x[i],
                                                   aJ=x[j],
                                                   Iobj=obj_i,
@@ -1334,7 +1334,7 @@ class MOSCORE(Phantom):
                                                   inv_var_i=inv_cov_i,
                                                   inv_var_j=inv_cov_j
                                                   )
-                elif self.n_obj == 3:
+                elif self.n_objectives == 3:
                     rate, grad_i, grad_j = MCE_3d(aI=x[i],
                                                   aJ=x[j],
                                                   Iobj=obj_i,
@@ -1351,7 +1351,7 @@ class MOSCORE(Phantom):
                                                            inv_var_i=inv_cov_i,
                                                            obj_j=obj_j,
                                                            inv_var_j=inv_cov_j,
-                                                           n_obj=self.n_obj
+                                                           n_objectives=self.n_objectives
                                                            )
                 rate = x[-1] - rate
 
@@ -1406,20 +1406,20 @@ class IMOSCORE(MOSCORE):
             ???
         """
         scores = np.zeros([self.n_phantoms, self.n_systems - self.n_paretos])
-        j_star = np.zeros([self.n_phantoms * self.n_obj, 2])
+        j_star = np.zeros([self.n_phantoms * self.n_objectives, 2])
 
         for i in range(self.n_phantoms):
             phantom_indices = self.phantoms[i, :]
-            phantom_objs = np.ones(self.n_obj) * np.inf
+            phantom_objs = np.ones(self.n_objectives) * np.inf
 
-            for b in range(self.n_obj):
+            for b in range(self.n_objectives):
                 if phantom_indices[b] < np.inf:
                     pareto_num = int(phantom_indices[b])
                     pareto_system = self.systems['pareto_indices'][pareto_num]
                     phantom_objs[b] = self.systems['obj'][pareto_system][b]
 
-            j_comps = np.ones(self.n_obj) * np.inf
-            j_inds = np.ones(self.n_obj) * np.inf
+            j_comps = np.ones(self.n_objectives) * np.inf
+            j_inds = np.ones(self.n_objectives) * np.inf
 
             for j in range(self.n_systems - self.n_paretos):
                 j_ind = self.systems['non_pareto_indices'][j]
@@ -1427,8 +1427,8 @@ class IMOSCORE(MOSCORE):
                 cov_j = self.systems['var'][j_ind]
 
                 score = 0
-                binds = np.ones(self.n_obj) * np.inf
-                for m in range(self.n_obj):
+                binds = np.ones(self.n_objectives) * np.inf
+                for m in range(self.n_objectives):
                     if obj_j[m] > phantom_objs[m]:
                         score = score + (phantom_objs[m] - obj_j[m])**2 / (2 * cov_j[m, m])
                         binds[m] = 1
@@ -1438,13 +1438,13 @@ class IMOSCORE(MOSCORE):
 
                 # Determine if this non-pareto is closer than another
                 # TODO: vectorize.
-                for m in range(self.n_obj):
+                for m in range(self.n_objectives):
                     if j_current[m] < j_comps[m]:
                         j_comps[m] = j_current[m]
                         j_inds[m] = j
 
-            L_indices = np.ones(self.n_obj) * i
-            j_star[i * self.n_obj:(i + 1) * self.n_obj, :] = np.vstack((j_inds, L_indices)).T
+            L_indices = np.ones(self.n_objectives) * i
+            j_star[i * self.n_objectives:(i + 1) * self.n_objectives, :] = np.vstack((j_inds, L_indices)).T
 
         inv_scores = 1 / np.minimum.reduce(scores)
         lambdas = inv_scores / sum(inv_scores)
@@ -1464,7 +1464,7 @@ class IMOSCORE(MOSCORE):
         """
         scores = np.zeros([self.n_paretos, self.n_paretos])
         all_scores = np.zeros(self.n_paretos * (self.n_paretos - 1))
-        M_star = np.zeros([self.n_paretos * self.n_obj, 2])
+        M_star = np.zeros([self.n_paretos * self.n_objectives, 2])
 
         count = 0
 
@@ -1472,8 +1472,8 @@ class IMOSCORE(MOSCORE):
             i_ind = self.systems['pareto_indices'][i]
             obj_i = self.systems['obj'][i_ind]
 
-            j_comps = np.ones(self.n_obj) * np.inf
-            j_inds = np.ones(self.n_obj) * np.inf
+            j_comps = np.ones(self.n_objectives) * np.inf
+            j_inds = np.ones(self.n_objectives) * np.inf
 
             for j in range(self.n_paretos):
                 if i != j:
@@ -1482,8 +1482,8 @@ class IMOSCORE(MOSCORE):
                     cov_j = self.systems['var'][j_ind]
 
                     score = 0
-                    binds = np.ones(self.n_obj) * np.inf
-                    for m in range(self.n_obj):
+                    binds = np.ones(self.n_objectives) * np.inf
+                    for m in range(self.n_objectives):
                         if obj_j[m] > obj_i[m]:
                             score = score + (obj_i[m] - obj_j[m])**2 / (2 * cov_j[m, m])
                             binds[m] = 1
@@ -1494,13 +1494,13 @@ class IMOSCORE(MOSCORE):
 
                     count = count + 1
                     # TODO: vectorize?
-                    for m in range(self.n_obj):
+                    for m in range(self.n_objectives):
                         if j_current[m] < j_comps[m]:
                             j_comps[m] = j_current[m]
                             j_inds[m] = j
 
-            L_inds = np.ones(self.n_obj) * i
-            M_star[self.n_obj * i:self.n_obj * (i + 1), :] = np.vstack((j_inds, L_inds)).T
+            L_inds = np.ones(self.n_objectives) * i
+            M_star[self.n_objectives * i:self.n_objectives * (i + 1), :] = np.vstack((j_inds, L_inds)).T
 
         # TODO not sure why we're doing this, but we remove the rows of M_star where
         # the first column is infinity.
@@ -1559,11 +1559,11 @@ class IMOSCORE(MOSCORE):
                 MCI_grads[i, -1] = 1
                 # All the grads aside from z are zero here, already zero from initialization
             else:
-                phantom_objectives = np.ones(self.n_obj) * np.inf
-                phantom_vars = np.zeros(self.n_obj)
-                phantom_alphas = np.zeros(self.n_obj)
+                phantom_objectives = np.ones(self.n_objectives) * np.inf
+                phantom_vars = np.zeros(self.n_objectives)
+                phantom_alphas = np.zeros(self.n_objectives)
 
-                for b in range(self.n_obj):
+                for b in range(self.n_objectives):
                     if phantom_pareto_nums[b] < np.inf:
                         phantom_pareto_num = int(phantom_pareto_nums[b])
                         phantom_pareto_ind = self.systems['pareto_indices'][phantom_pareto_num]
@@ -1573,7 +1573,7 @@ class IMOSCORE(MOSCORE):
 
                 rate = 0
                 grad_j = 0
-                for m in range(self.n_obj):
+                for m in range(self.n_objectives):
                     if obj_j[m] > phantom_objectives[m]:
                         rate = rate + (phantom_alphas[m] * alpha_j * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m]))
                         grad_j = grad_j + (phantom_alphas[m]**2 * cov_j[m, m] * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m])**2)
@@ -1627,7 +1627,7 @@ class IMOSCORE(MOSCORE):
                 grad_j = 0
 
                 # TODO: vectorize.
-                for m in range(self.n_obj):
+                for m in range(self.n_objectives):
                     if obj_i[m] > obj_j[m]:
                         rate = rate + (x[i] * x[j] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m]))
                         grad_i = grad_i + (x[j]**2 * cov_i[m, m] * (obj_i[m] - obj_j[m])**2) / (2 * (x[j] * cov_i[m, m] + x[i] * cov_j[m, m])**2)

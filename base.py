@@ -20,8 +20,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
-# import copy
-# import multiprocessing as mp
 
 import pymoso.chnutils as chnutils
 from mrg32k3a.mrg32k3a import MRG32k3a
@@ -35,7 +33,7 @@ class MORS_Problem(object):
 
     Attributes
     ----------
-    n_obj : int
+    n_objectives : int
         number of objectives
 
     systems : list
@@ -104,10 +102,10 @@ class MORS_Problem(object):
         """Reset sample statistics for all systems.
         """
         self.sample_sizes = [0 for _ in range(self.n_systems)]
-        self.sums = [[0 for _ in range(self.n_obj)] for _ in range(self.n_systems)]
-        self.sums_of_products = [[[0 for _ in range(self.n_obj)] for _ in range(self.n_obj)] for _ in range(self.n_systems)]
-        self.sample_means = [[None for _ in range(self.n_obj)] for _ in range(self.n_systems)]
-        self.sample_covs = [[[None for _ in range(self.n_obj)] for _ in range(self.n_obj)] for _ in range(self.n_systems)]
+        self.sums = [[0 for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
+        self.sums_of_products = [[[0 for _ in range(self.n_objectives)] for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
+        self.sample_means = [[None for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
+        self.sample_covs = [[[None for _ in range(self.n_objectives)] for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
 
     def update_statistics(self, system_indices, objs):
         """Update statistics for systems given a new batch of simulation outputs.
@@ -127,12 +125,12 @@ class MORS_Problem(object):
             # Increase sample size.
             self.sample_sizes[system_idx] += 1
             # Add outputs to running sums and recompute sample means.
-            for obj_idx in range(self.n_obj):
+            for obj_idx in range(self.n_objectives):
                 self.sums[system_idx][obj_idx] += objs[idx][obj_idx]
                 self.sample_means[system_idx][obj_idx] = self.sums[system_idx][obj_idx] / self.sample_sizes[system_idx]
             # Add outputs to running sums of products and recompute sample variance-covariance matrix.
-            for obj_idx1 in range(self.n_obj):
-                for obj_idx2 in range(self.n_obj):
+            for obj_idx1 in range(self.n_objectives):
+                for obj_idx2 in range(self.n_objectives):
                     self.sums_of_products[system_idx][obj_idx1][obj_idx2] += objs[idx][obj_idx1] * objs[idx][obj_idx2]
                     if self.sample_sizes[system_idx] > 1:
                         # From https://www.randomservices.org/random/sample/Covariance.html,
@@ -159,8 +157,8 @@ class MORS_Problem(object):
         # Assume the true_means and true_vars are specified, as in our test examples.
         # As default behavior, generate observations from a multivariate normal distribution.
         system_idx = self.systems.index(x)
-        obj = self.rng.mvnormalvariate(mean_vec = self.true_means[system_idx],
-                                       cov = self.true_covs[system_idx],
+        obj = self.rng.mvnormalvariate(mean_vec=self.true_means[system_idx],
+                                       cov=self.true_covs[system_idx],
                                        factorized=False)
         return tuple(obj)
 
@@ -296,8 +294,8 @@ class MORS_Solver(object):
             list of float, the time spent calculating the allocation distribution at each step in the solver
 
         """
-        if self.n0 < problem.n_obj + 1:
-            raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
+        if self.n0 < problem.n_objectives + 1:
+            raise ValueError("n0 has to be greater than or equal to n_objectives plus 1 to guarantee positive definite\
                   sample variance-covariance matrices.")
 
         # No warm start solution for first call to smart_allocate().
@@ -363,16 +361,16 @@ class MORS_Solver(object):
                     toc = time.perf_counter()
                     # In subsequent iterations, use previous alpha_hat as warm start
                     warm_start = alpha_hat
-                    
+
                     # Compare recommended allocation to equal allocation, in case solver struggled.
                     alpha_eq = np.array([1 / problem.n_systems for _ in range(problem.n_systems)])
                     # If 4+ objectives or 100+ systems, use z^imo for comparisons. Otherwise use z^mo.
-                    if problem.n_obj >= 4 or problem.n_systems >= 100:
+                    if problem.n_objectives >= 4 or problem.n_systems >= 100:
                         z_alpha_hat = calc_imoscore_rate(alphas=alpha_hat, systems=allocation_problem)
                         z_alpha_eq = calc_imoscore_rate(alphas=alpha_eq, systems=allocation_problem)
                     else:
                         z_alpha_hat = calc_moscore_rate(alphas=alpha_hat, systems=allocation_problem)
-                        z_alpha_eq = calc_moscore_rate(alphas=alpha_eq, systems=allocation_problem) 
+                        z_alpha_eq = calc_moscore_rate(alphas=alpha_eq, systems=allocation_problem)
                     # Use equal allocation if it's better than what solver recommends.
                     if z_alpha_hat < z_alpha_eq:
                         alpha_hat = alpha_eq
@@ -667,7 +665,7 @@ class MORS_Tester(object):
         with open(self.file_name_path + ".txt", "w+") as file:
             file.write("The file " + self.file_name_path + ".pickle contains the MORS Tester object for the following experiment: \n")
             file.write("\nMORS Problem:\n")
-            file.write(f"\tnumber of objectives = {self.problem.n_obj}\n")
+            file.write(f"\tnumber of objectives = {self.problem.n_objectives}\n")
             file.write(f"\tnumber of systems = {self.problem.n_systems}\n")
             file.write("\n")
             for system_idx in range(self.problem.n_systems):
