@@ -381,13 +381,13 @@ class ConvexOptAllocAlg(object):
         # tol = 10**-12
         # alpha_z_decide[0:-1][alpha_z_decide[0:-1] < tol] = 0
         # Compose MCE and MCI constraint values and gradients.
-        MCE_rates, MCE_grads = self.MCE_rates(alpha_z_decide)
-        MCI_rates, MCI_grads = self.MCI_rates(alpha_z_decide)
-        rates = np.append(MCE_rates, MCI_rates, axis=0)
-        grads = np.append(MCE_grads, MCI_grads, axis=0)
+        MCE_rate_constraints, MCE_rate_constraints_grads = self.eval_MCE_rate_constraints(alpha_z_decide)
+        MCI_rate_constraints, MCI_rate_constraints_grads = self.eval_MCI_rate_constraints(alpha_z_decide)
+        rates = np.append(MCE_rate_constraints, MCI_rate_constraints, axis=0)
+        grads = np.append(MCE_rate_constraints_grads, MCI_rate_constraints_grads, axis=0)
         return rates, grads
 
-    def MCE_rates(self, alpha_z_decide):
+    def eval_MCE_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -397,14 +397,14 @@ class ConvexOptAllocAlg(object):
 
         Returns
         -------
-        MCE_rates : numpy array
+        MCE_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
-        MCE_grads : 2d numy array
+        MCE_rate_constraints_grads : 2d numy array
             The jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
         """
         raise NotImplementedError
 
-    def MCI_rates(self, alpha_z_decide):
+    def eval_MCI_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -414,9 +414,9 @@ class ConvexOptAllocAlg(object):
 
         Returns
         -------
-        MCI_rates : numpy array
+        MCI_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
-        MCI_grads: 2d numy array
+        MCI_rate_constraints_grads: 2d numy array
             The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
         """
         raise NotImplementedError
@@ -490,10 +490,10 @@ class ConvexOptAllocAlg(object):
         # print("obj fun (plugged in):", round(-1 * self.objective_function(res.x)[0], 6))
         # print("MCE/MCI constraints at optimality (= MCI(or MCE) - z, should be >= 0):\n", [round(const, 4) for const in self.SLSQP_inequality_constraints["fun"](res.x)])
         # print("MCE/MCI constraints at optimality (double-checking):\n", self.constraints_wrapper(res.x)[0])
-        # print("MCE constraints given recommended alpha:", [round(rate, 6) for rate in self.MCE_rates(res.x)[0]])
-        # print("MCE values given recommended alpha:", [round(res.x[-1] - rate, 6) for rate in self.MCE_rates(res.x)[0]])
-        # print("MCI constraints given recommended alpha:", [round(rate, 6) for rate in self.MCI_rates(res.x)[0]])
-        # print("MCI values given recommended alpha:", [round(res.x[-1] - rate, 6) for rate in self.MCI_rates(res.x)[0]])
+        # print("MCE constraints given recommended alpha:", [round(rate, 6) for rate in self.eval_MCE_rate_constraints(res.x)[0]])
+        # print("MCE values given recommended alpha:", [round(res.x[-1] - rate, 6) for rate in self.eval_MCE_rate_constraints(res.x)[0]])
+        # print("MCI constraints given recommended alpha:", [round(rate, 6) for rate in self.eval_MCI_rate_constraints(res.x)[0]])
+        # print("MCI values given recommended alpha:", [round(res.x[-1] - rate, 6) for rate in self.eval_MCI_rate_constraints(res.x)[0]])
 
         # print("Objective Jacobian at solution:", res.jac)
 
@@ -568,15 +568,15 @@ class ConvexOptAllocAlg(object):
         """
         # Append a zero for the convergence rate.
         alpha_z_decide = np.append(alpha_decide, 0)
-        MCE_rates, _ = self.MCE_rates(alpha_z_decide)
-        MCI_rates, _ = self.MCI_rates(alpha_z_decide)
-        # print(f"MCE_rates (re-eval): {MCE_rates}")
-        # print(f"MCI_rates (re-eval): {MCI_rates}")
-        z = min(min(-1 * MCE_rates), min(-1 * MCI_rates))
-        # print("All MCE =", [round(-1 * MCE_rate, 4) for MCE_rate in MCE_rates])
-        # print("Min MCE =", min(-1 * MCE_rates))
-        # print("All MCI = ", [round(-1 * MCI_rate, 4) for MCI_rate in MCI_rates])
-        # print("Min MCI =", min(-1 * MCI_rates))
+        MCE_rate_constraints, _ = self.eval_MCE_rate_constraints(alpha_z_decide)
+        MCI_rate_constraints, _ = self.eval_MCI_rate_constraints(alpha_z_decide)
+        # print(f"MCE_rate_constraints (re-eval): {MCE_rate_constraints}")
+        # print(f"MCI_rate_constraints (re-eval): {MCI_rate_constraints}")
+        z = min(min(-1 * MCE_rate_constraints), min(-1 * MCI_rate_constraints))
+        # print("All MCE =", [round(-1 * MCE_rate, 4) for MCE_rate in MCE_rate_constraints])
+        # print("Min MCE =", min(-1 * MCE_rate_constraints))
+        # print("All MCI = ", [round(-1 * MCI_rate, 4) for MCI_rate in MCI_rate_constraints])
+        # print("Min MCI =", min(-1 * MCI_rate_constraints))
         return z
 
 
@@ -611,7 +611,7 @@ class BruteForce(ConvexOptAllocAlg):
         v = range(self.n_objectives)
         self.kappas = list(it.product(v, repeat=self.n_paretos))
 
-    def MCE_rates(self, alpha_z_decide):
+    def eval_MCE_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -621,9 +621,9 @@ class BruteForce(ConvexOptAllocAlg):
 
         Returns
         -------
-        MCE_rates : numpy array
+        MCE_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
-        MCE_grads : 2d numy array
+        MCE_rate_constraints_grads : 2d numy array
             The jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
         """
         # Negative alphas break the quadratic optimizer called below.
@@ -633,11 +633,11 @@ class BruteForce(ConvexOptAllocAlg):
 
         # There is an MCE constraint for every non-diagonal element of a (paretos x paretos) matrix.
         n_MCE = self.n_paretos * (self.n_paretos - 1)
-        MCE_rates = np.zeros(n_MCE)
-        MCE_grads = np.zeros([n_MCE, self.n_systems + 1])
+        MCE_rate_constraints = np.zeros(n_MCE)
+        MCE_rate_constraints_grads = np.zeros([n_MCE, self.n_systems + 1])
 
         # Assign value of 1 to (d constraint_val) / (d z)
-        MCE_grads[:, self.n_systems] = 1
+        MCE_rate_constraints_grads[:, self.n_systems] = 1
 
         # Construct the rates and gradients.
         count = 0
@@ -683,13 +683,13 @@ class BruteForce(ConvexOptAllocAlg):
                                                                            )
                         # print("actual MCE = ", rate)
                         rate = alpha_z_decide[-1] - rate
-                    MCE_rates[count] = rate
-                    MCE_grads[count, i] = -1.0 * d_rate_d_i
-                    MCE_grads[count, j] = -1.0 * d_rate_d_j
+                    MCE_rate_constraints[count] = rate
+                    MCE_rate_constraints_grads[count, i] = -1.0 * d_rate_d_i
+                    MCE_rate_constraints_grads[count, j] = -1.0 * d_rate_d_j
                     count = count + 1
-        return MCE_rates, MCE_grads
+        return MCE_rate_constraints, MCE_rate_constraints_grads
 
-    def MCI_rates(self, alpha_z_decide):
+    def eval_MCI_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -699,9 +699,9 @@ class BruteForce(ConvexOptAllocAlg):
 
         Returns
         -------
-        MCI_rates : numpy array
+        MCI_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
-        MCI_grads: 2d numy array
+        MCI_rate_constraints_grads: 2d numy array
             The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
         """
         tol = 10**-12
@@ -710,7 +710,7 @@ class BruteForce(ConvexOptAllocAlg):
         # we have one constraint for every non-pareto for every kappa vector
         n_non_par = self.n_systems - self.n_paretos
         n_MCI = n_non_par * n_kap
-        MCI_rates = np.zeros(n_MCI)
+        MCI_rate_constraints = np.zeros(n_MCI)
         MCI_grad = np.zeros([n_MCI, self.n_systems + 1])
         MCI_grad[:, self.n_systems] = 1
 
@@ -765,11 +765,11 @@ class BruteForce(ConvexOptAllocAlg):
                         0.5 * np.sum(pareto_alphas * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives))
                     MCI_grad[count, j] = -1.0 * 0.5 * (obj_j - alpha_z_decide_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - alpha_z_decide_star[0:self.n_objectives])
                     MCI_grad[count, self.systems['pareto_indices']] = -1.0 * 0.5 * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives)
-                    MCI_rates[count] = alpha_z_decide[-1] - rate
+                    MCI_rate_constraints[count] = alpha_z_decide[-1] - rate
 
                 count = count + 1
 
-        return MCI_rates, MCI_grad
+        return MCI_rate_constraints, MCI_grad
 
 
 class Phantom(BruteForce):
@@ -777,7 +777,7 @@ class Phantom(BruteForce):
 
     Notes
     -----
-    MCE_rates() method is inherited from BruteForce class.
+    eval_MCE_rate_constraints() method is inherited from BruteForce class.
 
     Attributes
     ----------
@@ -830,7 +830,7 @@ class Phantom(BruteForce):
                     if pareto_array[k, j] == phantom_values[i, j]:
                         self.phantoms[i, j] = systems['pareto_indices'][k]
 
-    def MCI_rates(self, alpha_z_decide):
+    def eval_MCI_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -840,17 +840,17 @@ class Phantom(BruteForce):
 
         Returns
         -------
-        MCI_rates : numpy array
+        MCI_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
-        MCI_grads: 2d numy array
+        MCI_rate_constraints_grads: 2d numy array
             The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
         """
         tol = 10**-12
         n_nonparetos = self.n_systems - self.n_paretos
         n_MCI = n_nonparetos * self.n_phantoms
 
-        MCI_rates = np.zeros(n_MCI)
-        MCI_grads = np.zeros([n_MCI, self.n_systems + 1])
+        MCI_rate_constraints = np.zeros(n_MCI)
+        MCI_rate_constraints_grads = np.zeros([n_MCI, self.n_systems + 1])
 
         count = 0
         alpha_z_decide[0:-1][alpha_z_decide[0:-1] <= tol] = 0
@@ -862,7 +862,7 @@ class Phantom(BruteForce):
                 if alpha_z_decide[j] <= tol:
                     # The rate and gradients are zero. Only have to worry about gradient
                     # wrt z since we initialize with zero.
-                    MCI_grads[count, -1] = 1
+                    MCI_rate_constraints_grads[count, -1] = 1
                 else:
                     phantom_obj = np.zeros(self.n_objectives)
                     phantom_var = np.zeros(self.n_objectives)
@@ -906,9 +906,9 @@ class Phantom(BruteForce):
 
                         # Note: floats equal to ints don't get automatically converted when used for indices.
                         # Need to convert.
-                        MCI_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
-                        MCI_grads[count, -1] = 1
-                        MCI_rates[count] = alpha_z_decide[-1] - rate
+                        MCI_rate_constraints_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
+                        MCI_rate_constraints_grads[count, -1] = 1
+                        MCI_rate_constraints[count] = alpha_z_decide[-1] - rate
                     else:
                         length = len(phantom_objectives)
                         if length == 1:
@@ -921,13 +921,13 @@ class Phantom(BruteForce):
                             rate, grad_j, phantom_grads = MCI_four_d_plus(alpha_z_decide[j], obj_j, cov_j, phantom_alphas, phantom_obj, phantom_var)
 
                         # TODO: Hard-code solutions for 1-3 objectives.
-                        MCI_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
-                        MCI_grads[count, -1] = 1
-                        MCI_grads[count, j] = -1.0 * grad_j
-                        MCI_rates[count] = alpha_z_decide[-1] - rate
+                        MCI_rate_constraints_grads[count, phantom_indices[phantom_indices < np.inf].astype(int)] = -1.0 * phantom_grads
+                        MCI_rate_constraints_grads[count, -1] = 1
+                        MCI_rate_constraints_grads[count, j] = -1.0 * grad_j
+                        MCI_rate_constraints[count] = alpha_z_decide[-1] - rate
 
                 count = count + 1
-        return MCI_rates, MCI_grads
+        return MCI_rate_constraints, MCI_rate_constraints_grads
 
 
 class MOSCORE(Phantom):
@@ -1193,7 +1193,7 @@ class MOSCORE(Phantom):
         M_star = np.unique(M_star, axis=0)
         return M_star
 
-    def MCI_rates(self, alpha_z_decide):
+    def eval_MCI_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -1203,16 +1203,16 @@ class MOSCORE(Phantom):
 
         Returns
         -------
-        MCI_rates : numpy array
+        MCI_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
-        MCI_grads: 2d numy array
+        MCI_rate_constraints_grads: 2d numy array
             The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
         """
         tol = 10**-12
 
         n_MCI = len(self.j_star)
-        MCI_rates = np.zeros(n_MCI)
-        MCI_grads = np.zeros([n_MCI, len(alpha_z_decide)])
+        MCI_rate_constraints = np.zeros(n_MCI)
+        MCI_rate_constraints_grads = np.zeros([n_MCI, len(alpha_z_decide)])
 
         for i in range(n_MCI):
             j = int(self.j_star[i, 0])
@@ -1227,8 +1227,8 @@ class MOSCORE(Phantom):
 
             if alpha_j < tol:
                 # Rate is 0. Returned rate is z. Grads wrt anything but z are left as zero.
-                MCI_rates[i] = alpha_z_decide[-1]
-                MCI_grads[i, -1] = 1
+                MCI_rate_constraints[i] = alpha_z_decide[-1]
+                MCI_rate_constraints_grads[i, -1] = 1
             else:
                 phantom_objectives = np.zeros(self.n_objectives)
                 phantom_vars = np.zeros(self.n_objectives)
@@ -1261,9 +1261,9 @@ class MOSCORE(Phantom):
                 phantom_alphas = phantom_alphas[objectives_playing]
 
                 if alpha_zeros == n_objectives_playing:
-                    MCI_rates[i] = alpha_z_decide[-1]
-                    MCI_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -0.5 * ((obj_j - phantom_objectives) ** 2) / phantom_vars
-                    MCI_grads[i, -1] = 1
+                    MCI_rate_constraints[i] = alpha_z_decide[-1]
+                    MCI_rate_constraints_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -0.5 * ((obj_j - phantom_objectives) ** 2) / phantom_vars
+                    MCI_rate_constraints_grads[i, -1] = 1
                 else:
                     # TODO: Hard code solutions for < 4 objectives.
                     length = len(objectives_playing)
@@ -1276,15 +1276,15 @@ class MOSCORE(Phantom):
                     else:
                         rate, grad_j, phantom_grads = MCI_four_d_plus(alpha_j, obj_j, cov_j, phantom_alphas, phantom_objectives, phantom_vars)
 
-                    MCI_rates[i] = alpha_z_decide[-1] - rate
+                    MCI_rate_constraints[i] = alpha_z_decide[-1] - rate
                     phantom_grads[phantom_grads < tol] = 0
-                    MCI_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -1.0 * phantom_grads
-                    MCI_grads[i, -2] = -1 * lambda_j * grad_j
-                    MCI_grads[i, -1] = 1
+                    MCI_rate_constraints_grads[i, phantom_pareto_inds[phantom_pareto_inds < np.inf].astype(int)] = -1.0 * phantom_grads
+                    MCI_rate_constraints_grads[i, -2] = -1 * lambda_j * grad_j
+                    MCI_rate_constraints_grads[i, -1] = 1
 
-        return MCI_rates, MCI_grads
+        return MCI_rate_constraints, MCI_rate_constraints_grads
 
-    def MCE_rates(self, alpha_z_decide):
+    def eval_MCE_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -1294,15 +1294,15 @@ class MOSCORE(Phantom):
 
         Returns
         -------
-        MCE_rates : numpy array
+        MCE_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
-        MCE_grads : 2d numy array
+        MCE_rate_constraints_grads : 2d numy array
             The jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
         """
         tol = 10**-12
         n_MCE = len(self.M_star)
-        MCE_rates = np.zeros(n_MCE)
-        MCE_grads = np.zeros([n_MCE, len(alpha_z_decide)])
+        MCE_rate_constraints = np.zeros(n_MCE)
+        MCE_rate_constraints_grads = np.zeros([n_MCE, len(alpha_z_decide)])
 
         for k in range(n_MCE):
             i = int(self.M_star[k, 0])
@@ -1352,12 +1352,12 @@ class MOSCORE(Phantom):
                                                            )
                 rate = alpha_z_decide[-1] - rate
 
-            MCE_rates[k] = rate
-            MCE_grads[k, i] = -1 * grad_i
-            MCE_grads[k, j] = -1 * grad_j
-            MCE_grads[k, -1] = 1.0
+            MCE_rate_constraints[k] = rate
+            MCE_rate_constraints_grads[k, i] = -1 * grad_i
+            MCE_rate_constraints_grads[k, j] = -1 * grad_j
+            MCE_rate_constraints_grads[k, -1] = 1.0
 
-        return MCE_rates, MCE_grads
+        return MCE_rate_constraints, MCE_rate_constraints_grads
 
 
 class IMOSCORE(MOSCORE):
@@ -1519,7 +1519,7 @@ class IMOSCORE(MOSCORE):
         M_star = np.unique(M_star, axis=0)
         return M_star
 
-    def MCI_rates(self, alpha_z_decide):
+    def eval_MCI_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -1529,15 +1529,15 @@ class IMOSCORE(MOSCORE):
 
         Returns
         -------
-        MCI_rates : numpy array
+        MCI_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCI constraint
-        MCI_grads: 2d numy array
+        MCI_rate_constraints_grads: 2d numy array
             The jacobian of the MCI constraint values with respect to the vector alpha (including the final element z)
         """
         tol = 10**-50
         n_MCI = len(self.j_star)
-        MCI_rates = np.zeros(n_MCI)
-        MCI_grads = np.zeros([n_MCI, len(alpha_z_decide)])
+        MCI_rate_constraints = np.zeros(n_MCI)
+        MCI_rate_constraints_grads = np.zeros([n_MCI, len(alpha_z_decide)])
 
         for i in range(n_MCI):
             j = int(self.j_star[i, 0])
@@ -1552,8 +1552,8 @@ class IMOSCORE(MOSCORE):
             phantom_pareto_nums = self.phantoms[phantom_ind, :]
 
             if alpha_j < tol:
-                MCI_rates[i] = alpha_z_decide[-1]
-                MCI_grads[i, -1] = 1
+                MCI_rate_constraints[i] = alpha_z_decide[-1]
+                MCI_rate_constraints_grads[i, -1] = 1
                 # All the grads aside from z are zero here, already zero from initialization
             else:
                 phantom_objectives = np.ones(self.n_objectives) * np.inf
@@ -1575,15 +1575,15 @@ class IMOSCORE(MOSCORE):
                         rate = rate + (phantom_alphas[m] * alpha_j * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m]))
                         grad_j = grad_j + (phantom_alphas[m]**2 * cov_j[m, m] * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m])**2)
                         grad = (alpha_j**2 * phantom_vars[m] * (phantom_objectives[m] - obj_j[m])**2) / (2 * (alpha_j * phantom_vars[m] + phantom_alphas[m] * cov_j[m, m])**2)
-                        MCI_grads[i, int(phantom_pareto_nums[m])] = -1.0 * grad
+                        MCI_rate_constraints_grads[i, int(phantom_pareto_nums[m])] = -1.0 * grad
 
-                MCI_rates[i] = alpha_z_decide[-1] - rate
-                MCI_grads[i, -1] = 1
-                MCI_grads[i, -2] = -1.0 * lambda_j * grad_j
+                MCI_rate_constraints[i] = alpha_z_decide[-1] - rate
+                MCI_rate_constraints_grads[i, -1] = 1
+                MCI_rate_constraints_grads[i, -2] = -1.0 * lambda_j * grad_j
 
-        return MCI_rates, MCI_grads
+        return MCI_rate_constraints, MCI_rate_constraints_grads
 
-    def MCE_rates(self, alpha_z_decide):
+    def eval_MCE_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
 
         Parameters
@@ -1593,15 +1593,15 @@ class IMOSCORE(MOSCORE):
 
         Returns
         -------
-        MCE_rates : numpy array
+        MCE_rate_constraints : numpy array
             The value of z (estimated convergence rate) minus the convergence rate upper bound associated with each MCE constraint
-        MCE_grads : 2d numy array
+        MCE_rate_constraints_grads : 2d numy array
             The jacobian of the MCE constraint values with respect to the vector alpha (including the final element z)
         """
         tol = 10**-50
         n_MCE = len(self.M_star)
-        MCE_rates = np.zeros(n_MCE)
-        MCE_grads = np.zeros([n_MCE, len(alpha_z_decide)])
+        MCE_rate_constraints = np.zeros(n_MCE)
+        MCE_rate_constraints_grads = np.zeros([n_MCE, len(alpha_z_decide)])
 
         for k in range(n_MCE):
             i = int(self.M_star[k, 0])
@@ -1632,11 +1632,11 @@ class IMOSCORE(MOSCORE):
 
                 rate = alpha_z_decide[-1] - rate
 
-            MCE_rates[k] = rate
-            MCE_grads[k, i] = -1 * grad_i
-            MCE_grads[k, j] = -1 * grad_j
-            MCE_grads[k, -1] = 1.0
-        return MCE_rates, MCE_grads
+            MCE_rate_constraints[k] = rate
+            MCE_rate_constraints_grads[k, i] = -1 * grad_i
+            MCE_rate_constraints_grads[k, j] = -1 * grad_j
+            MCE_rate_constraints_grads[k, -1] = 1.0
+        return MCE_rate_constraints, MCE_rate_constraints_grads
 
 
 def calc_brute_force_rate(alpha, systems):
