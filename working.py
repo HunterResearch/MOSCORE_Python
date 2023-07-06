@@ -136,7 +136,7 @@ make_phantom_rate_plots(testers=[mytester, mytester2])
 # for prob_idx in range(n_problems):
 #     print(f"Problem {prob_idx + 1} of {n_problems}.")
 #     random_problem = create_fixed_pareto_random_problem(n_systems=n_systems, n_obj=n_obj, n_paretos=n_paretos, sigma=1, corr=None, center=100, radius=6)
-#     min_obj_gaps.append(calc_min_obj_gap(systems=random_problem))
+#     min_obj_gaps.append(calc_min_obj_gap(alloc_problem=random_problem))
     
 #     # Solve the optimization problem once.
 #     tic = time.perf_counter()

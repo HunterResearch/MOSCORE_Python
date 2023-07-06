@@ -13,8 +13,9 @@ import time
 
 # from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots, make_phantom_rate_plots
 from example import TestProblem, TestProblem2, TestProblem3
-from utils import create_allocation_problem
+# from utils import create_allocation_problem
 from allocate import allocate, smart_allocate
+from base import MO_Alloc_Problem
 # from allocate import allocate
 
 # from iscore_allocation import iscore_allocation
@@ -39,7 +40,7 @@ warm_start = None
 obj_vals = {idx: myproblem.true_means[idx] for idx in range(myproblem.n_systems)}
 obj_vars = {idx: np.array(myproblem.true_covs[idx]) for idx in range(myproblem.n_systems)}
 
-allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
+allocation_problem = MO_Alloc_Problem(obj_vals=obj_vals, obj_vars=obj_vars)
 
 # # from utils import calc_brute_force_rate
 # from allocation import calc_brute_force_rate, calc_phantom_rate, calc_score_rate, calc_iscore_rate
@@ -50,9 +51,9 @@ allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_v
 # z_old = old_calc_brute_force_rate(alphas=alpha_hat, systems=allocation_problem)
 # print("zold", z_old)
 
-# # print(allocation_problem["obj"])
-# # print(allocation_problem["var"])
-# # print(allocation_problem["pareto_indices"])
+# # print(allocation_problem.obj)
+# # print(allocation_problem.var)
+# # print(allocation_problem.pareto_indices)
 
 # res = score_allocation(systems=allocation_problem, warm_start=warm_start)
 # alpha_hat = res[0]

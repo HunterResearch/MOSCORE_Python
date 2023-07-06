@@ -11,8 +11,8 @@ allocation problems.
 import numpy as np
 
 
-from utils import nearestSPD, create_allocation_problem, is_pareto_efficient
-from base import MORS_Problem
+from utils import nearestSPD, is_pareto_efficient
+from base import MO_Alloc_Problem, MORS_Problem
 
 
 class TestProblem(MORS_Problem):
@@ -308,7 +308,7 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
     for i in range(n_systems):
         variances[i] = cp
         objectives[i] = np.array(objectives[i])
-    return create_allocation_problem(objectives, variances)
+    return MO_Alloc_Problem(obj_vals=objectives, obj_vars=variances)
 
 
 def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, center=100, radius=6, minsep=0.0001):
@@ -437,7 +437,7 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
     for i in range(n_systems):
         variances[i] = cp
         objectives[i] = list(objectives[i])
-    return create_allocation_problem(objectives, variances)
+    return MO_Alloc_Problem(obj_vals=objectives, obj_vars=variances)
 
 
 def create_mocba_problem(covtype):
@@ -452,16 +452,8 @@ def create_mocba_problem(covtype):
 
     Returns
     -------
-        problem : dict
-
-            problem['obj'] is a dictionary of numpy arrays, indexed by system number,
-                each of which corresponds to the objective values of a system
-            problem['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-                each of which corresponds to the covariance matrix of a system
-            problem['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-                each of which corresponds to the inverse covariance matrix of a system
-            problem['pareto_indices'] is a list of pareto systems ordered by the first objective
-            problem['non_pareto_indices'] is a list of pareto systems ordered by the first objective
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     """
     n_obj = 3
     obj = {0: [8, 36, 60], 1: [12, 32, 52], 2: [14, 38, 54], 3: [16, 46, 48], 4: [4, 42, 56],
@@ -481,7 +473,7 @@ def create_mocba_problem(covtype):
         raise ValueError("Invalid covtype. Valid choices are ind, pos, and neg.")
     for key in obj.keys():
         covs[key] = cov
-    return create_allocation_problem(obj, covs)
+    return MO_Alloc_Problem(obj_vals=obj, obj_vars=covs)
 
 
 def create_test_problem_2():
@@ -489,16 +481,8 @@ def create_test_problem_2():
 
     Returns
     -------
-    problem : dict
-
-            problem['obj'] is a dictionary of numpy arrays, indexed by system number,
-                each of which corresponds to the objective values of a system
-            problem['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-                each of which corresponds to the covariance matrix of a system
-            problem['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-                each of which corresponds to the inverse covariance matrix of a system
-            problem['pareto_indices'] is a list of pareto systems ordered by the first objective
-            problem['non_pareto_indices'] is a list of pareto systems ordered by the first objective
+    problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     """
     # Read in problem details (objectives) from a file.
     obj_array = np.genfromtxt('TP2_Objs.csv', delimiter=',')
@@ -508,8 +492,7 @@ def create_test_problem_2():
     covs = {}
     for key in obj.keys():
         covs[key] = np.identity(len(obj[key]))
-    return create_allocation_problem(obj, covs)
-
+    return MO_Alloc_Problem(obj_vals=obj, obj_vars=covs)
 
 # TODO: Function below has not been updated.
 
@@ -546,5 +529,5 @@ def create_test_problem_2():
 #     mors_problem : Random_MORS_Problem object
 #         inherits from oracle
 #     """
-#     mors_problem = Random_MORS_Problem(allocation_problem["obj"], allocation_problem["var"], rng, crnflag=crnflag, simpar=simpar)
+#     mors_problem = Random_MORS_Problem(allocation_problem.obj, allocation_problem.var, rng, crnflag=crnflag, simpar=simpar)
 #     return allocation_problem, mors_problem

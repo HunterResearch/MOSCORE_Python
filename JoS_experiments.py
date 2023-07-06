@@ -10,29 +10,30 @@ import numpy as np
 import time
 from mrg32k3a.mrg32k3a import MRG32k3a
 
-from utils import create_allocation_problem, is_pareto_efficient, find_phantoms
+from utils import is_pareto_efficient, find_phantoms
 from allocate import allocate, smart_allocate, calc_brute_force_rate, calc_phantom_rate
 from example import create_fixed_pareto_random_problem, create_variable_pareto_random_problem
+from base import MO_Alloc_Problem
 
 # # 3-objective, 3-system example from Li et al. (2018).
 # obj_vals = {0: np.array([3.0, 4.0, 2.2]), 1: np.array([3.5, 5.0, 3.0]), 2: np.array([4.0, 3.5, 2.0])}
 # obj_vars = {0: np.array([[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]]),
 #             1: np.array([[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]]),
 #             2: np.array([[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]])}
-# allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
+# allocation_problem = MO_Alloc_Problem(obj_vals=obj_vals, obj_vars=obj_vars)
 
 # for rule in ["Brute Force", "Phantom", "MOSCORE", "Brute Force Ind", "iMOSCORE", "Equal"]:
 #     tic = time.perf_counter()
-#     alpha_hat, z = allocate(method=rule, systems=allocation_problem)
-#     #alpha_hat, z = smart_allocate(method=rule, systems=allocation_problem)
+#     alpha_hat, z = allocate(method=rule, alloc_problem=allocation_problem)
+#     #alpha_hat, z = smart_allocate(method=rule, alloc_problem=allocation_problem)
 #     toc = time.perf_counter()
 #     print("Allocation Rule:", rule)
 #     # print("alpha_hat:", alpha_hat)
 #     # print("z", z)
 #     print("T:", round(toc - tic, 3), "s")
-#     z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=allocation_problem)
+#     z_bf = calc_brute_force_rate(alphas=alpha_hat, alloc_problem=allocation_problem)
 #     print("Z^bf(alpha) x 10^5:", round(z_bf * 10**5, 4))
-#     z_ph = calc_phantom_rate(alphas=alpha_hat, systems=allocation_problem)
+#     z_ph = calc_phantom_rate(alphas=alpha_hat, alloc_problem=allocation_problem)
 #     print("Z^ph(alpha) x 10^5:", round(z_ph * 10**5, 4))
 #     print("\n")
 
@@ -73,12 +74,12 @@ for problem_idx in range(n_problems):
     for rule in rules:
         print("Solve with", rule, "rule.")
         tic = time.perf_counter()
-        alpha_hat, z = allocate(method=rule, systems=random_problem)
+        alpha_hat, z = allocate(method=rule, alloc_problem=random_problem)
         toc = time.perf_counter()
         solve_time = toc - tic
         if r <= 10:  # Skip brute force if too expensive.
-            z_bf = calc_brute_force_rate(alpha=alpha_hat, systems=random_problem)
-        z_ph = calc_phantom_rate(alpha=alpha_hat, systems=random_problem)
+            z_bf = calc_brute_force_rate(alpha=alpha_hat, alloc_problem=random_problem)
+        z_ph = calc_phantom_rate(alpha=alpha_hat, alloc_problem=random_problem)
 
         # Record statistics.
         solve_times[rule].append(solve_time)

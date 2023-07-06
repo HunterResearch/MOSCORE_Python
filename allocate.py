@@ -34,28 +34,15 @@ from MOSCORE_hard_coded import SCORE_1d, SCORE_2d, SCORE_3d, score_four_d_plus
 from utils import find_phantoms
 
 
-def smart_allocate(method, systems, warm_start=None, resolve=False):
+def smart_allocate(method, alloc_problem, warm_start=None, resolve=False):
     """Generate a non-sequential simulation allocation for the MORS problem.
 
     Parameters
     ----------
     method : str
         Chosen allocation method. Options are "iMOSCORE", "MOSCORE", "Phantom", "Brute Force", and "Brute Force Ind".
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
-
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
-
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
-
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.\
         Length must be equal to the number of systems.
@@ -69,45 +56,45 @@ def smart_allocate(method, systems, warm_start=None, resolve=False):
     z : float
         The estimated rate of convergence.
     """
-    if warm_start is not None and len(warm_start) != len(systems['obj']):
+    if warm_start is not None and len(warm_start) != len(alloc_problem.obj):
         raise ValueError("Length of warm_start must be equal to the number of systems.")
     # Call the proper allocation rule.
     # For certain settings, call a related allocation rule to be more efficient,
     # e.g., warmstart.
     if method == "Equal":
-        return equal_allocation(systems)
+        return equal_allocation(alloc_problem)
     elif method == "iMOSCORE":
-        return allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
+        return allocate(method="iMOSCORE", systems=alloc_problem, warm_start=warm_start, resolve=resolve)
     elif method == "MOSCORE":
         # If more than 3 objectives, use  iMOSCORE allocation as a warmer-start solution.
-        if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
-        return allocate(method="MOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
+        if len(alloc_problem.obj[0]) > 3:
+            warm_start, _ = allocate(method="iMOSCORE", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
+        return allocate(method="MOSCORE", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
     elif method == "Phantom":
         # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
-        if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
-        return allocate(method="Phantom", systems=systems, warm_start=warm_start, resolve=resolve)
+        if len(alloc_problem.obj[0]) > 3:
+            warm_start, _ = allocate(method="iMOSCORE", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
+        return allocate(method="Phantom", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
     elif method == "Brute Force":
         # If 2 or fewer objetives, use phantom allocation instead.
         # It is equivalent to the brute-force allocation, but easier to solve.
-        if len(systems['obj'][0]) <= 2:
-            return allocate(method="Phantom", systems=systems, warm_start=warm_start, resolve=resolve)
+        if len(alloc_problem.obj[0]) <= 2:
+            return allocate(method="Phantom", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
         # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
         else:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
-            return allocate(method="Brute Force", systems=systems, warm_start=warm_start, resolve=resolve)
+            warm_start, _ = allocate(method="iMOSCORE", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
+            return allocate(method="Brute Force", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
     elif method == "Brute Force Ind":
         # NOTE: Earlier version had independence applied before iMOSCORE warmstart.
         # If more than 3 objectives, use iMOSCORE allocation as a warmer-start solution.
-        if len(systems['obj'][0]) > 3:
-            warm_start, _ = allocate(method="iMOSCORE", systems=systems, warm_start=warm_start, resolve=resolve)
-        return allocate(method="Brute Force Ind", systems=systems, warm_start=warm_start, resolve=resolve)
+        if len(alloc_problem.obj[0]) > 3:
+            warm_start, _ = allocate(method="iMOSCORE", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
+        return allocate(method="Brute Force Ind", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
     else:
         raise ValueError("Invalid method selected. Valid methods are 'Equal', 'iMOSCORE', 'MOSCORE', 'Phantom', 'Brute Force', and 'Brute Force Ind'.")
 
 
-def allocate(method, systems, warm_start=None, resolve=False):
+def allocate(method, alloc_problem, warm_start=None, resolve=False):
     """Generate a simulation allocation for the MORS problem using
     a specified method.
 
@@ -115,21 +102,8 @@ def allocate(method, systems, warm_start=None, resolve=False):
     ----------
     method : str
         Chosen allocation method. Options are "Equal", "iMOSCORE", "MOSCORE", "Phantom", "Brute Force", "Brute Force Ind".
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
-
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
-
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
-
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     warm_start : list of float
         An initial simulation allocation from which to determine the optimal allocation.\
         Length must be equal to the number of systems.
@@ -144,51 +118,37 @@ def allocate(method, systems, warm_start=None, resolve=False):
         The estimated rate of convergence.
     """
     if method == "Equal":
-        alpha, z = equal_allocation(systems=systems)
+        alpha, z = equal_allocation(alloc_problem=alloc_problem)
     else:
         if method == "iMOSCORE":
-            cvxoptallocalg = IMOSCORE(systems=systems)
+            cvxoptallocalg = IMOSCORE(alloc_problem=alloc_problem)
         elif method == "MOSCORE":
-            cvxoptallocalg = MOSCORE(systems=systems)
+            cvxoptallocalg = MOSCORE(alloc_problem=alloc_problem)
         elif method == "Phantom":
-            cvxoptallocalg = Phantom(systems=systems)
+            cvxoptallocalg = Phantom(alloc_problem=alloc_problem)
         elif method == "Brute Force":
-            cvxoptallocalg = BruteForce(systems=systems)
+            cvxoptallocalg = BruteForce(alloc_problem=alloc_problem)
         elif method == "Brute Force Ind":
             # Modify the allocation problem to have diagonal covariance matrices.
-            # Extract number of systems.
-            n_systems = len(systems["obj"])
             # Modify covariance and precision matrices.
-            for s in range(n_systems):
-                systems['var'][s] = np.diag(np.diag(systems['var'][s]))
-                systems['inv_var'][s] = np.linalg.inv(systems['var'][s])
+            for s in range(alloc_problem.n_systems):
+                alloc_problem.var[s] = np.diag(np.diag(alloc_problem.var[s]))
+                alloc_problem.inv_var[s] = np.linalg.inv(alloc_problem.var[s])
             # Perform allocation as in 'normal' brute force.
-            cvxoptallocalg = BruteForce(systems=systems)
+            cvxoptallocalg = BruteForce(alloc_problem=alloc_problem)
         cvxoptallocalg.setup_opt_problem(warm_start=warm_start)
         alpha, z = cvxoptallocalg.solve_opt_problem(resolve=resolve)
     return alpha, z
 
 
-def equal_allocation(systems):
+def equal_allocation(alloc_problem):
     """Generate a non-sequential simulation allocation for the MORS problem
     using equal allocation.
 
     Parameters
     ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
 
     Returns
     -------
@@ -197,8 +157,7 @@ def equal_allocation(systems):
     z : float
         The estimated rate of convergence.
     """
-    n_systems = len(systems["obj"])
-    alpha = [1 / n_systems for _ in range(n_systems)]
+    alpha = [1 / alloc_problem.n_systems for _ in range(alloc_problem.n_systems)]
     # Associated rate is set as zero.
     z = 0  # This value won't be used.
     return alpha, z
@@ -210,20 +169,8 @@ class ConvexOptAllocAlg(object):
 
     Attributes
     ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     n_objectives : int
         Number of objectives
     n_systems : int
@@ -231,12 +178,12 @@ class ConvexOptAllocAlg(object):
     n_paretos : int
         Number of Pareto systems.
     """
-    def __init__(self, systems):
-        self.systems = systems
+    def __init__(self, alloc_problem):
+        self.alloc_problem = alloc_problem
         # Extract number of objectives, number of systems, and number of pareto systems.
-        self.n_objectives = len(systems["obj"][0])
-        self.n_systems = len(systems["obj"])
-        self.n_paretos = len(systems["pareto_indices"])
+        self.n_objectives = len(alloc_problem.obj[0])
+        self.n_systems = alloc_problem.n_systems
+        self.n_paretos = len(alloc_problem.pareto_indices)
         # The following attribute may be overwritten in the __init__ function
         # of some subclasses.
         self.n_system_decision_variables = self.n_systems
@@ -484,7 +431,7 @@ class ConvexOptAllocAlg(object):
         # print("MCE/MCI constraints at solution:", res.constr[1])
         # print("Non-negativity constraints at solution:", res.constr[2])
         # print("optimal alpha_vec (from solver)", [round(alpha_opt, 6) for alpha_opt in res.x[0:-1]])
-        # print("Pareto indices:", self.systems['pareto_indices'])
+        # print("Pareto indices:", self.alloc_problem.pareto_indices)
         # print("z (per solver):", round(res.x[-1], 6))
         # print("z (per fun):", round(-1 * res.fun, 6))
         # print("obj fun (plugged in):", round(-1 * self.objective_function(res.x)[0], 6))
@@ -585,25 +532,13 @@ class BruteForce(ConvexOptAllocAlg):
 
     Attributes
     ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     kappas : numpy list (length n_objectives^n_paretos) of tuples (length n_paretos)
         each tuple indicates that an MCI event may occur if a non-pareto dominates pareto i in objective tuple[i] for all i in range(num_par)
     """
-    def __init__(self, systems):
-        super().__init__(systems=systems)
+    def __init__(self, alloc_problem):
+        super().__init__(alloc_problem=alloc_problem)
         # kappas is a list of tuples. Each tuple is of length n_paretos with elements
         # corresponding to objective indices.
         # To exclude a pareto, a non-pareto must dominate the pareto with number equal to the kappa index
@@ -641,8 +576,8 @@ class BruteForce(ConvexOptAllocAlg):
 
         # Construct the rates and gradients.
         count = 0
-        for i in self.systems['pareto_indices']:
-            for j in self.systems['pareto_indices']:
+        for i in self.alloc_problem.pareto_indices:
+            for j in self.alloc_problem.pareto_indices:
                 if i != j:
                     if alpha_z_decide[i] <= tol or alpha_z_decide[j] <= tol:
                         # It can be shown that if either alpha is zero,
@@ -655,30 +590,30 @@ class BruteForce(ConvexOptAllocAlg):
                         if self.n_objectives == 2:  # 2-objective case.
                             rate, d_rate_d_i, d_rate_d_j = MCE_2d(aI=alpha_z_decide[i],
                                                                   aJ=alpha_z_decide[j],
-                                                                  Iobj=self.systems["obj"][i],
-                                                                  Isig=self.systems["var"][i],
-                                                                  Jobj=self.systems["obj"][j],
-                                                                  Jsig=self.systems["var"][j],
-                                                                  inv_var_i=self.systems["inv_var"][i],
-                                                                  inv_var_j=self.systems["inv_var"][j]
+                                                                  Iobj=self.alloc_problem.obj[i],
+                                                                  Isig=self.alloc_problem.var[i],
+                                                                  Jobj=self.alloc_problem.obj[j],
+                                                                  Jsig=self.alloc_problem.var[j],
+                                                                  inv_var_i=self.alloc_problem.inv_var[i],
+                                                                  inv_var_j=self.alloc_problem.inv_var[j]
                                                                   )
                         elif self.n_objectives == 3:  # 3-objective case.
                             rate, d_rate_d_i, d_rate_d_j = MCE_3d(aI=alpha_z_decide[i],
                                                                   aJ=alpha_z_decide[j],
-                                                                  Iobj=self.systems["obj"][i],
-                                                                  Isig=self.systems["var"][i],
-                                                                  Jobj=self.systems["obj"][j],
-                                                                  Jsig=self.systems["var"][j],
-                                                                  inv_var_i=self.systems["inv_var"][i],
-                                                                  inv_var_j=self.systems["inv_var"][j]
+                                                                  Iobj=self.alloc_problem.obj[i],
+                                                                  Isig=self.alloc_problem.var[i],
+                                                                  Jobj=self.alloc_problem.obj[j],
+                                                                  Jsig=self.alloc_problem.var[j],
+                                                                  inv_var_i=self.alloc_problem.inv_var[i],
+                                                                  inv_var_j=self.alloc_problem.inv_var[j]
                                                                   )
                         else:
                             rate, d_rate_d_i, d_rate_d_j = MCE_four_d_plus(alpha_i=alpha_z_decide[i],
                                                                            alpha_j=alpha_z_decide[j],
-                                                                           obj_i=self.systems["obj"][i],
-                                                                           inv_var_i=self.systems["inv_var"][i],
-                                                                           obj_j=self.systems["obj"][j],
-                                                                           inv_var_j=self.systems["inv_var"][j],
+                                                                           obj_i=self.alloc_problem.obj[i],
+                                                                           inv_var_i=self.alloc_problem.inv_var[i],
+                                                                           obj_j=self.alloc_problem.obj[j],
+                                                                           inv_var_j=self.alloc_problem.inv_var[j],
                                                                            n_objectives=self.n_objectives
                                                                            )
                         # print("actual MCE = ", rate)
@@ -719,9 +654,9 @@ class BruteForce(ConvexOptAllocAlg):
         alpha_z_decide[0:-1][alpha_z_decide[0:-1] <= tol] = tol
 
         count = 0
-        for j in self.systems['non_pareto_indices']:
-            obj_j = self.systems['obj'][j]
-            inv_var_j = self.systems['inv_var'][j]
+        for j in self.alloc_problem.non_pareto_indices:
+            obj_j = self.alloc_problem.obj[j]
+            inv_var_j = self.alloc_problem.inv_var[j]
             # TODO See if this actually belongs. We do this in the phantom and it
             # keeps the quadratic optimization from breaking if we don't set zero alphas to tol.
             for kap in self.kappas:
@@ -738,12 +673,12 @@ class BruteForce(ConvexOptAllocAlg):
 
                     for p in range(self.n_paretos):
                         # Get the actual index of the pareto system.
-                        pareto_system_ind = self.systems['pareto_indices'][p]
+                        pareto_system_ind = self.alloc_problem.pareto_indices[p]
                         # Extract variances and objective values.
-                        relevant_objectives[p] = self.systems['obj'][pareto_system_ind][kap[p]]
-                        relevant_variances[p] = self.systems['var'][pareto_system_ind][kap[p], kap[p]]
+                        relevant_objectives[p] = self.alloc_problem.obj[pareto_system_ind][kap[p]]
+                        relevant_variances[p] = self.alloc_problem.var[pareto_system_ind][kap[p], kap[p]]
                     # Get the alpha of the pareto system.
-                    pareto_alphas = alpha_z_decide[self.systems['pareto_indices']]
+                    pareto_alphas = alpha_z_decide[self.alloc_problem.pareto_indices]
 
                     # Quadratic optimization step.
                     # Setup.
@@ -764,7 +699,7 @@ class BruteForce(ConvexOptAllocAlg):
                     rate = 0.5 * alpha_z_decide[j] * (obj_j - alpha_z_decide_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - alpha_z_decide_star[0:self.n_objectives]) +\
                         0.5 * np.sum(pareto_alphas * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives))
                     MCI_grad[count, j] = -1.0 * 0.5 * (obj_j - alpha_z_decide_star[0:self.n_objectives]) @ inv_var_j @ (obj_j - alpha_z_decide_star[0:self.n_objectives])
-                    MCI_grad[count, self.systems['pareto_indices']] = -1.0 * 0.5 * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives)
+                    MCI_grad[count, self.alloc_problem.pareto_indices] = -1.0 * 0.5 * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives) * (1 / relevant_variances) * (alpha_z_decide_star[self.n_objectives:] - relevant_objectives)
                     MCI_rate_constraints[count] = alpha_z_decide[-1] - rate
 
                 count = count + 1
@@ -781,28 +716,16 @@ class Phantom(BruteForce):
 
     Attributes
     ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     """
-    def __init__(self, systems):
-        super().__init__(systems=systems)
+    def __init__(self, alloc_problem):
+        super().__init__(alloc_problem=alloc_problem)
 
         # Get array of pareto values for the phantom finder.
         pareto_array = np.zeros([self.n_paretos, self.n_objectives])
         for i in range(self.n_paretos):
-            pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
+            pareto_array[i, :] = alloc_problem.obj[alloc_problem.pareto_indices[i]]
         # Get the phantom systems.
         phantom_values = find_phantoms(pareto_array, self.n_objectives)
 
@@ -828,7 +751,7 @@ class Phantom(BruteForce):
             for j in range(self.n_objectives):
                 for k in range(self.n_paretos):
                     if pareto_array[k, j] == phantom_values[i, j]:
-                        self.phantoms[i, j] = systems['pareto_indices'][k]
+                        self.phantoms[i, j] = alloc_problem.pareto_indices[k]
 
     def eval_MCI_rate_constraints(self, alpha_z_decide):
         """Calculate the MCE rate constraint values and jacobian.
@@ -854,7 +777,7 @@ class Phantom(BruteForce):
 
         count = 0
         alpha_z_decide[0:-1][alpha_z_decide[0:-1] <= tol] = 0
-        for j in self.systems['non_pareto_indices']:
+        for j in self.alloc_problem.non_pareto_indices:
             for m in range(self.n_phantoms):
                 # Get the pareto indices corresponding to phantom l.
                 phantom_indices = self.phantoms[m, :]
@@ -875,8 +798,8 @@ class Phantom(BruteForce):
                     for b in range(self.n_objectives):
                         if phantom_indices[b] < np.inf:
                             pareto_system = int(phantom_indices[b])
-                            phantom_obj[b] = self.systems['obj'][pareto_system][b]
-                            phantom_var[b] = self.systems['var'][pareto_system][b, b]
+                            phantom_obj[b] = self.alloc_problem.obj[pareto_system][b]
+                            phantom_var[b] = self.alloc_problem.var[pareto_system][b, b]
                             if alpha_z_decide[pareto_system] <= tol:
                                 phantom_alphas[b] = 0
                                 alpha_zeros = alpha_zeros + 1
@@ -887,11 +810,11 @@ class Phantom(BruteForce):
 
                     # Keep track of which objectives are included in phantom set.
                     phantom_objectives = phantom_objectives[phantom_indices < np.inf]
-                    obj_j = self.systems['obj'][j][phantom_objectives]
+                    obj_j = self.alloc_problem.obj[j][phantom_objectives]
 
                     # Only want covariances for the phantom objectives.
                     # np.ix_ allows us to subset nicely that way.
-                    cov_j = self.systems['var'][j][np.ix_(phantom_objectives, phantom_objectives)]
+                    cov_j = self.alloc_problem.var[j][np.ix_(phantom_objectives, phantom_objectives)]
 
                     # Remove unassigned objective indices for phantom variances and objectives.
                     phantom_obj = phantom_obj[phantom_objectives]
@@ -939,23 +862,11 @@ class MOSCORE(Phantom):
 
     Attributes
     ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     """
-    def __init__(self, systems):
-        super().__init__(systems=systems)
+    def __init__(self, alloc_problem):
+        super().__init__(alloc_problem=alloc_problem)
 
         # Note: This next part is repeated from the __init__ of the Phantom subclass.
         # The only difference is one line in the creation of the phantoms matrix.
@@ -963,7 +874,7 @@ class MOSCORE(Phantom):
         # Get array of pareto values for the phantom finder.
         pareto_array = np.zeros([self.n_paretos, self.n_objectives])
         for i in range(self.n_paretos):
-            pareto_array[i, :] = systems['obj'][systems['pareto_indices'][i]]
+            pareto_array[i, :] = alloc_problem.obj[alloc_problem.pareto_indices[i]]
         # Get the phantom systems.
         phantom_values = find_phantoms(pareto_array, self.n_objectives)
 
@@ -1031,9 +942,9 @@ class MOSCORE(Phantom):
         """
         # Sort output by system number.
         alpha = np.zeros(self.n_systems)
-        alpha[self.systems['pareto_indices']] = opt_sol[0:self.n_paretos]
+        alpha[self.alloc_problem.pareto_indices] = opt_sol[0:self.n_paretos]
         for j in range(self.n_systems - self.n_paretos):
-            alpha[self.systems['non_pareto_indices'][j]] = self.lambdas[j] * opt_sol[-2]
+            alpha[self.alloc_problem.non_pareto_indices[j]] = self.lambdas[j] * opt_sol[-2]
         # Normalize alpha in case it sums to > 1.
         alpha = [alloc / sum(alpha) for alloc in alpha]
         z = opt_sol[-1]
@@ -1072,16 +983,16 @@ class MOSCORE(Phantom):
             phantom_objectives = np.zeros(n_objectives_playing)
             # Extract the objectives for the phantoms.
             for obj in range(n_objectives_playing):
-                phantom_pareto_ind = self.systems['pareto_indices'][int(phantom_pareto_nums[obj])]
-                phantom_objectives[obj] = self.systems['obj'][phantom_pareto_ind][objectives_playing[obj]]
+                phantom_pareto_ind = self.alloc_problem.pareto_indices[int(phantom_pareto_nums[obj])]
+                phantom_objectives[obj] = self.alloc_problem.obj[phantom_pareto_ind][objectives_playing[obj]]
 
             j_comps = np.ones(self.n_objectives) * np.inf
             j_indices = np.ones(self.n_objectives) * np.inf
             size = len(objectives_playing)
             for j in range(self.n_systems - self.n_paretos):
-                j_ind = self.systems['non_pareto_indices'][j]
-                obj_j = self.systems['obj'][j_ind][objectives_playing]
-                cov_j = self.systems['var'][j_ind][np.ix_(objectives_playing, objectives_playing)]
+                j_ind = self.alloc_problem.non_pareto_indices[j]
+                obj_j = self.alloc_problem.obj[j_ind][objectives_playing]
+                cov_j = self.alloc_problem.var[j_ind][np.ix_(objectives_playing, objectives_playing)]
 
                 # TODO: Hard code solutions for 1, 2, 3 objectives.
                 if size == 1:
@@ -1138,16 +1049,16 @@ class MOSCORE(Phantom):
 
         count = 0
         for i in range(self.n_paretos):
-            i_ind = self.systems['pareto_indices'][i]
-            obj_i = self.systems['obj'][i_ind]
+            i_ind = self.alloc_problem.pareto_indices[i]
+            obj_i = self.alloc_problem.obj[i_ind]
             j_comps = np.ones(self.n_objectives) * np.inf
             j_inds = np.ones(self.n_objectives) * np.inf
 
             for j in range(self.n_paretos):
                 if i != j:
-                    j_ind = self.systems['pareto_indices'][j]
-                    obj_j = self.systems['obj'][j_ind]
-                    cov_j = self.systems['var'][j_ind]
+                    j_ind = self.alloc_problem.pareto_indices[j]
+                    obj_j = self.alloc_problem.obj[j_ind]
+                    cov_j = self.alloc_problem.var[j_ind]
 
                     # TODO: Hard code solutions for <4 objectives.
                     if self.n_objectives == 1:
@@ -1216,11 +1127,11 @@ class MOSCORE(Phantom):
 
         for i in range(n_MCI):
             j = int(self.j_star[i, 0])
-            j_ind = self.systems['non_pareto_indices'][j]
+            j_ind = self.alloc_problem.non_pareto_indices[j]
             lambda_j = self.lambdas[j]
             alpha_j = lambda_j * alpha_z_decide[-2]
-            obj_j = self.systems['obj'][j_ind]
-            cov_j = self.systems['var'][j_ind]
+            obj_j = self.alloc_problem.obj[j_ind]
+            cov_j = self.alloc_problem.var[j_ind]
 
             phantom_ind = int(self.j_star[i, 1])
             phantom_pareto_inds = self.phantoms[phantom_ind, :]
@@ -1240,9 +1151,9 @@ class MOSCORE(Phantom):
                 for b in range(self.n_objectives):
                     if phantom_pareto_inds[b] < np.inf:
                         pareto_system_num = int(phantom_pareto_inds[b])
-                        pareto_system_ind = self.systems['pareto_indices'][pareto_system_num]
-                        phantom_objectives[b] = self.systems['obj'][pareto_system_ind][b]
-                        phantom_vars[b] = self.systems['var'][pareto_system_ind][b, b]
+                        pareto_system_ind = self.alloc_problem.pareto_indices[pareto_system_num]
+                        phantom_objectives[b] = self.alloc_problem.obj[pareto_system_ind][b]
+                        phantom_vars[b] = self.alloc_problem.var[pareto_system_ind][b, b]
                         if alpha_z_decide[pareto_system_num] < tol:
                             phantom_alphas[b] = 0
                             alpha_zeros += 1
@@ -1313,21 +1224,21 @@ class MOSCORE(Phantom):
                 grad_i = 0
                 grad_j = 0
             else:
-                i_ind = self.systems['pareto_indices'][i]
-                j_ind = self.systems['pareto_indices'][j]
-                obj_i = self.systems['obj'][i_ind]
-                inv_cov_i = self.systems['inv_var'][i_ind]
-                obj_j = self.systems['obj'][j_ind]
-                inv_cov_j = self.systems['inv_var'][j_ind]
+                i_ind = self.alloc_problem.pareto_indices[i]
+                j_ind = self.alloc_problem.pareto_indices[j]
+                obj_i = self.alloc_problem.obj[i_ind]
+                inv_cov_i = self.alloc_problem.inv_var[i_ind]
+                obj_j = self.alloc_problem.obj[j_ind]
+                inv_cov_j = self.alloc_problem.inv_var[j_ind]
 
                 # TODO: Hard code solutions for <4 dimensions.
                 if self.n_objectives == 2:
                     rate, grad_i, grad_j = MCE_2d(aI=alpha_z_decide[i],
                                                   aJ=alpha_z_decide[j],
                                                   Iobj=obj_i,
-                                                  Isig=self.systems["var"][i_ind],
+                                                  Isig=self.alloc_problem.var[i_ind],
                                                   Jobj=obj_j,
-                                                  Jsig=self.systems["var"][j_ind],
+                                                  Jsig=self.alloc_problem.var[j_ind],
                                                   inv_var_i=inv_cov_i,
                                                   inv_var_j=inv_cov_j
                                                   )
@@ -1335,9 +1246,9 @@ class MOSCORE(Phantom):
                     rate, grad_i, grad_j = MCE_3d(aI=alpha_z_decide[i],
                                                   aJ=alpha_z_decide[j],
                                                   Iobj=obj_i,
-                                                  Isig=self.systems["var"][i_ind],
+                                                  Isig=self.alloc_problem.var[i_ind],
                                                   Jobj=obj_j,
-                                                  Jsig=self.systems["var"][j_ind],
+                                                  Jsig=self.alloc_problem.var[j_ind],
                                                   inv_var_i=inv_cov_i,
                                                   inv_var_j=inv_cov_j
                                                   )
@@ -1369,23 +1280,11 @@ class IMOSCORE(MOSCORE):
 
     Attributes
     ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     """
-    def __init__(self, systems):
-        super().__init__(systems=systems)
+    def __init__(self, alloc_problem):
+        super().__init__(alloc_problem=alloc_problem)
         # Specify number of allocation decision variables.
         self.n_system_decision_variables = self.n_paretos + 1
         # Calculate j_star, lambda, and M_star.
@@ -1412,16 +1311,16 @@ class IMOSCORE(MOSCORE):
             for b in range(self.n_objectives):
                 if phantom_indices[b] < np.inf:
                     pareto_num = int(phantom_indices[b])
-                    pareto_system = self.systems['pareto_indices'][pareto_num]
-                    phantom_objs[b] = self.systems['obj'][pareto_system][b]
+                    pareto_system = self.alloc_problem.pareto_indices[pareto_num]
+                    phantom_objs[b] = self.alloc_problem.obj[pareto_system][b]
 
             j_comps = np.ones(self.n_objectives) * np.inf
             j_inds = np.ones(self.n_objectives) * np.inf
 
             for j in range(self.n_systems - self.n_paretos):
-                j_ind = self.systems['non_pareto_indices'][j]
-                obj_j = self.systems['obj'][j_ind]
-                cov_j = self.systems['var'][j_ind]
+                j_ind = self.alloc_problem.non_pareto_indices[j]
+                obj_j = self.alloc_problem.obj[j_ind]
+                cov_j = self.alloc_problem.var[j_ind]
 
                 score = 0
                 binds = np.ones(self.n_objectives) * np.inf
@@ -1466,17 +1365,17 @@ class IMOSCORE(MOSCORE):
         count = 0
 
         for i in range(self.n_paretos):
-            i_ind = self.systems['pareto_indices'][i]
-            obj_i = self.systems['obj'][i_ind]
+            i_ind = self.alloc_problem.pareto_indices[i]
+            obj_i = self.alloc_problem.obj[i_ind]
 
             j_comps = np.ones(self.n_objectives) * np.inf
             j_inds = np.ones(self.n_objectives) * np.inf
 
             for j in range(self.n_paretos):
                 if i != j:
-                    j_ind = self.systems['pareto_indices'][j]
-                    obj_j = self.systems['obj'][j_ind]
-                    cov_j = self.systems['var'][j_ind]
+                    j_ind = self.alloc_problem.pareto_indices[j]
+                    obj_j = self.alloc_problem.obj[j_ind]
+                    cov_j = self.alloc_problem.var[j_ind]
 
                     score = 0
                     binds = np.ones(self.n_objectives) * np.inf
@@ -1541,12 +1440,12 @@ class IMOSCORE(MOSCORE):
 
         for i in range(n_MCI):
             j = int(self.j_star[i, 0])
-            j_ind = self.systems['non_pareto_indices'][j]
+            j_ind = self.alloc_problem.non_pareto_indices[j]
             lambda_j = self.lambdas[j]
             alpha_j = lambda_j * alpha_z_decide[-2]
 
-            obj_j = self.systems['obj'][j_ind]
-            cov_j = self.systems['var'][j_ind]
+            obj_j = self.alloc_problem.obj[j_ind]
+            cov_j = self.alloc_problem.var[j_ind]
 
             phantom_ind = int(self.j_star[i, 1])
             phantom_pareto_nums = self.phantoms[phantom_ind, :]
@@ -1563,9 +1462,9 @@ class IMOSCORE(MOSCORE):
                 for b in range(self.n_objectives):
                     if phantom_pareto_nums[b] < np.inf:
                         phantom_pareto_num = int(phantom_pareto_nums[b])
-                        phantom_pareto_ind = self.systems['pareto_indices'][phantom_pareto_num]
-                        phantom_objectives[b] = self.systems['obj'][phantom_pareto_ind][b]
-                        phantom_vars[b] = self.systems['var'][phantom_pareto_ind][b, b]
+                        phantom_pareto_ind = self.alloc_problem.pareto_indices[phantom_pareto_num]
+                        phantom_objectives[b] = self.alloc_problem.obj[phantom_pareto_ind][b]
+                        phantom_vars[b] = self.alloc_problem.var[phantom_pareto_ind][b, b]
                         phantom_alphas[b] = alpha_z_decide[phantom_pareto_num]
 
                 rate = 0
@@ -1612,12 +1511,12 @@ class IMOSCORE(MOSCORE):
                 grad_i = 0
                 grad_j = 0
             else:
-                i_ind = self.systems['pareto_indices'][i]
-                j_ind = self.systems['pareto_indices'][j]
-                obj_i = self.systems['obj'][i_ind]
-                cov_i = self.systems['var'][i_ind]
-                obj_j = self.systems['obj'][j_ind]
-                cov_j = self.systems['var'][j_ind]
+                i_ind = self.alloc_problem.pareto_indices[i]
+                j_ind = self.alloc_problem.pareto_indices[j]
+                obj_i = self.alloc_problem.obj[i_ind]
+                cov_i = self.alloc_problem.var[i_ind]
+                obj_j = self.alloc_problem.obj[j_ind]
+                cov_j = self.alloc_problem.var[j_ind]
 
                 rate = 0
                 grad_i = 0
@@ -1639,7 +1538,7 @@ class IMOSCORE(MOSCORE):
         return MCE_rate_constraints, MCE_rate_constraints_grads
 
 
-def calc_brute_force_rate(alpha, systems):
+def calc_brute_force_rate(alpha, alloc_problem):
     """Calculate the brute force rate of an allocation given a MORS problem.
 
     Parameters
@@ -1647,33 +1546,20 @@ def calc_brute_force_rate(alpha, systems):
     alpha : list of float
         A simulation allocation. Length must be equal to the number of systems.
 
-    systems : dict
-        ``"obj"``:
-        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
-
-        ``"var"``:
-        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
-
-        ``"inv_var"``:
-        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
-
-        ``"pareto_indices"``:
-        is a list of pareto systems ordered by the first objective
-
-        ``"non_pareto_indices"``:
-        is a list of non-pareto systems ordered by the first objective
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
 
     Returns
     -------
     z : float
         Brute force convergence rate associated with alphas.
     """
-    bf_problem = BruteForce(systems=systems)
+    bf_problem = BruteForce(alloc_problem=alloc_problem)
     z = bf_problem.calc_rate(alpha_decide=alpha)
     return z
 
 
-def calc_phantom_rate(alpha, systems):
+def calc_phantom_rate(alpha, alloc_problem):
     """Calculate the phantom rate of an allocation given a MORS problem.
 
     Parameters
@@ -1681,33 +1567,20 @@ def calc_phantom_rate(alpha, systems):
     alpha : list of float
         A simulation allocation. Length must be equal to the number of systems.
 
-    systems : dict
-        ``"obj"``:
-        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
-
-        ``"var"``:
-        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
-
-        ``"inv_var"``:
-        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
-
-        ``"pareto_indices"``:
-        is a list of pareto systems ordered by the first objective
-
-        ``"non_pareto_indices"``:
-        is a list of non-pareto systems ordered by the first objective
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
 
     Returns
     -------
     z : float
         Phantom convergence rate associated with alphas.
     """
-    phantom_problem = Phantom(systems=systems)
+    phantom_problem = Phantom(alloc_problem=alloc_problem)
     z = phantom_problem.calc_rate(alpha_decide=alpha)
     return z
 
 
-def calc_moscore_rate(alpha, systems):
+def calc_moscore_rate(alpha, alloc_problem):
     """Calculate the MOSCORE rate of an allocation given a MORS problem.
 
     Parameters
@@ -1715,38 +1588,25 @@ def calc_moscore_rate(alpha, systems):
     alpha : list of float
         A simulation allocation. Length must be equal to the number of systems.
 
-    systems : dict
-        ``"obj"``:
-        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
-
-        ``"var"``:
-        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
-
-        ``"inv_var"``:
-        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
-
-        ``"pareto_indices"``:
-        is a list of pareto systems ordered by the first objective
-
-        ``"non_pareto_indices"``:
-        is a list of non-pareto systems ordered by the first objective
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
 
     Returns
     -------
     z : float
         MOSCORE convergence rate associated with alphas.
     """
-    score_problem = MOSCORE(systems=systems)
+    score_problem = MOSCORE(alloc_problem=alloc_problem)
     # Convert alpha allocation into alpha vector for optimization problem
     # Get the allocations from the Pareto systems.
-    alpha_decide_pareto = [alpha[score_problem.systems["pareto_indices"][idx]] for idx in range(score_problem.n_paretos)]
+    alpha_decide_pareto = [alpha[score_problem.alloc_problem.pareto_indices[idx]] for idx in range(score_problem.n_paretos)]
     # Append the proportion of the (unity) allocation allocated to non-Pareto systems.
     alpha_decide = alpha_decide_pareto + [1 - np.sum(alpha_decide_pareto)]
     z = score_problem.calc_rate(alpha=alpha_decide)
     return z
 
 
-def calc_imoscore_rate(alpha, systems):
+def calc_imoscore_rate(alpha, alloc_problem):
     """Calculate the IMOSCORE rate of an allocation given a MORS problem.
 
     Parameters
@@ -1754,31 +1614,18 @@ def calc_imoscore_rate(alpha, systems):
     alpha : list of float
         A simulation allocation. Length must be equal to the number of systems.
 
-    systems : dict
-        ``"obj"``:
-        is a dictionary of numpy arrays, indexed by system number, each of which corresponds to the objective values of a system
-
-        ``"var"``:
-        is a dictionary of 2d numpy arrays, indexed by system number, each of which corresponds to the covariance matrix of a system
-
-        ``"inv_var"``:
-        is a dictionary of 2d numpy, indexed by system number, each of which corresponds to the inverse covariance matrix of a system
-
-        ``"pareto_indices"``:
-        is a list of pareto systems ordered by the first objective
-
-        ``"non_pareto_indices"``:
-        is a list of non-pareto systems ordered by the first objective
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
 
     Returns
     -------
     z : float
         IMOSCORE convergence rate associated with alphas.
     """
-    iscore_problem = IMOSCORE(systems=systems)
+    iscore_problem = IMOSCORE(alloc_problem=alloc_problem)
     # Convert alpha allocation into alpha vector for optimization problem
     # Get the allocations from the Pareto systems.
-    alpha_decide_pareto = [alpha[iscore_problem.systems["pareto_indices"][idx]] for idx in range(iscore_problem.n_paretos)]
+    alpha_decide_pareto = [alpha[iscore_problem.alloc_problem.pareto_indices[idx]] for idx in range(iscore_problem.n_paretos)]
     # Append the proportion of the (unity) allocation allocated to non-Pareto systems.
     alpha_decide = alpha_decide_pareto + [1 - np.sum(alpha_decide_pareto)]
     z = iscore_problem.calc_rate(alpha_decide=alpha_decide)

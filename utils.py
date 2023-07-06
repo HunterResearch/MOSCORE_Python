@@ -117,55 +117,6 @@ def is_pareto_efficient(costs, return_mask=True):
         return is_efficient
 
 
-def create_allocation_problem(obj_vals, obj_vars):
-    """Create the data structure representing an allocation problem.
-
-    Parameters
-    ----------
-    obj_vals : dict
-        Dictionary of tuples of objective values keyed by system number.
-        Tuples of objective values are assumed to be of equal length.
-
-    obj_vars : dict
-        Dictionary of covariance (numpy 2d arrays) keyed by system number.
-        Numbers of rows and columns are equal to the number of objectives.
-
-    Returns
-    -------
-    systems : dict
-        Dictionary with keys "obj" and "var" pointing to obj_vals and obj_var respectively.
-        Another key "inv_vars" points to the inverse covariance matrices.
-        And with keys "pareto_indices" and "non_pareto_indices" pointing to the
-        system numbers of the pareto and non_pareto systems respectively, sorted by
-        their value on the first objective.
-
-    Notes
-    -----
-    The sortedness may not be necessary, but is useful for debugging while
-    comparing results to the matlab code.
-    """
-
-    # TODO: Check for positive semidefinite?
-    # Replacing the following line with call to is_pareto_efficient().
-    # pareto_indices = list(moso_utils.get_nondom(obj_vals))
-    n_systems = len(obj_vals)
-    obj_vals_matrix = np.array([list(obj_vals[system]) for system in range(n_systems)])
-    pareto_indices = list(is_pareto_efficient(costs=obj_vals_matrix, return_mask=False))
-    pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
-    non_pareto_indices = [system for system in range(n_systems) if system not in pareto_indices]
-    non_pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
-    # The following line is redundant.
-    # obj_vals = {system: np.array(obj_vals[system]) for system in range(n_systems)}
-    inv_vars = {system: np.linalg.inv(obj_vars[system]) for system in range(n_systems)}
-    systems = {"obj": obj_vals,
-               "var": obj_vars,
-               "inv_var": inv_vars,
-               "pareto_indices": pareto_indices,
-               "non_pareto_indices": non_pareto_indices
-               }
-    return systems
-
-
 def find_phantoms(paretos, n_obj):
     """Find the phantom pareto set.
 
@@ -259,37 +210,24 @@ def sweep(paretos):
         return phantoms
 
 
-def calc_min_obj_gap(systems):
+def calc_min_obj_gap(alloc_problem):
     """Calculate the minimum gap between objectives of any pareto
     and any pareto/nonpareto system.
 
     Parameters
     ----------
-    systems : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,
-            each of which corresponds to the objective values of a system.
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,
-            each of which corresponds to the covariance matrix of a system.
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,
-            each of which corresponds to the inverse covariance matrix of a system.
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    alloc_problem : base.MO_Alloc_Problem
+        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
 
     Returns
     -------
     min_obj_gap : float
         Minimum gap between objectives of any pareto system and any pareto/nonpareto system.
     """
-    n_systems = len(systems["obj"])
-    obj_vals = np.array([systems["obj"][idx] for idx in range(n_systems)])
+    obj_vals = np.array([alloc_problem.obj[idx] for idx in range(alloc_problem.n_systems)])
     paretos_mask = is_pareto_efficient(costs=obj_vals, return_mask=True)
-    paretos = [idx for idx in range(n_systems) if paretos_mask[idx]]
-    non_paretos = [idx for idx in range(n_systems) if idx not in paretos]
+    paretos = [idx for idx in range(alloc_problem.n_systems) if paretos_mask[idx]]
+    non_paretos = [idx for idx in range(alloc_problem.n_systems) if idx not in paretos]
     min_pareto_pareto_obj_gap = calc_min_paired_obj_gap(obj_vals=obj_vals, group1=paretos, group2=paretos)
     min_parteo_nonpareto_obj_gap = calc_min_paired_obj_gap(obj_vals=obj_vals, group1=paretos, group2=non_paretos)
     min_obj_gap = min(min_pareto_pareto_obj_gap, min_parteo_nonpareto_obj_gap)

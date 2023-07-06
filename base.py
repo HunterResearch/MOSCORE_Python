@@ -7,6 +7,7 @@ Provide class definitions for MORS Problems and Solvers and pairings.
 
 Listing
 -------
+MO_Alloc_Problem : class
 MORS_Problem : class
 MORS_Solver : class
 record_metrics : function
@@ -25,7 +26,61 @@ import pymoso.chnutils as chnutils
 from mrg32k3a.mrg32k3a import MRG32k3a
 
 from allocate import smart_allocate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
-from utils import create_allocation_problem, is_pareto_efficient  # _mp_objmethod
+from utils import is_pareto_efficient   # _mp_objmethod,
+
+
+class MO_Alloc_Problem(object):
+    """Class for multi-objective allocation problems.
+    This refers to the sample means/covariances that dictate what the allocation
+    should be at a given time.
+
+    Attributes
+    ----------
+    n_systems : int
+        number of systems
+
+    obj : dict of numpy arrays
+        indexed by system number, each of which corresponds to the objective values of a system
+
+    var : dict of 2d numpy arrays
+        indexed by system number, each of which corresponds to the covariance matrix of a system
+
+    inv_var : dict of 2d numpy arrays
+        indexed by system number,each of which corresponds to the inverse covariance matrix of a system
+
+    pareto_indices : list
+        a list of pareto systems ordered by the first objective
+
+    non_pareto_indices : list
+        a list of non-pareto systems ordered by the first objective
+
+    Parameters
+    ----------
+    obj_vals : dict
+        Dictionary of tuples of objective values keyed by system number.
+        Tuples of objective values are assumed to be of equal length.
+
+    obj_vars : dict
+        Dictionary of covariance (numpy 2d arrays) keyed by system number.
+        Numbers of rows and columns are equal to the number of objectives.
+    """
+    def __init__(self, obj_vals, obj_vars):
+        # TODO: Check for positive semidefinite?
+        # Replacing the following line with call to is_pareto_efficient().
+        # pareto_indices = list(moso_utils.get_nondom(obj_vals))
+        self.n_systems = len(obj_vals)
+        self.obj = obj_vals
+        self.var = obj_vars
+        self.inv_var = {system: np.linalg.inv(obj_vars[system]) for system in range(self.n_systems)}
+        # Determine indices of Pareto systems.
+        obj_vals_matrix = np.array([list(obj_vals[system]) for system in range(self.n_systems)])
+        pareto_indices = list(is_pareto_efficient(costs=obj_vals_matrix, return_mask=False))
+        pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
+        self.pareto_indices = pareto_indices
+        # Determine indices of non-Pareto systems.
+        non_pareto_indices = [system for system in range(self.n_systems) if system not in pareto_indices]
+        non_pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
+        self.non_pareto_indices = non_pareto_indices
 
 
 class MORS_Problem(object):
@@ -355,7 +410,7 @@ class MORS_Solver(object):
                     # Get distribution for sampling allocation.
                     obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
                     obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
-                    allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
+                    allocation_problem = MO_Alloc_Problem(obj_vals=obj_vals, obj_vars=obj_vars)
                     tic = time.perf_counter()
                     alpha_hat, _ = smart_allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)
                     toc = time.perf_counter()
@@ -750,7 +805,7 @@ def make_phantom_rate_plots(testers):
     # Calculate phantom rate of phantom allocation for true problem.
     true_obj_vals = {idx: common_problem.true_means[idx] for idx in range(common_problem.n_systems)}
     true_obj_vars = {idx: np.array(common_problem.true_covs[idx]) for idx in range(common_problem.n_systems)}
-    true_allocation_problem = create_allocation_problem(obj_vals=true_obj_vals, obj_vars=true_obj_vars)
+    true_allocation_problem = MO_Alloc_Problem(obj_vals=true_obj_vals, obj_vars=true_obj_vars)
     _, phantom_rate_of_phantom_alloc = smart_allocate(method="Phantom", systems=true_allocation_problem)
     # print(phantom_rate_of_phantom_alloc)
 

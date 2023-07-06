@@ -2,8 +2,9 @@ import csv
 import numpy as np
 import time
 
-from utils import create_allocation_problem
+# from utils import create_allocation_problem
 from allocate import allocate, calc_brute_force_rate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
+from base import MO_Alloc_Problem
 
 # Repeat fixed-Pareto experiments from Table 3.
 
@@ -33,19 +34,19 @@ p = 5  # Number of Pareto systems
 #         obj_vals[system_idx] = obj_vec
 #         obj_vars[system_idx] = cov_mat
 
-#     systems = create_allocation_problem(obj_vals, obj_vars)
+#     alloc_problem = MO_Alloc_Problem(obj_vals, obj_vars)
 
 #     for rule in rules:
 #         print("Solve with", rule, "rule.")
 #         tic = time.perf_counter()
-#         alpha_hat, z = allocate(method=rule, systems=systems)
+#         alpha_hat, z = allocate(method=rule, alloc_problem=alloc_problem)
 #         toc = time.perf_counter()
 #         solve_time = toc - tic
 #         solve_times[rule].append(solve_time)
 #         if r <= 10:  # Skip brute force if too expensive.
-#             z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=systems)
+#             z_bf = calc_brute_force_rate(alphas=alpha_hat, alloc_problem=alloc_problem)
 #             z_bf_list[rule].append(z_bf)
-#         z_ph = calc_phantom_rate(alphas=alpha_hat, systems=systems)
+#         z_ph = calc_phantom_rate(alphas=alpha_hat, alloc_problem=alloc_problem)
 #         z_ph_list[rule].append(z_ph)
 
 # for rule in rules:
@@ -79,7 +80,7 @@ for system_idx in range(r):
     obj_vals[system_idx] = obj_vec
     obj_vars[system_idx] = cov_mat
 
-systems = create_allocation_problem(obj_vals, obj_vars)
+alloc_problem = MO_Alloc_Problem(obj_vals, obj_vars)
 
 # # Create a 3D scatter plot of the means.
 # import matplotlib.pyplot as plt
@@ -93,28 +94,28 @@ systems = create_allocation_problem(obj_vals, obj_vars)
 # plt.show()
 
 tic = time.perf_counter()
-alpha_hat, z = allocate(method=rule, systems=systems)
+alpha_hat, z = allocate(method=rule, alloc_problem=alloc_problem)
 print(f"Alpha hat sum: {sum(alpha_hat)}.")
 toc = time.perf_counter()
 print(f"Solve time = {round(toc - tic, 4)}s.")
 
 #print("z (from solver):", round(z, 8))
-# alpha_hat, z = allocate(method="Equal", systems=systems)
+# alpha_hat, z = allocate(method="Equal", alloc_problem=alloc_problem)
 # print("Calculating BF rate")
-# z_bf = calc_brute_force_rate(alphas=alpha_hat, systems=systems)
+# z_bf = calc_brute_force_rate(alphas=alpha_hat, alloc_problem=alloc_problem)
 print("Calculating Phantom rate")
-z_ph = calc_phantom_rate(alpha=alpha_hat, systems=systems)
+z_ph = calc_phantom_rate(alpha=alpha_hat, alloc_problem=alloc_problem)
 if rule == "MOSCORE":
     print("\nCalculating MOSCORE rate")
     print("MOSCORE MCE/MCI rates at termination (per plugging alpha back in):")
-    z_mo = calc_moscore_rate(alpha=alpha_hat, systems=systems)
+    z_mo = calc_moscore_rate(alpha=alpha_hat, alloc_problem=alloc_problem)
 if rule == "iMOSCORE":
     print("Calculating iMOSCORE rate")
-    z_imo = calc_imoscore_rate(alpha=alpha_hat, systems=systems)
+    z_imo = calc_imoscore_rate(alpha=alpha_hat, alloc_problem=alloc_problem)
 
 # If using Equal, try this.
 # print("Calculating MOSCORE rate")
-# z_mo = calc_moscore_rate(alphas=alpha_hat, systems=systems)
+# z_mo = calc_moscore_rate(alphas=alpha_hat, alloc_problem=alloc_problem)
 
 print(f"\nResults for {rule} on Problem {prob_idx}:")
 # print("Brute force convergence rate, Z^bf(alpha) x 10^5:", round(z_bf * 10**5, 4))
@@ -123,13 +124,13 @@ if rule == "MOSCORE":
     print("MOSCORE convergence rate, Z^mo(alpha) x 10^5:", round(z_mo * 10**5, 4))
 if rule == "iMOSCORE":
     print("iMOSCORE convergence rate, Z^imo(alpha) x 10^5:", round(z_imo * 10**5, 4))
-# print("Objectives:", np.array([systems["obj"][system_idx] for system_idx in range(r)]))
+# print("Objectives:", np.array([alloc_problem.obj[system_idx] for system_idx in range(r)]))
 
 #### New print statements
 # from allocation import MOSCORE
 # print("\nCompute MCE/MCI rates.")
 # x = np.append(alpha_hat, 0)
-# moscore_object = MOSCORE(systems=systems)
+# moscore_object = MOSCORE(alloc_problem=alloc_problem)
 # MCE_rates, _ = moscore_object.MCE_rates(x)
 # MCI_rates, _ = moscore_object.MCI_rates(x)
 #print([MCE_rates, MCI_rates])
