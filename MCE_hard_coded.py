@@ -1901,7 +1901,7 @@ def MCE_3d(aI,aJ,Iobj,Isig,Jobj,Jsig, inv_var_i, inv_var_j):
         curr_rate, GradI, GradJ = MCE_four_d_plus(aI, aJ, Iobj, inv_var_i, Jobj, inv_var_j, 3)
     return curr_rate, GradI, GradJ
 
-def MCE_four_d_plus(alpha_i, alpha_j, obj_i, inv_var_i, obj_j, inv_var_j, n_obj):
+def MCE_four_d_plus(alpha_i, alpha_j, obj_i, inv_var_i, obj_j, inv_var_j, n_objectives):
     """calculates MCE constraint values and gradients\n
     The input variable names and the return variable names are not the same as 2d and 3d (Ziyu)
 
@@ -1929,10 +1929,10 @@ def MCE_four_d_plus(alpha_i, alpha_j, obj_i, inv_var_i, obj_j, inv_var_j, n_obj)
     
     q = matrix(-1*np.append(alpha_i * inv_var_i @ obj_i, alpha_j * inv_var_j@ obj_j))
     
-    G = matrix(np.append(-1*np.identity(n_obj),np.identity(n_obj),axis=1))
+    G = matrix(np.append(-1*np.identity(n_objectives),np.identity(n_objectives),axis=1))
     
     
-    h = matrix(np.zeros(n_obj))
+    h = matrix(np.zeros(n_objectives))
     
     
 
@@ -1941,19 +1941,19 @@ def MCE_four_d_plus(alpha_i, alpha_j, obj_i, inv_var_i, obj_j, inv_var_j, n_obj)
     
     
 
-    
+    solvers.options['show_progress'] = False 
     x_star = np.array(solvers.qp(P,q,G,h)['x']).flatten()
     
 
     
 
     
-    rate = 0.5*alpha_i*np.transpose(x_star[0:n_obj] - obj_i) @ inv_var_i @(x_star[0:n_obj]-obj_i) +\
-    0.5*alpha_j*(x_star[n_obj:] - obj_j) @ inv_var_j @(x_star[n_obj:]-obj_j)
+    rate = 0.5*alpha_i*np.transpose(x_star[0:n_objectives] - obj_i) @ inv_var_i @(x_star[0:n_objectives]-obj_i) +\
+    0.5*alpha_j*(x_star[n_objectives:] - obj_j) @ inv_var_j @(x_star[n_objectives:]-obj_j)
     
-    grad_i = 0.5*(x_star[0:n_obj] - obj_i) @ inv_var_i @ (x_star[0:n_obj] - obj_i)
+    grad_i = 0.5*(x_star[0:n_objectives] - obj_i) @ inv_var_i @ (x_star[0:n_objectives] - obj_i)
     
-    grad_j = 0.5*(x_star[n_obj:] - obj_j) @ inv_var_j @ (x_star[n_obj:]-obj_j)
+    grad_j = 0.5*(x_star[n_objectives:] - obj_j) @ inv_var_j @ (x_star[n_objectives:]-obj_j)
     
 
     

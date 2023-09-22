@@ -7,6 +7,7 @@ Provide class definitions for MORS Problems and Solvers and pairings.
 
 Listing
 -------
+MO_Alloc_Problem : class
 MORS_Problem : class
 MORS_Solver : class
 record_metrics : function
@@ -20,23 +21,70 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
-# import copy
-# import multiprocessing as mp
 
-# from pymoso.prng.mrg32k3a import MRG32k3a, get_next_prnstream, bsm, mrg32k3a, jump_substream
-import pymoso.chnutils as utils
-from mrg32k3a import MRG32k3a
+from mrg32k3a.mrg32k3a import MRG32k3a
 
-from allocate import allocate
-from utils import create_allocation_problem, is_pareto_efficient, calc_phantom_rate  # _mp_objmethod
+from allocate import smart_allocate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
+from utils import is_pareto_efficient, get_nondom   # _mp_objmethod,
+
+
+class MO_Alloc_Problem(object):
+    """Class for multi-objective allocation problems.
+    Refers to the sample means and sample covariances at a given time,
+    which characterize the problem of allocating simulation effort.
+
+    Attributes
+    ----------
+    n_systems : int
+        number of systems
+
+    obj : dict of numpy arrays
+        indexed by system number, each of which corresponds to the objective values of a system
+
+    var : dict of 2d numpy arrays
+        indexed by system number, each of which corresponds to the covariance matrix of a system
+
+    inv_var : dict of 2d numpy arrays
+        indexed by system number,each of which corresponds to the inverse covariance matrix of a system
+
+    pareto_indices : list
+        a list of pareto systems ordered by the first objective
+
+    non_pareto_indices : list
+        a list of non-pareto systems ordered by the first objective
+
+    Parameters
+    ----------
+    obj_vals : dict
+        Dictionary of numpy arrays of objective values keyed by system number.
+        Arrays of objective values are assumed to be of equal length.
+
+    obj_vars : dict
+        Dictionary of covariance (numpy 2d arrays) keyed by system number.
+        Numbers of rows and columns are equal to the number of objectives.
+    """
+    def __init__(self, obj_vals, obj_vars):
+        self.n_systems = len(obj_vals)
+        self.obj = obj_vals
+        self.var = obj_vars
+        self.inv_var = {system: np.linalg.inv(obj_vars[system]) for system in range(self.n_systems)}
+        # Determine indices of Pareto systems.
+        obj_vals_matrix = np.array([list(obj_vals[system]) for system in range(self.n_systems)])
+        pareto_indices = list(is_pareto_efficient(costs=obj_vals_matrix, return_mask=False))
+        pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
+        self.pareto_indices = pareto_indices
+        # Determine indices of non-Pareto systems.
+        non_pareto_indices = [system for system in range(self.n_systems) if system not in pareto_indices]
+        non_pareto_indices.sort(key=lambda x: obj_vals_matrix[x][0])
+        self.non_pareto_indices = non_pareto_indices
 
 
 class MORS_Problem(object):
     """Class for multi-objective ranking-and-selection problem.
 
-    Parameters
+    Attributes
     ----------
-    n_obj : int
+    n_objectives : int
         number of objectives
 
     systems : list
@@ -80,7 +128,6 @@ class MORS_Problem(object):
 
     rng_states : list
         states of random number generators (i.e., substream) for each system
-
     """
     def __init__(self):
         self.n_systems = len(self.systems)
@@ -106,10 +153,10 @@ class MORS_Problem(object):
         """Reset sample statistics for all systems.
         """
         self.sample_sizes = [0 for _ in range(self.n_systems)]
-        self.sums = [[0 for _ in range(self.n_obj)] for _ in range(self.n_systems)]
-        self.sums_of_products = [[[0 for _ in range(self.n_obj)] for _ in range(self.n_obj)] for _ in range(self.n_systems)]
-        self.sample_means = [[None for _ in range(self.n_obj)] for _ in range(self.n_systems)]
-        self.sample_covs = [[[None for _ in range(self.n_obj)] for _ in range(self.n_obj)] for _ in range(self.n_systems)]
+        self.sums = [[0 for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
+        self.sums_of_products = [[[0 for _ in range(self.n_objectives)] for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
+        self.sample_means = [[None for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
+        self.sample_covs = [[[None for _ in range(self.n_objectives)] for _ in range(self.n_objectives)] for _ in range(self.n_systems)]
 
     def update_statistics(self, system_indices, objs):
         """Update statistics for systems given a new batch of simulation outputs.
@@ -119,7 +166,7 @@ class MORS_Problem(object):
         system_indices : list
             list of indices of systems to simulate (allows repetition)
         objs : list
-            list of estimates of objectives returned by reach replication
+            list of estimates of objectives returned by each replication
         """
         if len(system_indices) != len(objs):
             print("Length of results must equal length of list of simulated systems.")
@@ -129,19 +176,19 @@ class MORS_Problem(object):
             # Increase sample size.
             self.sample_sizes[system_idx] += 1
             # Add outputs to running sums and recompute sample means.
-            for obj_idx in range(self.n_obj):
+            for obj_idx in range(self.n_objectives):
                 self.sums[system_idx][obj_idx] += objs[idx][obj_idx]
                 self.sample_means[system_idx][obj_idx] = self.sums[system_idx][obj_idx] / self.sample_sizes[system_idx]
             # Add outputs to running sums of products and recompute sample variance-covariance matrix.
-            for obj_idx1 in range(self.n_obj):
-                for obj_idx2 in range(self.n_obj):
+            for obj_idx1 in range(self.n_objectives):
+                for obj_idx2 in range(self.n_objectives):
                     self.sums_of_products[system_idx][obj_idx1][obj_idx2] += objs[idx][obj_idx1] * objs[idx][obj_idx2]
                     if self.sample_sizes[system_idx] > 1:
                         # From https://www.randomservices.org/random/sample/Covariance.html,
                         #   sample cov (x, y) = n / (n-1) * [sample mean (x*y) - sample mean (x) * sample mean (y)]
                         self.sample_covs[system_idx][obj_idx1][obj_idx2] = self.sample_sizes[system_idx] / (self.sample_sizes[system_idx] - 1) * \
                             (self.sums_of_products[system_idx][obj_idx1][obj_idx2] / self.sample_sizes[system_idx] - self.sample_means[system_idx][obj_idx1] * self.sample_means[system_idx][obj_idx2])
-        # TO DO: Make more efficient by only recomputing stats outside the for loop.
+        # TODO: Make more efficient by only recomputing stats outside the for loop.
 
     def g(self, x):
         """Perform a single replication at a given system.
@@ -158,7 +205,13 @@ class MORS_Problem(object):
         obj : tuple
             tuple of estimates of the objectives
         """
-        raise NotImplementedError
+        # Assume the true_means and true_vars are specified, as in our test examples.
+        # As default behavior, generate observations from a multivariate normal distribution.
+        system_idx = self.systems.index(x)
+        obj = self.rng.mvnormalvariate(mean_vec=self.true_means[system_idx],
+                                       cov=self.true_covs[system_idx],
+                                       factorized=False)
+        return tuple(obj)
 
     def bump(self, system_indices):
         """Obtain replications from a list of systems.
@@ -202,7 +255,7 @@ class MORS_Solver(object):
     delta : int
         incremental number of simulation replications taken before re-optimizing the allocation
     allocation_rule : str
-        chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", and "Brute Force"
+        chosen allocation method. Options are "iMOSCORE", "MOSCORE", "Phantom", and "Brute Force"
     alpha_epsilon : float
         lower threshold for enforcing a minimum required sample size
     crn_across_solns : bool
@@ -229,6 +282,12 @@ class MORS_Solver(object):
     def solve(self, problem):
         """Solve a given MORS problem - one macroreplication.
 
+        Notes
+        -----
+        To skip our suggestions for more efficient allocations, one can
+        directly call allocate() instead of smart_allocate(), with the
+        same inputs.
+
         Parameters
         ----------
         problem : base.MORS_Problem object
@@ -237,7 +296,6 @@ class MORS_Solver(object):
         Returns
         -------
         outputs : dict
-
 
             ``"alpha_hat"``
             list of float, final simulation allocation by system
@@ -255,7 +313,6 @@ class MORS_Solver(object):
             list of int, final sample size for each system
 
         metrics(optional): dict
-
 
             ``"alpha_hats"``
             list of lists of float, the simulation allocation selected at each step in the solver
@@ -288,11 +345,11 @@ class MORS_Solver(object):
             list of float, the time spent calculating the allocation distribution at each step in the solver
 
         """
-        if self.n0 < problem.n_obj + 1:
-            raise ValueError("n0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
+        if self.n0 < problem.n_objectives + 1:
+            raise ValueError("n0 has to be greater than or equal to n_objectives plus 1 to guarantee positive definite\
                   sample variance-covariance matrices.")
 
-        # No warm start solution for first call to allocate().
+        # No warm start solution for first call to smart_allocate().
         warm_start = None
 
         # Initialize summary statistics tracked over time:
@@ -347,14 +404,28 @@ class MORS_Solver(object):
                 # Note: If |S_epsilon| = delta, all sampling is compulsory --> no need to compute allocation.
                 if delta_epsilon > 0:
                     # Get distribution for sampling allocation.
-                    obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
+                    obj_vals = {idx: np.array(problem.sample_means[idx]) for idx in range(problem.n_systems)}
                     obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
-                    allocation_problem = create_allocation_problem(obj_vals=obj_vals, obj_vars=obj_vars)
+                    allocation_problem = MO_Alloc_Problem(obj_vals=obj_vals, obj_vars=obj_vars)
                     tic = time.perf_counter()
-                    alpha_hat = allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)[0]
+                    alpha_hat, _ = smart_allocate(self.allocation_rule, allocation_problem, warm_start=warm_start)
                     toc = time.perf_counter()
                     # In subsequent iterations, use previous alpha_hat as warm start
                     warm_start = alpha_hat
+
+                    # Compare recommended allocation to equal allocation, in case solver struggled.
+                    alpha_eq = np.array([1 / problem.n_systems for _ in range(problem.n_systems)])
+                    # If 4+ objectives or 100+ systems, use z^imo for comparisons. Otherwise use z^mo.
+                    if problem.n_objectives >= 4 or problem.n_systems >= 100:
+                        z_alpha_hat = calc_imoscore_rate(alpha=alpha_hat, alloc_problem=allocation_problem)
+                        z_alpha_eq = calc_imoscore_rate(alpha=alpha_eq, alloc_problem=allocation_problem)
+                    else:
+                        z_alpha_hat = calc_moscore_rate(alpha=alpha_hat, alloc_problem=allocation_problem)
+                        z_alpha_eq = calc_moscore_rate(alpha=alpha_eq, alloc_problem=allocation_problem)
+                    # Use equal allocation if it's better than what solver recommends.
+                    if z_alpha_hat < z_alpha_eq:
+                        alpha_hat = alpha_eq
+
                     # Record timing.
                     metrics["timings"].append(toc - tic)
                     # Sequentially choose systems to simulate by drawing independently from allocation distribution.
@@ -420,15 +491,15 @@ def record_metrics(metrics, problem, alpha_hat):
         occured at each step in the solver
 
         ``"percent_false_exclusion"``
-        list of float, the portion of true pareto systems
+        list of float, the porportion of true pareto systems
         which are falsely excluded at each step in the solver
 
         ``"percent_false_inclusion"``
-        list of float, the portion of true non-pareto systems
+        list of float, the proportion of true non-pareto systems
         which are falsely included at each step in the solver
 
         ``"percent_misclassification"``
-        list of float, the portion of systems which are
+        list of float, the proportion of systems which are
         misclassified at each step in the solver
 
     problem : base.MORS_Problem object
@@ -438,42 +509,7 @@ def record_metrics(metrics, problem, alpha_hat):
 
     Returns
     -------
-    metrics : dict
-
-        ``"alpha_hats"``
-        list of lists of float, the simulation allocation selected at each step in the solver
-
-        ``"alpha_bars"``
-        list of lists of float, the portion of the simulation budget that has been allocated
-        to each system at each step in the solver
-
-        ``"paretos"``
-        list of lists of int, the estimated pareto frontier at each step in the solver
-
-        ``"MCI_bool"``
-        list of Bool, indicating whether an misclassification by inclusion
-        occured at each step in the solver
-
-        ``"MCE_bool"``
-        list of Bool, indicating whether an misclassification by exclusion
-        occured at each step in the solver
-
-        ``"MC_bool"``
-        list of Bool, indicating whether an misclassification
-        occured at each step in the solver
-
-        ``"percent_false_exclusion"``
-        list of float, the portion of true pareto systems
-        which are falsely excluded at each step in the solver
-
-        ``"percent_false_inclusion"``
-        list of float, the portion of true non-pareto systems
-        which are falsely included at each step in the solver
-
-        ``"percent_misclassification"``
-        list of float, the portion of systems which are
-        misclassified at each step in the solver
-
+    None
     """
     # Record recommended and empirical allocation proportions.
     metrics['alpha_hats'].append(alpha_hat)
@@ -481,7 +517,7 @@ def record_metrics(metrics, problem, alpha_hat):
 
     # Record systems that look Pareto efficient.
     est_obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
-    est_pareto = list(utils.get_nondom(est_obj_vals))
+    est_pareto = list(get_nondom(est_obj_vals))
     metrics['paretos'].append(est_pareto)
 
     # If true objectives are known, compute error statistics.
@@ -500,8 +536,6 @@ def record_metrics(metrics, problem, alpha_hat):
         metrics['percent_false_exclusion'].append((problem.n_pareto_systems - n_correct_select) / problem.n_pareto_systems)
         metrics['percent_false_inclusion'].append(n_false_select / (problem.n_systems - problem.n_pareto_systems))
         metrics['percent_misclassification'].append(((problem.n_pareto_systems - n_correct_select) + n_false_select) / problem.n_systems)
-
-    return metrics
 
 
 class MORS_Tester(object):
@@ -645,7 +679,7 @@ class MORS_Tester(object):
         with open(self.file_name_path + ".txt", "w+") as file:
             file.write("The file " + self.file_name_path + ".pickle contains the MORS Tester object for the following experiment: \n")
             file.write("\nMORS Problem:\n")
-            file.write(f"\tnumber of objectives = {self.problem.n_obj}\n")
+            file.write(f"\tnumber of objectives = {self.problem.n_objectives}\n")
             file.write(f"\tnumber of systems = {self.problem.n_systems}\n")
             file.write("\n")
             for system_idx in range(self.problem.n_systems):
@@ -728,17 +762,17 @@ def make_phantom_rate_plots(testers):
     # Assume all testers have the same problem.
     common_problem = testers[0].problem
     # Calculate phantom rate of phantom allocation for true problem.
-    true_obj_vals = {idx: common_problem.true_means[idx] for idx in range(common_problem.n_systems)}
+    true_obj_vals = {idx: np.array(common_problem.true_means[idx]) for idx in range(common_problem.n_systems)}
     true_obj_vars = {idx: np.array(common_problem.true_covs[idx]) for idx in range(common_problem.n_systems)}
-    true_allocation_problem = create_allocation_problem(obj_vals=true_obj_vals, obj_vars=true_obj_vars)
-    _, phantom_rate_of_phantom_alloc = allocate(method="Phantom", systems=true_allocation_problem)
+    true_allocation_problem = MO_Alloc_Problem(obj_vals=true_obj_vals, obj_vars=true_obj_vars)
+    _, phantom_rate_of_phantom_alloc = smart_allocate(method="Phantom", alloc_problem=true_allocation_problem)
     # print(phantom_rate_of_phantom_alloc)
 
     # Calculate phantom rates for each tester.
     for tester in testers:
         phantom_rate_of_empirical_alloc_curves = []
         for mrep in range(tester.n_macroreps):
-            z_phantom_alpha_bar_curve = [calc_phantom_rate(alphas=tester.all_metrics[mrep]["alpha_bars"][budget_idx], problem=true_allocation_problem) for budget_idx in range(len(tester.intermediate_budgets))]
+            z_phantom_alpha_bar_curve = [calc_phantom_rate(alpha=tester.all_metrics[mrep]["alpha_bars"][budget_idx], alloc_problem=true_allocation_problem) for budget_idx in range(len(tester.intermediate_budgets))]
             # print(z_phantom_alpha_bar_curve)
             phantom_rate_of_empirical_alloc_curves.append(z_phantom_alpha_bar_curve)
         tester.rates["phantom_rate_25pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][budget_idx] for mrep in range(tester.n_macroreps)], q=0.25) for budget_idx in range(len(tester.intermediate_budgets))]
@@ -774,14 +808,14 @@ def make_phantom_rate_plots(testers):
                  tester.rates["phantom_rate_25pct"],
                  color="C" + str(tester_idx),
                  marker=marker_list[tester_idx],
-                 linestyle="-",
+                 linestyle=":",
                  linewidth=2
                  )
         plt.plot(tester.intermediate_budgets,
                  tester.rates["phantom_rate_75pct"],
                  color="C" + str(tester_idx),
                  marker=marker_list[tester_idx],
-                 linestyle="-",
+                 linestyle=":",
                  linewidth=2
                  )
     # Add a legend.
@@ -791,539 +825,3 @@ def make_phantom_rate_plots(testers):
     # Save the plot.
     path_name = "plots/phantom_rates.png"
     plt.savefig(path_name, bbox_inches="tight")
-
-
-# START OLD CODE
-# """
-# Created on Sun Sep 15 18:08:02 2019
-
-# @author: nathangeldner
-# """
-
-# def solve(problem_class, solver_class, n_0, budget, method, seed = (42, 42, 42, 42, 42, 42), delta=15, time_budget = 604800, metrics = False, \
-#           pareto_true = None, phantom_rates = False,\
-#               alloc_prob_true = None, crnflag = False, simpar = 1):
-    
-#     my_problem = problem_class(MRG32k3a(x = seed), crnflag = crnflag, simpar = simpar)
-#     my_solver_prn = get_next_prnstream(my_problem.rng.get_seed(), False)
-    
-#     my_solver = MORS_solver(my_problem, my_solver_prn)
-    
-#     return my_solver.solve( n_0, budget, method, delta=delta, time_budget = time_budget,\
-#                            metrics = metrics, pareto_true = pareto_true, phantom_rates = phantom_rates,\
-#                            alloc_prob_true = alloc_prob_true)
-    
-    
-# def solve2(my_problem, solver_class, n_0, budget, method, seed = (42, 42, 42, 42, 42, 42), delta=15, time_budget = 604800, metrics = False, \
-#           pareto_true = None, phantom_rates = False,\
-#               alloc_prob_true = None, crnflag = False, simpar = 1):
-    
-#     my_solver_prn = get_next_prnstream(my_problem.rng.get_seed(), False)
-    
-#     my_solver = MORS_solver(my_problem, my_solver_prn)
-    
-#     return my_solver.solve( n_0, budget, method, delta=delta, time_budget = time_budget,\
-#                            metrics = metrics, pareto_true = pareto_true, phantom_rates = phantom_rates,\
-#                            alloc_prob_true = alloc_prob_true)
-
-
-# class Oracle(object):
-#     """class for implementation of black-box simulations for use in MORS problems
-    
-#     Attributes
-#     ----------
-#     n_systems: int
-#                 the number of systems defined in the oracle
-    
-#     crnflag: bool
-#                 Indicates whether common random numbers is turned on or off. Defaults to off
-    
-#     rng: prng.MRG32k3a object
-#                 A prng.MRG32k3a object, a pseudo-random number generator
-#                     used by the oracle to simulate objective values.
-    
-#     random_state: tuple or list of tuples
-#                 If crnflag = False, a tuple of length 2. The first item is a tuple of int, which is 
-#                     32k3a seed. The second is random.Random state.
-#                 If crnflag = True, a list of such tuples with length  n_systems
-    
-#     simpar: int
-#                 the number of processes to use during simulation. Defaults to 1
-                
-#     num_obj: int
-#                 The number of objectives returned by g
-    
-#     Parameters
-#     ----------
-#     n_systems: int
-#             the number of systems which are accepted by g
-        
-#     rng: prng.MRG32k3a object
-                
-#     """
-    
-#     def __init__(self, n_systems, rng, crnflag=False, simpar = 1):
-        
-#         self.rng = rng
-#         self.crnflag = crnflag
-#         if crnflag == False:
-#             self.random_state = rng.getstate()
-#         if crnflag == True:
-#             self.random_state = [rng.getstate()]*n_systems
-#         self.n_systems = n_systems
-#         self.simpar = simpar
-        
-#         super().__init__()
-        
-#     def nextobs(self):
-#         state = self.random_state
-#         self.rng.setstate(state)
-#         jump_substream(self.rng)
-#         self.random_state = self.rng.getstate()
-        
-#     def crn_nextobs(self, system):
-#         state = self.random_state[system]
-#         self.rng.setstate(state)
-#         jump_substream(self.rng)
-#         self.random_state[system] = self.rng.getstate()
-    
-#     def crn_setobs(self, system):
-#         state = self.random_state[system]
-#         self.rng.setstate(state)
-        
-        
-   
-        
-        
-    
-#     def bump(self, x):
-#         """takes in x, a list of systems to simulate (allowing for repetition), and 
-#         returns simulated objective values
-        
-#         Parameters
-#         ----------
-#         x: tuple of ints
-#                     tuple of systems to simulate
-                    
-#         m: tuple of ints
-#                     tuple of number of requested replicates for each system in x
-                    
-#         returns
-#         -------
-#         objs: dictionary of lists of tuples of float
-#                     objs[system] is a list with length equal to the number of repetitions of system in x
-#                     containing tuples of simulated objective values
-#                     """
-                    
-#         objs = {}
-#         n_replicates = len(x)
-#         for system in set(x):
-#             objs[system] = []
-        
-        
-#         if n_replicates < 1:
-#             print('--* Error: Number of replications must be at least 1. ')
-#             return
-        
-#         if n_replicates ==1:
-#             if self.crnflag ==True:
-#                 self.crn_setobs(x[0])
-#                 obs = self.g(x[0],self.rng)
-#                 objs[x[0]].append(obs)
-#                 self.crn_nextobs(x[0])
-                
-#             else:
-#                 obs = self.g(x,self.rng)
-#                 objs[x[0]].append(obs)
-#                 self.next_obs()
-#         else:
-#             if self.simpar == 1:
-#                 if self.crnflag == True:
-#                     for system in x:
-#                         self.crn_setobs(system)
-#                         obs = self.g(system,self.rng)
-#                         objs[system].append(obs)
-#                         self.crn_nextobs(system)
-#                 else:
-#                     for system in x:
-#                         obs = self.g(system,self.rng)
-#                         objs[system].append(obs)
-#                         self.nextobs()
-#             else:
-#                 sim_old = self.simpar
-#                 nproc = self.simpar
-#                 if self.simpar > n_replicates:
-#                     nproc = n_replicates
-#                 replicates_per_proc = [int(n_replicates/nproc) for i in range(nproc)]
-#                 for i in range(n_replicates % nproc):
-#                     replicates_per_proc[i] +=1
-#                 chunk_args = [[]]*nproc
-#                 args_chunked = 0
-#                 for i in range(nproc):
-#                     chunk_args[i] = x[args_chunked:(args_chunked +replicates_per_proc[i])]
-#                     args_chunked+= replicates_per_proc[i]
-#                     #turn off simpar so the workers will be doing the serial version
-#                 self.simpar = 1
-#                 #need to send a different oracle object to each worker with the correct
-#                 #random state
-#                 oracle_list = []
-#                 if self.crnflag == True:
-#                     for i in range(nproc-1):
-#                         new_oracle = copy.deepcopy(self)
-#                         oracle_list.append(new_oracle)
-#                         for system in chunk_args[i]:
-#                             self.crn_nextobs(system)
-#                     oracle_list.append(self)
-#                 else:
-#                     for i in range(nproc-1):
-#                         new_oracle = copy.deepcopy(self)
-#                         oracle_list.append(new_oracle)
-#                         for system in chunk_args[i]:
-#                             self.nextobs()
-#                     oracle_list.append(self)
-                
-#                 pres = []
-#                 with mp.Pool(nproc) as p:
-#                     for i in range(nproc):
-#                         pres.append(p.apply_async(_mp_objmethod, (oracle_list[i], 'bump', [chunk_args[i]])))
-#                     for i in range(nproc):
-#                         res = pres[i].get()
-#                         for system in res.keys():
-#                             objs[system] = objs[system] + res[system]
-                            
-                
-#                 self.simpar = sim_old
-#         return objs
-                    
-           
-
-
-    
-# class MORS_tester(object):
-#     """
-#     Stores data for testing MORS algorithms.
-    
-#     Attributes
-#     ----------
-#     ranorc: an oracle class, usually an implementation of MyProblem
-    
-#     solution: list of int
-#                 a list of pareto systems
-                
-#     problem_struct: None or dictionary with keys 'obj', 'var', 'inv_var', 'pareto_indices', 'non_pareto_indices'
-#             problem['obj'] is a dictionary of numpy arrays, indexed by system number,
-#                 each of which corresponds to the objective values of a system
-#             problem['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-#                 each of which corresponds to the covariance matrix of a system
-#             problem['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-#                 each of which corresponds to the inverse covariance matrix of a system
-#             problem['pareto_indices'] is a list of pareto systems ordered by the first objective
-#             problem['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
-#     """
-    
-#     def __init__(self, problem, solution, problem_struct = None):
-        
-#         self.ranorc = problem
-#         self.solution = solution
-#         self.problem_struct = problem_struct
-        
-#     def aggregate_metrics(self,solver_outputs):
-#         """takes in runtime metrics produced by the macroreplications in testsolve
-#         and calculates empirical misclassification rates
-        
-#         Arguments
-#         ---------
-        
-#         solver_outputs: list of dictionaries
-#             each dictionary must contain the following keys:
-#                 MCI_bool: a list of booleans, each of which indicates whether a misclassification by inclusion
-#                     event occurred at a given point in the sequential solver macroreplication
-#                 MCE_bool: a list of booleans, each of which indicates whether a misclassification by exclusion
-#                     event occurred at a given point in the sequential solver macroreplication
-#                 MC_bool: a list of booleans, each of which indicates whether a misclassification
-#                     event occurred at a given point in the sequential solver macroreplication
-                    
-#         Returns
-#         -------
-        
-#         rates: dict
-#             rates['MCI_rate']: list of float
-#                 empirical MCI rate at a given point across sequential solver macroreplications
-#             rates['MCE_rate']: list of float
-#                 empirical MCE rate at a given point across sequential solver macroreplications
-#             rates['MC_rate']: list of float
-#                 empirical MC rate at a given point across sequential solver macroreplications
-        
-#         """
-#         MCI_all = []
-#         MCE_all = []
-#         MC_all = []
-#         for output in solver_outputs:
-#             MCI_all.append(output['MCI_bool'])
-#             MCE_all.append(output['MCE_bool'])
-#             MC_all.append(output['MC_bool'])
-            
-#         MCI_all = np.array(MCI_all)
-#         MCE_all = np.array(MCE_all)
-#         MC_all = np.array(MC_all)
-#         MCI_rate = [np.mean(MCI_all[:,i]) for i in range(MCI_all.shape[1])]
-#         MCE_rate = [np.mean(MCE_all[:,i]) for i in range(MCE_all.shape[1])]
-#         MC_rate = [np.mean(MC_all[:,i]) for i in range(MC_all.shape[1])]
-        
-        
-#         rates = {'MCI_rate': MCI_rate, 'MCE_rate': MCE_rate, 'MC_rate': MC_rate}
-#         return rates
-    
-# class MORS_solver(object):
-#     """Solver object for sequential MORS problems
-    
-#     Attributes
-#     ----------
-    
-#     orc: MOSCORE Oracle object
-#         the simulation oracle to be optimized
-    
-#     num_calls: int
-#         the number of function calls to the oracle thus far
-        
-#     num_obj: int
-#         the number of objectives
-        
-#     n_systems: int
-#         the number of systems accepted by the oracle
-        
-#     solver_prn: MRG32k3a object
-#         a random number generator, defined in pymoso.prng.mrg32k3a, in the pymoso package
-    
-#     """
-    
-#     def __init__(self,orc, solver_prn):
-#         self.orc = orc
-#         self.num_calls = 0
-#         self.num_obj = self.orc.num_obj
-#         self.n_systems = self.orc.n_systems
-#         self.solver_prn = solver_prn
-#         super().__init__()
-        
-        
-#     def solve(self, n_0, budget, method, delta=15, time_budget = 604800, metrics = False, pareto_true = None, phantom_rates = False,\
-#               alloc_prob_true = None):
-#         """function for sequential MORS solver.
-        
-#         Arguments
-#         ---------
-#         n_0: int
-#             initial allocation to each system, necessary to make an initial estimate of the objective
-#             values and covariance matrics. Must be greater than or equal to n_obj plus 1 to guarantee
-#             positive definite covariance matrices
-        
-#         budget: int
-#             simulation allocation budget. After running n_0 simulation replications of each system, the function
-#             will take additional replications in increments of delta until the budget is exceeded
-            
-#         method: str
-#             chosen allocation method. Options are "iSCORE", "SCORE", "Phantom", and "Brute Force"
-            
-#         delta: int
-#             the number of simulation replications taken before re-evaluating the allocation
-            
-#         time_budget: int or float
-#             before each new allocation evaluation, if the time budget is exceeded the solver will terminate.
-            
-#         metrics: bool
-#             when metrics is True, the function returns a dictionary metrics_out, containing
-#             runtime metrics pertaining to the performance of the solver 
-            
-#         pareto_true: list or tuple of int
-#             if the true pareto frontier is known, it can be provided to the solver. Has no effect if
-#             metrics is False. If metrics is true and pareto_true is provided, metrics_out will 
-#             contain information pertaining to misclassifications during the solver run. This is
-#             not recommended outside of the testsolve function
-            
-#         phantom_rates: bool
-#             if phantom_rates is True, and alloc_prob_true is provided, metrics_out will include the phantom rate
-#             calculated at each allocation
-            
-#         alloc_prob_true: dict
-#             requires the following structure
-#             alloc_prob_true['obj'] is a dictionary of numpy arrays, indexed by system number,
-#                 each of which corresponds to the objective values of a system
-#             alloc_prob_true['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-#                 each of which corresponds to the covariance matrix of a system
-#             alloc_prob_true['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-#                 each of which corresponds to the inverse covariance matrix of a system
-#             alloc_prob_true['pareto_indices'] is a list of pareto systems ordered by the first objective
-#             alloc_prob_true['non_pareto_indices'] is a list of non-pareto systems ordered by the first objective
-            
-#         Returns
-#         -------
-#         outs: dict
-#             outs['paretos']: list of indices of pareto systems
-#             outs['objectives']: dictionary, keyed by system index, of lists containing objective values
-#             outs['variances']: dictionary, keyed by system index, of covariance matrices as numpy arrays
-#             outs['alpha_hat']: list of float, final simulation allocation by system
-#             outs['sample_sizes']: list of int, final sample size for each system
-            
-#         metrics_out: dict (optional)
-#             metrics_out['alpha_hats']: list of lists of float, the simulation allocation selected at each step in the solver
-#             metrics_out['alpha_bars']: list of lists of float, the portion of the simulation budget that has been allocated
-#                 to each system at each step in the solver
-#             metrics_out['paretos']: list of lists of int, the estimated pareto frontier at each step in the solver
-#             metrics_out['MCI_bool']: list of Bool, indicating whether an misclassification by inclusion
-#                 occured at each step in the solver
-#             metrics_out['MCE_bool']: list of Bool, indicating whether an misclassification by exclusion
-#                 occured at each step in the solver
-#             metrics_out['MC_bool']: list of Bool, indicating whether an misclassification
-#                 occured at each step in the solver
-#             metrics_out['percent_false_exclusion']: list of float, the portion of true pareto systems 
-#                 which are falsely excluded at each step in the solver
-                
-#             metrics_out['percent_false_inclusion']: list of float, the portion of true non-pareto systems
-#                 which are falsely included at each step in the solver
-#             metrics_out['percent_misclassification']: list of float, the portion of systems which are
-#                 misclassified at each step in the solver
-
-#             """
-        
-        
-#         #hit each system with n_0
-#         t_0 = time.time()
-        
-#         if phantom_rates == True and alloc_prob_true is not None and pareto_true is None:
-#             pareto_true = alloc_prob_true['pareto_indices']
-        
-#         if n_0 < self.num_obj + 1:
-#             raise ValueError("n_0 has to be greater than or equal to n_obj plus 1 to guarantee positive definite\
-#                   covariance matrices")
-#         objectives = {}
-#         variances = {}
-#         sum_samples = {}
-#         sum_samples_squared = {}
-#         warm_start = None
-#         n_systems = self.n_systems
-#         alpha_hat = [1/n_systems]*n_systems
-        
-#         initial_bump_args = list(range(n_systems))*n_0
-#         initial_bump = self.orc.bump(initial_bump_args)
-#         sample_size = [n_0]*n_systems
-        
-#         for i in range(n_systems):
-#             sample_objectives = np.array(initial_bump[i])
-#             sum_samples[i] = np.array([[0]*self.orc.num_obj]).T
-#             sum_samples_squared[i] = np.array([[0]*self.orc.num_obj]*self.orc.num_obj)
-            
-#             for sample in range(sample_objectives.shape[0]):
-#                 sum_samples[i] = sum_samples[i] + sample_objectives[sample:sample+1,:].T
-#                 sum_samples_squared[i] = sum_samples_squared[i] + sample_objectives[sample:sample+1,:].T @\
-#                     sample_objectives[sample:sample+1,:]
-#             objectives[i] = sum_samples[i] / sample_size[i]
-#             variances[i] = sum_samples_squared[i] / sample_size[i] - objectives[i] @ objectives[i].T
-#             objectives[i] = tuple(objectives[i].flatten())
-            
-#         if metrics == True:
-#             pareto_est = list(utils.get_nondom(objectives))
-            
-#             metrics_out = {'alpha_hats': [alpha_hat], 'alpha_bars': [[size/sum(sample_size) for size in sample_size]], \
-#                            'paretos': [pareto_est]}
-#             if pareto_true is not None:
-#                 MCI_bool = any([pareto_est_system not in pareto_true for pareto_est_system in pareto_est])
-#                 MCE_bool = any([pareto_true_system not in pareto_est for pareto_true_system in pareto_true])
-#                 MC_bool = MCI_bool or MCE_bool
-#                 p = len(pareto_true)
-#                 n_correct_select = sum([pareto_est_system in pareto_true for pareto_est_system in pareto_est])
-#                 n_false_select = sum([pareto_est_system not in pareto_true for pareto_est_system in pareto_est])
-#                 percent_false_exclusion = (p - n_correct_select)/p
-#                 percent_false_inclusion = n_false_select / (n_systems - p)
-#                 percent_misclassification = ((p - n_correct_select) + n_false_select)/n_systems
-                
-#                 metrics_out['MCI_bool'] = [MCI_bool]
-#                 metrics_out['MCE_bool'] = [MCE_bool]
-#                 metrics_out['MC_bool'] = [MC_bool]
-#                 metrics_out['percent_false_exclusion'] = [percent_false_exclusion]
-#                 metrics_out['percent_false_inclusion'] = [percent_false_inclusion]
-#                 metrics_out['percent_misclassification'] = [percent_misclassification]
-                
-#                 if phantom_rates == True:
-#                     if alloc_prob_true is None:
-#                         raise ValueError("alloc_prob_true argument is required for calculation of phantom rates")
-#                     else:
-#                         metrics_out['phantom_rate'] = [calc_phantom_rate([size/sum(sample_size) for size in sample_size],\
-#                                    alloc_prob_true)]
-            
-                         
-#         self.num_calls = n_0 * n_systems
-#         t_1 = time.time()
-#         while self.num_calls <= budget and (t_1-t_0) <= time_budget:
-            
-#             #get allocation distribution
-#             allocation_problem = create_allocation_problem(objectives,variances)
-#             alpha_hat = allocate(method, allocation_problem, warm_start = warm_start)[0]
-            
-#             warm_start = alpha_hat
-#             systems_to_sample = self.solver_prn.choices(range(n_systems), weights = alpha_hat, k=delta)
-            
-#             my_bump = self.orc.bump(systems_to_sample)
-            
-            
-#             for system in set(systems_to_sample):
-#                 sample_objectives = np.array(my_bump[system])
-                
-#                 for sample in range(sample_objectives.shape[0]):
-#                     sum_samples[i] = sum_samples[i] + sample_objectives[sample:sample+1,:].T
-#                     sum_samples_squared[i] = sum_samples_squared[i] + sample_objectives[sample:sample+1,:].T @\
-#                         sample_objectives[sample:sample+1,:]
-                        
-#                 objectives[i] = sum_samples[i] / sample_size[i]
-#                 variances[i] = sum_samples_squared[i] / sample_size[i] - objectives[i] @ objectives[i].T
-#                 objectives[i] = tuple(objectives[i].flatten())
-#             for system in systems_to_sample:
-#                 sample_size[system]+=1
-#                 self.num_calls +=1
-            
-#             if metrics == True:
-#                 pareto_est = list(utils.get_nondom(objectives))
-                
-#                 metrics_out['alpha_hats'].append(alpha_hat)
-#                 metrics_out['alpha_bars'].append([size/sum(sample_size) for size in sample_size])
-#                 metrics_out['paretos'].append(pareto_est)
-                
-#                 if pareto_true is not None:
-#                     p = len(pareto_true)
-#                     n_correct_select = sum([pareto_est_system in pareto_true for pareto_est_system in pareto_est])
-#                     n_false_select = sum([pareto_est_system not in pareto_true for pareto_est_system in pareto_est])
-#                     percent_false_exclusion = (p - n_correct_select)/p
-#                     percent_false_inclusion = n_false_select / (n_systems - p)
-#                     percent_misclassification = ((p - n_correct_select) + n_false_select)/n_systems
-#                     MCI_bool = any([pareto_est_system not in pareto_true for pareto_est_system in pareto_est])
-#                     MCE_bool = any([pareto_true_system not in pareto_est for pareto_true_system in pareto_true])
-#                     MC_bool = MCI_bool or MCE_bool
-#                     metrics_out['MCI_bool'].append(MCI_bool)
-#                     metrics_out['MCE_bool'].append(MCE_bool)
-#                     metrics_out['MC_bool'].append(MC_bool)
-#                     metrics_out['percent_misclassification'].append(percent_misclassification)
-#                     metrics_out['percent_false_inclusion'].append(percent_false_inclusion)
-#                     metrics_out['percent_false_exclusion'].append(percent_false_exclusion)
-                    
-#                     if phantom_rates == True:
-#                         if alloc_prob_true is None:
-#                             raise ValueError("alloc_prob_true argument is required for calculation of phantom rates")
-#                         else:
-#                             metrics_out['phantom_rate'] = calc_phantom_rate([size/sum(sample_size) for size in sample_size],\
-#                                        alloc_prob_true)
-#             t_1 = time.time()
-                            
-                    
-                
-        
-        
-#         outs = {}
-#         outs['paretos'] = list(utils.get_nondom(objectives))
-#         outs['objectives'] = objectives
-#         outs['variances'] = variances
-#         outs['alpha_hat'] = alpha_hat
-#         outs['sample_sizes'] = sample_size
-        
-#         if metrics == True:
-#             return outs, metrics_out
-#         else:
-#             return outs

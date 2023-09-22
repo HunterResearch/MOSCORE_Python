@@ -1,0 +1,37 @@
+The file outputs/Equal_with_budget=300_n0=10_delta=10_mreps=5.pickle contains the MORS Tester object for the following experiment: 
+
+MORS Problem:
+	number of objectives = 2
+	number of systems = 18
+
+	system 0 has true means [5, 0] and covariance matrix [[1, 0], [0, 1]]
+	system 1 has true means [4, 1] and covariance matrix [[1, 0], [0, 1]]
+	system 2 has true means [3, 2] and covariance matrix [[1, 0], [0, 1]]
+	system 3 has true means [2, 3] and covariance matrix [[1, 0], [0, 1]]
+	system 4 has true means [1, 4] and covariance matrix [[1, 0], [0, 1]]
+	system 5 has true means [0, 5] and covariance matrix [[1, 0], [0, 1]]
+	system 6 has true means [6, 3] and covariance matrix [[1, 0], [0, 1]]
+	system 7 has true means [5, 2] and covariance matrix [[1, 0], [0, 1]]
+	system 8 has true means [4, 3] and covariance matrix [[1, 0], [0, 1]]
+	system 9 has true means [3, 4] and covariance matrix [[1, 0], [0, 1]]
+	system 10 has true means [2, 5] and covariance matrix [[1, 0], [0, 1]]
+	system 11 has true means [1, 6] and covariance matrix [[1, 0], [0, 1]]
+	system 12 has true means [7, 1] and covariance matrix [[1, 0], [0, 1]]
+	system 13 has true means [6, 2] and covariance matrix [[1, 0], [0, 1]]
+	system 14 has true means [5, 3] and covariance matrix [[1, 0], [0, 1]]
+	system 15 has true means [4, 4] and covariance matrix [[1, 0], [0, 1]]
+	system 16 has true means [3, 5] and covariance matrix [[1, 0], [0, 1]]
+	system 17 has true means [2, 6] and covariance matrix [[1, 0], [0, 1]]
+
+MORS Solver:
+	allocation rule = Equal
+	budget = 300
+	n0 = 10
+	delta = 10
+
+5 macroreplications were run:
+	macroreplication 0: avg time per allocation call = 0.000005 s
+	macroreplication 1: avg time per allocation call = 0.000005 s
+	macroreplication 2: avg time per allocation call = 0.000004 s
+	macroreplication 3: avg time per allocation call = 0.000005 s
+	macroreplication 4: avg time per allocation call = 0.000004 s
