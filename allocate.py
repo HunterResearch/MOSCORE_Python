@@ -1602,7 +1602,7 @@ def calc_moscore_rate(alpha, alloc_problem):
     alpha_decide_pareto = [alpha[score_problem.alloc_problem.pareto_indices[idx]] for idx in range(score_problem.n_paretos)]
     # Append the proportion of the (unity) allocation allocated to non-Pareto systems.
     alpha_decide = alpha_decide_pareto + [1 - np.sum(alpha_decide_pareto)]
-    z = score_problem.calc_rate(alpha=alpha_decide)
+    z = score_problem.calc_rate(alpha_decide=alpha_decide)
     return z
 
 

@@ -18,7 +18,7 @@ from base import MO_Alloc_Problem, MORS_Problem
 class TestProblem(MORS_Problem):
     """Example implementation of a user-defined MORS problem."""
     def __init__(self):
-        self.n_obj = 2
+        self.n_objectives = 2
         self.systems = [(5, 0), (4, 1), (3, 2), (2, 3), (1, 4), (0, 5),
                         (6, 3), (5, 2), (4, 3), (3, 4), (2, 5), (1, 6),
                         (7, 1), (6, 2), (5, 3), (4, 4), (3, 5), (2, 6)]
@@ -51,7 +51,7 @@ class TestProblem(MORS_Problem):
 class TestProblem2(MORS_Problem):
     """Example implementation of a user-defined MORS problem."""
     def __init__(self):
-        self.n_obj = 2
+        self.n_objectives = 2
         self.systems = [(1, 0), (0, 1), (1, 1)]
         self.n_systems = len(self.systems)
         self.true_means = [list(self.systems[idx]) for idx in range(self.n_systems)]
@@ -82,7 +82,7 @@ class TestProblem2(MORS_Problem):
 class TestProblem3(MORS_Problem):
     """Example implementation of a user-defined MORS problem."""
     def __init__(self):
-        self.n_obj = 2
+        self.n_objectives = 2
         self.systems = [(5.0, 0.0), (4.0, 6.0), (3.0, 2.0), (2.0, 3.0), (6.0, 4.0), (0.0, 5.0), (1.0, 1.0)]
         self.n_systems = len(self.systems)
         self.true_means = [list(self.systems[idx]) for idx in range(self.n_systems)]
@@ -115,7 +115,7 @@ class Random_MORS_Problem(MORS_Problem):
 
     Attributes
     ----------
-    n_obj : int
+    n_objectives : int
         number of objectives
 
     systems : list
@@ -185,7 +185,7 @@ class Random_MORS_Problem(MORS_Problem):
         return tuple(obj)
 
 
-def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, corr=None, center=100, radius=6, minsep=0.0001):
+def create_fixed_pareto_random_problem(n_systems, n_objectives, n_paretos, sigma=1, corr=None, center=100, radius=6, minsep=0.0001):
     """Randomly create a MORS problem with a fixed number of pareto systems.
 
     Notes
@@ -244,11 +244,11 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
         # Loop until new pareto system is added.
         while ind == 0:
             # TODO: Update to use mrg32k3a RNG.
-            y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
+            y = np.random.multivariate_normal([0] * n_objectives, np.identity(n_objectives))  # Generate standard normal vector.
             u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
             z = y / np.linalg.norm(y)  # Normalize to put uniformly on the unit sphere.
             z = -1 * np.abs(z)  # Rotate to put in negative orthant. By symmetry, this is equiprobable.
-            y = z * radius + np.ones(n_obj) * center  # Recenter.
+            y = z * radius + np.ones(n_objectives) * center  # Recenter.
             if i == 0:  # If this is the first system, add it to the list.
                 paretos[i] = y
                 ind = 1  # Exit loop.
@@ -270,10 +270,10 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
         ind = 0
         while ind == 0:  # Do until new non-pareto is added.
             # Generate system in ball with radius rad.
-            y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
+            y = np.random.multivariate_normal([0] * n_objectives, np.identity(n_objectives))  # Generate standard normal vector.
             u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
-            z = (y / np.linalg.norm(y)) * u**(1 / n_obj)  # Normalize and reweight by radius to put uniformly within the unit ball.
-            y = z * radius + np.ones(n_obj) * center  # Recenter.
+            z = (y / np.linalg.norm(y)) * u**(1 / n_objectives)  # Normalize and reweight by radius to put uniformly within the unit ball.
+            y = z * radius + np.ones(n_objectives) * center  # Recenter.
             ind2 = 0
             ind3 = 0
             for j in range(n_paretos):  # Compare to pareto systems.
@@ -292,13 +292,13 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
         while not p:
             rho = np.random.uniform(low=-1, high=1)
             covar = rho * sigma * sigma
-            cp = (np.ones(n_obj) - np.identity(n_obj)) * covar + np.identity(n_obj) * sigma**2
+            cp = (np.ones(n_objectives) - np.identity(n_objectives)) * covar + np.identity(n_objectives) * sigma**2
             # Check if it's positive semi-definite.
             p = np.all(np.linalg.eigvals(cp) > 0) and np.all(cp - cp.T == 0)
     else:
         rho = corr
         covar = rho * sigma * sigma
-        cp = (np.ones(n_obj) - np.identity(n_obj)) * covar + np.identity(n_obj) * sigma**2
+        cp = (np.ones(n_objectives) - np.identity(n_objectives)) * covar + np.identity(n_objectives) * sigma**2
         # Check if it's positive semi-definite.
         p = np.all(np.linalg.eigvals(cp) > 0) and np.all(cp - cp.T == 0)
         if not p:
@@ -311,7 +311,7 @@ def create_fixed_pareto_random_problem(n_systems, n_obj, n_paretos, sigma=1, cor
     return MO_Alloc_Problem(obj_vals=objectives, obj_vars=variances)
 
 
-def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, center=100, radius=6, minsep=0.0001):
+def create_variable_pareto_random_problem(n_systems, n_objectives, sigma=1, corr=None, center=100, radius=6, minsep=0.0001):
     """Randomly create a MORS problem with a variable number of pareto systems.
 
     Notes
@@ -324,7 +324,7 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
     n_systems : int
         number of systems to create
 
-    n_obj : int
+    n_objectives : int
         number of objectives for the problem
 
     n_paretos : int
@@ -366,10 +366,10 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
     X = {}
     for i in range(n_systems):
         # Generate system in uniformly in sphere with radius rad.
-        y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
+        y = np.random.multivariate_normal([0] * n_objectives, np.identity(n_objectives))  # Generate standard normal vector.
         u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
-        z = (y / np.linalg.norm(y)) * u**(1 / n_obj)  # Normalize and reweight by radius to put uniformly within the unit ball.
-        X[i] = z * radius + np.ones(n_obj) * center  # Recenter.
+        z = (y / np.linalg.norm(y)) * u**(1 / n_objectives)  # Normalize and reweight by radius to put uniformly within the unit ball.
+        X[i] = z * radius + np.ones(n_objectives) * center  # Recenter.
     if minsep > 0:
         # Find paretos.
         X_array = np.array([X[idx] for idx in range(n_systems)])
@@ -385,7 +385,7 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
             # No need to make a comparison if one of the systems is bad.
                 if par2 not in bads and par1 not in bads:
                     # A pareto is bad if it's within minsep of a non-bad pareto along any objective
-                    if np.any([np.abs(X[par1][obj] - X[par2][obj]) < minsep for obj in range(n_obj)]):
+                    if np.any([np.abs(X[par1][obj] - X[par2][obj]) < minsep for obj in range(n_objectives)]):
                         bads.append(par2)
         # Remove duplicates.
         bads = list(set(bads))
@@ -394,22 +394,22 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
 
         for par in paretos:
             for nonpar in non_paretos:
-                if np.any([np.abs(X[nonpar][obj] - X[par][obj]) < minsep for obj in range(n_obj)]):
+                if np.any([np.abs(X[nonpar][obj] - X[par][obj]) < minsep for obj in range(n_objectives)]):
                     bads.append(nonpar)
 
         for system in bads:
             ind = 0
             while ind == 0:
-                y = np.random.multivariate_normal([0] * n_obj, np.identity(n_obj))  # Generate standard normal vector.
+                y = np.random.multivariate_normal([0] * n_objectives, np.identity(n_objectives))  # Generate standard normal vector.
                 u = np.random.uniform()  # Generate a Uniform[0, 1] random variate.
-                z = (y / np.linalg.norm(y)) * u**(1 / n_obj)  # Normalize and reweight by radius to put uniformly within the unit ball.
-                X[system] = z * radius + np.ones(n_obj) * center  # Recenter.
+                z = (y / np.linalg.norm(y)) * u**(1 / n_objectives)  # Normalize and reweight by radius to put uniformly within the unit ball.
+                X[system] = z * radius + np.ones(n_objectives) * center  # Recenter.
                 ind2 = 0
                 ind3 = 0
                 for par in paretos:  # Compare to each pareto system.
-                    if np.any([abs(X[system][obj] - X[par][obj]) < minsep for obj in range(n_obj)]):  # Check minimum separation.
+                    if np.any([abs(X[system][obj] - X[par][obj]) < minsep for obj in range(n_objectives)]):  # Check minimum separation.
                         ind2 = ind2 + 1
-                    if np.all([X[system][obj] - X[par][obj] > 0 for obj in range(n_obj)]):  # Make sure new system is not pareto.
+                    if np.all([X[system][obj] - X[par][obj] > 0 for obj in range(n_objectives)]):  # Make sure new system is not pareto.
                         ind3 = ind3 + 1
                 if ind2 == 0 and ind3 > 0:
                     ind = 1  # Exit loop if we're outside of minsep of all paretos and dominated by any pareto.
@@ -421,13 +421,13 @@ def create_variable_pareto_random_problem(n_systems, n_obj, sigma=1, corr=None, 
         while not p:
             rho = np.random.uniform(low=-1, high=1)
             covar = rho * sigma * sigma
-            cp = (np.ones(n_obj) - np.identity(n_obj)) * covar + np.identity(n_obj) * sigma**2
+            cp = (np.ones(n_objectives) - np.identity(n_objectives)) * covar + np.identity(n_objectives) * sigma**2
             # Check if it's positive semi-definite.
             p = np.all(np.linalg.eigvals(cp) > 0) and np.all(cp - cp.T == 0)
     else:
         rho = corr
         covar = rho * sigma * sigma
-        cp = (np.ones(n_obj) - np.identity(n_obj)) * covar + np.identity(n_obj) * sigma**2
+        cp = (np.ones(n_objectives) - np.identity(n_objectives)) * covar + np.identity(n_objectives) * sigma**2
         # Check if it's positive semi-definite.
         p = np.all(np.linalg.eigvals(cp) > 0) and np.all(cp - cp.T == 0)
         if not p:
@@ -455,7 +455,7 @@ def create_mocba_problem(covtype):
     alloc_problem : base.MO_Alloc_Problem
         Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
     """
-    n_obj = 3
+    n_objectives = 3
     obj = {0: [8, 36, 60], 1: [12, 32, 52], 2: [14, 38, 54], 3: [16, 46, 48], 4: [4, 42, 56],
            5: [18, 40, 62], 6: [10, 44, 58], 7: [20, 34, 64], 8: [22, 28, 68], 9: [24, 40, 62],
            10: [26, 38, 64], 11: [28, 40, 66], 12: [30, 42, 62], 13: [32, 44, 64], 14: [26, 40, 66],
@@ -464,7 +464,7 @@ def create_mocba_problem(covtype):
     covs = {}
 
     if covtype == "ind":
-        cov = np.identity(n_obj) * 8
+        cov = np.identity(n_objectives) * 8
     elif covtype == "pos":
         cov = np.array([[64, 0.4 * 8 * 8, 0.4 * 8 * 8], [0.4 * 8 * 8, 64, 0.4 * 8 * 8], [0.4 * 8 * 8, 0.4 * 8 * 8, 64]])
     elif covtype == "neg":

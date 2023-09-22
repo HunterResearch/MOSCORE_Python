@@ -9,7 +9,10 @@ Listing
 -------
 nearestSPD : function
 is_pareto_efficient : function
-create_allocation_problem : function
+get_nondom : function
+argsort : function
+front : function
+does_dominate : function
 find_phantoms : function
 sweep : function
 calc_min_obj_gap : function
@@ -116,6 +119,120 @@ def is_pareto_efficient(costs, return_mask=True):
     else:
         return is_efficient
 
+def get_nondom(edict):
+    """
+    Generate the non-dominated points of a set.
+
+    Parameters
+    ----------
+    edict : dict
+        Keys are feasible points (tuples of int), values are objective
+        values (tuples of float)
+
+    Returns
+    -------
+    set
+        Set of non-dominated points
+    """
+    pts = list(edict.keys())
+    vals = list(edict.values())
+    sind = argsort(vals)
+    newpts = []
+    newvals = []
+    for i in range(len(pts)):
+        newpts.append(pts[sind[i]])
+        newvals.append(vals[sind[i]])
+    Mpts, Mobjs = front(newpts, newvals)
+    return set(Mpts)
+
+def argsort(seq):
+    """
+    Generate the sorted arguments of a collection of values
+
+    Parameters
+    ----------
+    seq : dict
+
+    Returns
+    -------
+    list
+        list of keys sorted by value
+    """
+    return sorted(range(len(seq)), key=seq.__getitem__)
+
+def front(points, objs):
+    """
+    Recursively generate the non-dominated set.
+
+    Parameters
+    ----------
+    points : list of tuple of int
+    objs : list of tuple of float
+        Objective values of points
+
+    Returns
+    -------
+    Tpts : list of tuple of int
+    Tobjs : list of tuple of float
+    """
+    cardP = len(points)
+    if cardP == 1:
+        return points, objs
+    elif cardP > 1:
+        nondom = set()
+        halfind = int(cardP/2)
+        Tpts, Tobjs = front(points[0:halfind], objs[0:halfind])
+        Bpts, Bobjs = front(points[halfind:cardP], objs[halfind:cardP])
+        brange = range(len(Bpts))
+        for i in brange:
+            pt = Bpts[i]
+            gvals = Bobjs[i]
+            delz = [0]*len(gvals)
+            pt_nondom = True
+            j = 0
+            while j < len(Tpts) and pt_nondom:
+                if does_dominate(Tobjs[j], gvals, delz, delz):
+                    pt_nondom = False
+                j += 1
+            if pt_nondom:
+                Tpts.append(pt)
+                Tobjs.append(gvals)
+        return Tpts, Tobjs
+
+def does_dominate(g1, g2, delta1, delta2):
+    """
+    Returns true if g1 dominates g2 with the given relaxation.
+
+    Parameters
+    ----------
+    g1 : tuple of float
+        Objective values of a point
+    g2 : tuple of float
+        Objective values of a point
+    delta1 : tuple of float
+        Relaxation of 'g1'
+    delta2 : tuple of float
+        Relaxation of 'g2'
+
+    Returns
+    -------
+    is_dom : bool
+    """
+    dim = len(g1)
+    is_dom = True
+    i = 0
+    while i < dim and is_dom:
+        if g2[i] + delta2[i] < g1[i] - delta1[i]:
+            is_dom = False
+        i = i + 1
+    if is_dom:
+        is_equal = True
+        for i in range(dim):
+            if not g1[i] - delta1[i] == g2[i] + delta2[i]:
+                is_equal = False
+        if is_equal:
+            is_dom = False
+    return is_dom
 
 def find_phantoms(paretos, n_obj):
     """Find the phantom pareto set.

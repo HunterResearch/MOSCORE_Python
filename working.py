@@ -13,7 +13,7 @@ from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots, make_p
 from example import TestProblem, TestProblem2, TestProblem3
 from allocate import allocate
 
-myproblem = TestProblem2()
+myproblem = TestProblem()
 
 myrng = MRG32k3a()
 myproblem.attach_rng(myrng)
@@ -25,8 +25,8 @@ objs = myproblem.bump(system_indices = system_indices)
 
 myproblem.update_statistics(system_indices = system_indices, objs=objs)
 
-mysolver = MORS_Solver(budget=200,
-                       n0=10,
+mysolver = MORS_Solver(budget=300,
+                       n0=5,
                        delta=10,
                        allocation_rule="MOSCORE",
                        alpha_epsilon=1e-8,
@@ -36,8 +36,8 @@ mysolver = MORS_Solver(budget=200,
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
 mytester.run(n_macroreps=10)
 
-mysolver2 = MORS_Solver(budget=200,
-                       n0=10,
+mysolver2 = MORS_Solver(budget=300,
+                       n0=5,
                        delta=10,
                        allocation_rule="Equal",
                        alpha_epsilon=1e-8,

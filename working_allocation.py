@@ -13,7 +13,6 @@ import time
 
 # from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots, make_phantom_rate_plots
 from example import TestProblem, TestProblem2, TestProblem3
-# from utils import create_allocation_problem
 from allocate import allocate, smart_allocate
 from base import MO_Alloc_Problem
 # from allocate import allocate

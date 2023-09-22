@@ -22,11 +22,11 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 
-import pymoso.chnutils as chnutils
+#import pymoso.chnutils as chnutils
 from mrg32k3a.mrg32k3a import MRG32k3a
 
 from allocate import smart_allocate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
-from utils import is_pareto_efficient   # _mp_objmethod,
+from utils import is_pareto_efficient, get_nondom   # _mp_objmethod,
 
 
 class MO_Alloc_Problem(object):
@@ -170,7 +170,7 @@ class MORS_Problem(object):
         system_indices : list
             list of indices of systems to simulate (allows repetition)
         objs : list
-            list of estimates of objectives returned by reach replication
+            list of estimates of objectives returned by each replication
         """
         if len(system_indices) != len(objs):
             print("Length of results must equal length of list of simulated systems.")
@@ -408,7 +408,7 @@ class MORS_Solver(object):
                 # Note: If |S_epsilon| = delta, all sampling is compulsory --> no need to compute allocation.
                 if delta_epsilon > 0:
                     # Get distribution for sampling allocation.
-                    obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
+                    obj_vals = {idx: np.array(problem.sample_means[idx]) for idx in range(problem.n_systems)}
                     obj_vars = {idx: np.array(problem.sample_covs[idx]) for idx in range(problem.n_systems)}
                     allocation_problem = MO_Alloc_Problem(obj_vals=obj_vals, obj_vars=obj_vars)
                     tic = time.perf_counter()
@@ -421,11 +421,11 @@ class MORS_Solver(object):
                     alpha_eq = np.array([1 / problem.n_systems for _ in range(problem.n_systems)])
                     # If 4+ objectives or 100+ systems, use z^imo for comparisons. Otherwise use z^mo.
                     if problem.n_objectives >= 4 or problem.n_systems >= 100:
-                        z_alpha_hat = calc_imoscore_rate(alphas=alpha_hat, systems=allocation_problem)
-                        z_alpha_eq = calc_imoscore_rate(alphas=alpha_eq, systems=allocation_problem)
+                        z_alpha_hat = calc_imoscore_rate(alpha=alpha_hat, alloc_problem=allocation_problem)
+                        z_alpha_eq = calc_imoscore_rate(alpha=alpha_eq, alloc_problem=allocation_problem)
                     else:
-                        z_alpha_hat = calc_moscore_rate(alphas=alpha_hat, systems=allocation_problem)
-                        z_alpha_eq = calc_moscore_rate(alphas=alpha_eq, systems=allocation_problem)
+                        z_alpha_hat = calc_moscore_rate(alpha=alpha_hat, alloc_problem=allocation_problem)
+                        z_alpha_eq = calc_moscore_rate(alpha=alpha_eq, alloc_problem=allocation_problem)
                     # Use equal allocation if it's better than what solver recommends.
                     if z_alpha_hat < z_alpha_eq:
                         alpha_hat = alpha_eq
@@ -556,7 +556,7 @@ def record_metrics(metrics, problem, alpha_hat):
 
     # Record systems that look Pareto efficient.
     est_obj_vals = {idx: problem.sample_means[idx] for idx in range(problem.n_systems)}
-    est_pareto = list(chnutils.get_nondom(est_obj_vals))
+    est_pareto = list(get_nondom(est_obj_vals))
     metrics['paretos'].append(est_pareto)
 
     # If true objectives are known, compute error statistics.
@@ -803,17 +803,17 @@ def make_phantom_rate_plots(testers):
     # Assume all testers have the same problem.
     common_problem = testers[0].problem
     # Calculate phantom rate of phantom allocation for true problem.
-    true_obj_vals = {idx: common_problem.true_means[idx] for idx in range(common_problem.n_systems)}
+    true_obj_vals = {idx: np.array(common_problem.true_means[idx]) for idx in range(common_problem.n_systems)}
     true_obj_vars = {idx: np.array(common_problem.true_covs[idx]) for idx in range(common_problem.n_systems)}
     true_allocation_problem = MO_Alloc_Problem(obj_vals=true_obj_vals, obj_vars=true_obj_vars)
-    _, phantom_rate_of_phantom_alloc = smart_allocate(method="Phantom", systems=true_allocation_problem)
+    _, phantom_rate_of_phantom_alloc = smart_allocate(method="Phantom", alloc_problem=true_allocation_problem)
     # print(phantom_rate_of_phantom_alloc)
 
     # Calculate phantom rates for each tester.
     for tester in testers:
         phantom_rate_of_empirical_alloc_curves = []
         for mrep in range(tester.n_macroreps):
-            z_phantom_alpha_bar_curve = [calc_phantom_rate(alphas=tester.all_metrics[mrep]["alpha_bars"][budget_idx], systems=true_allocation_problem) for budget_idx in range(len(tester.intermediate_budgets))]
+            z_phantom_alpha_bar_curve = [calc_phantom_rate(alpha=tester.all_metrics[mrep]["alpha_bars"][budget_idx], alloc_problem=true_allocation_problem) for budget_idx in range(len(tester.intermediate_budgets))]
             # print(z_phantom_alpha_bar_curve)
             phantom_rate_of_empirical_alloc_curves.append(z_phantom_alpha_bar_curve)
         tester.rates["phantom_rate_25pct"] = [np.quantile(a=[phantom_rate_of_phantom_alloc - phantom_rate_of_empirical_alloc_curves[mrep][budget_idx] for mrep in range(tester.n_macroreps)], q=0.25) for budget_idx in range(len(tester.intermediate_budgets))]
@@ -849,14 +849,14 @@ def make_phantom_rate_plots(testers):
                  tester.rates["phantom_rate_25pct"],
                  color="C" + str(tester_idx),
                  marker=marker_list[tester_idx],
-                 linestyle="-",
+                 linestyle=":",
                  linewidth=2
                  )
         plt.plot(tester.intermediate_budgets,
                  tester.rates["phantom_rate_75pct"],
                  color="C" + str(tester_idx),
                  marker=marker_list[tester_idx],
-                 linestyle="-",
+                 linestyle=":",
                  linewidth=2
                  )
     # Add a legend.
