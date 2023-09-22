@@ -41,7 +41,7 @@ from base import MO_Alloc_Problem
 n_problems = 10
 
 d = 3  # Number of objectives
-r = 500  # Number of systems
+r = 10000  # Number of systems
 p = 10  # Number of Pareto systems
 
 #rules = ["Brute Force", "Phantom", "MOSCORE", "Brute Force Ind", "iMOSCORE", "Equal"]
@@ -58,16 +58,16 @@ z_ph_list = {rule: [] for rule in rules}
 for problem_idx in range(n_problems):
     print("Generating problem", problem_idx + 1, "of", n_problems)
     # TODO: Revise to use corr/sigma arguments.
-    random_problem = create_fixed_pareto_random_problem(n_systems=r, n_obj=d, n_paretos=p, sigma=1, corr=None, center=100, radius=6, minsep=0.0001)
-    obj_array = np.array([random_problem["obj"][i] for i in range(r)])
+    random_problem = create_fixed_pareto_random_problem(n_systems=r, n_objectives=d, n_paretos=p, sigma=1, corr=None, center=100, radius=6, minsep=0.0001)
+    obj_array = np.array([random_problem.obj[i] for i in range(r)])
     n_paretos = len(is_pareto_efficient(costs=obj_array, return_mask=False))
 
     # Construct Pareto array
     pareto_array = np.zeros([n_paretos, d])
     for i in range(n_paretos):
-        pareto_array[i, :] = random_problem['obj'][random_problem['pareto_indices'][i]]
+        pareto_array[i, :] = random_problem.obj[random_problem.pareto_indices[i]]
 
-    n_phantoms = len(find_phantoms(paretos=pareto_array, n_obj=d))
+    n_phantoms = len(find_phantoms(paretos=pareto_array, n_objectives=d))
     n_paretos_list.append(n_paretos)
     n_phantoms_list.append(n_phantoms)
 

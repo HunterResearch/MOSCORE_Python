@@ -234,7 +234,7 @@ def does_dominate(g1, g2, delta1, delta2):
             is_dom = False
     return is_dom
 
-def find_phantoms(paretos, n_obj):
+def find_phantoms(paretos, n_objectives):
     """Find the phantom pareto set.
 
     Parameters
@@ -242,7 +242,7 @@ def find_phantoms(paretos, n_obj):
     paretos : numpy matrix
         Matrix representing the pareto set, with a row for each pareto
         system and a column for each objective.
-    n_obj : int
+    n_objectives : int
         Number of objectives.
 
     Returns
@@ -252,8 +252,8 @@ def find_phantoms(paretos, n_obj):
         paretos. Same number of columns but the number of rows vary.
     """
     max_y = np.inf
-    phantoms = np.zeros([1, n_obj])
-    v = range(n_obj)
+    phantoms = np.zeros([1, n_objectives])
+    v = range(n_objectives)
 
     for b in v:
         # Get all subsets of size b of our objective dimensions.
@@ -267,7 +267,7 @@ def find_phantoms(paretos, n_obj):
 
             # Do the sweep.
             phants = sweep(temp_paretos)
-            phan = np.ones([len(phants), n_obj]) * max_y
+            phan = np.ones([len(phants), n_objectives]) * max_y
             phan[:, dims] = phants
             phantoms = np.append(phantoms, phan, axis=0)
     phantoms = phantoms[1:, :]
@@ -282,7 +282,7 @@ def sweep(paretos):
     paretos : numpy matrix
         Matrix representing the pareto set, with a row for each pareto
         system and a column for each objective.
-    n_obj : int
+    n_objectives : int
         Number of objectives.
 
     Returns
@@ -291,15 +291,15 @@ def sweep(paretos):
         Matrix similar in structure to paretos characterizing the phantom
         paretos. Same number of columns but the number of rows vary.
     """
-    n_obj = len(paretos[0, :])
+    n_objectives = len(paretos[0, :])
     num_par = len(paretos)
 
-    if n_obj == 1:
+    if n_objectives == 1:
         return paretos[[paretos[:, 0].argmin()], :]
     else:
-        phantoms = np.zeros([1, n_obj])
-        # Python indexes from 0, so the index for our last dimension is n_obj - 1.
-        d = n_obj - 1
+        phantoms = np.zeros([1, n_objectives])
+        # Python indexes from 0, so the index for our last dimension is n_objectives - 1.
+        d = n_objectives - 1
         # Other dimensions.
         T = range(d)
 
@@ -307,7 +307,7 @@ def sweep(paretos):
         paretos = paretos[(-paretos[:, d]).argsort(), :]
 
         # Sweep dimension d from max to min, projecting into dimensions T
-        for i in range(num_par - (n_obj - 1)):  # Need at least n_obj - 1 paretos to get a phantom.
+        for i in range(num_par - (n_objectives - 1)):  # Need at least n_objectives - 1 paretos to get a phantom.
             max_y = paretos[i, d]
             temp_paretos = paretos[i + 1:num_par, :]  # Paretos following the current max pareto.
             temp_paretos = temp_paretos[:, T]  # Remove dimension d or project onto dimension d.
@@ -319,7 +319,7 @@ def sweep(paretos):
             for j in T:
                 non_dom = phants[:, j] > paretos[i, j]
                 phants = phants[non_dom, :]
-            phan = np.ones([len(phants), n_obj]) * max_y
+            phan = np.ones([len(phants), n_objectives]) * max_y
             phan[:, T] = phants
             phantoms = np.append(phantoms, phan, axis=0)
         # Remove the row we used to initialize phantoms.
@@ -357,7 +357,7 @@ def calc_min_paired_obj_gap(obj_vals, group1, group2):
 
     Parameters
     ----------
-    obj_vals : numpy array of size (n_systems, n_obj).
+    obj_vals : numpy array of size (n_systems, n_objectives).
         Objective function values for all systems.
     group1 : list
         List of indices of systems in first group.

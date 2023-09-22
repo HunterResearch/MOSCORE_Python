@@ -198,7 +198,7 @@ def create_fixed_pareto_random_problem(n_systems, n_objectives, n_paretos, sigma
     n_systems : int
         number of systems to create
 
-    n_obj : int
+    n_objectives : int
         number of objectives for the problem
 
     n_paretos : int
@@ -221,21 +221,8 @@ def create_fixed_pareto_random_problem(n_systems, n_objectives, n_paretos, sigma
 
     Returns
     -------
-    problem : dict
-        ``"obj"``
-        A dictionary of numpy arrays, indexed by system number,each of which corresponds to the objective values of a system.
-
-        ``"var"``
-        A dictionary of 2d numpy arrays, indexed by system number,each of which corresponds to the covariance matrix of a system.
-
-        ``"inv_var"``
-        A dictionary of 2d numpy, indexed by system number,each of which corresponds to the inverse covariance matrix of a system.
-
-        ``"pareto_indices"``
-        A list of pareto systems ordered by the first objective.
-
-        ``"non_pareto_indices"``
-        A list of non-pareto systems ordered by the first objective.
+    problem : base.MO_Alloc_Problem
+        problem instance
     """
     # Generate pareto systems.
     paretos = {}

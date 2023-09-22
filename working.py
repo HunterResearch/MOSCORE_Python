@@ -25,7 +25,7 @@ objs = myproblem.bump(system_indices = system_indices)
 
 myproblem.update_statistics(system_indices = system_indices, objs=objs)
 
-mysolver = MORS_Solver(budget=300,
+mysolver = MORS_Solver(budget=200,
                        n0=5,
                        delta=10,
                        allocation_rule="MOSCORE",
@@ -36,7 +36,7 @@ mysolver = MORS_Solver(budget=300,
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
 mytester.run(n_macroreps=10)
 
-mysolver2 = MORS_Solver(budget=300,
+mysolver2 = MORS_Solver(budget=200,
                        n0=5,
                        delta=10,
                        allocation_rule="Equal",

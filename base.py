@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 
-#import pymoso.chnutils as chnutils
 from mrg32k3a.mrg32k3a import MRG32k3a
 
 from allocate import smart_allocate, calc_phantom_rate, calc_moscore_rate, calc_imoscore_rate
@@ -31,8 +30,8 @@ from utils import is_pareto_efficient, get_nondom   # _mp_objmethod,
 
 class MO_Alloc_Problem(object):
     """Class for multi-objective allocation problems.
-    This refers to the sample means/covariances that dictate what the allocation
-    should be at a given time.
+    Refers to the sample means and sample covariances at a given time,
+    which characterize the problem of allocating simulation effort.
 
     Attributes
     ----------
@@ -57,17 +56,14 @@ class MO_Alloc_Problem(object):
     Parameters
     ----------
     obj_vals : dict
-        Dictionary of tuples of objective values keyed by system number.
-        Tuples of objective values are assumed to be of equal length.
+        Dictionary of numpy arrays of objective values keyed by system number.
+        Arrays of objective values are assumed to be of equal length.
 
     obj_vars : dict
         Dictionary of covariance (numpy 2d arrays) keyed by system number.
         Numbers of rows and columns are equal to the number of objectives.
     """
     def __init__(self, obj_vals, obj_vars):
-        # TODO: Check for positive semidefinite?
-        # Replacing the following line with call to is_pareto_efficient().
-        # pareto_indices = list(moso_utils.get_nondom(obj_vals))
         self.n_systems = len(obj_vals)
         self.obj = obj_vals
         self.var = obj_vars
@@ -495,15 +491,15 @@ def record_metrics(metrics, problem, alpha_hat):
         occured at each step in the solver
 
         ``"percent_false_exclusion"``
-        list of float, the portion of true pareto systems
+        list of float, the porportion of true pareto systems
         which are falsely excluded at each step in the solver
 
         ``"percent_false_inclusion"``
-        list of float, the portion of true non-pareto systems
+        list of float, the proportion of true non-pareto systems
         which are falsely included at each step in the solver
 
         ``"percent_misclassification"``
-        list of float, the portion of systems which are
+        list of float, the proportion of systems which are
         misclassified at each step in the solver
 
     problem : base.MORS_Problem object
@@ -513,42 +509,7 @@ def record_metrics(metrics, problem, alpha_hat):
 
     Returns
     -------
-    metrics : dict
-
-        ``"alpha_hats"``
-        list of lists of float, the simulation allocation selected at each step in the solver
-
-        ``"alpha_bars"``
-        list of lists of float, the portion of the simulation budget that has been allocated
-        to each system at each step in the solver
-
-        ``"paretos"``
-        list of lists of int, the estimated pareto frontier at each step in the solver
-
-        ``"MCI_bool"``
-        list of Bool, indicating whether an misclassification by inclusion
-        occured at each step in the solver
-
-        ``"MCE_bool"``
-        list of Bool, indicating whether an misclassification by exclusion
-        occured at each step in the solver
-
-        ``"MC_bool"``
-        list of Bool, indicating whether an misclassification
-        occured at each step in the solver
-
-        ``"percent_false_exclusion"``
-        list of float, the portion of true pareto systems
-        which are falsely excluded at each step in the solver
-
-        ``"percent_false_inclusion"``
-        list of float, the portion of true non-pareto systems
-        which are falsely included at each step in the solver
-
-        ``"percent_misclassification"``
-        list of float, the portion of systems which are
-        misclassified at each step in the solver
-
+    None
     """
     # Record recommended and empirical allocation proportions.
     metrics['alpha_hats'].append(alpha_hat)
@@ -575,8 +536,6 @@ def record_metrics(metrics, problem, alpha_hat):
         metrics['percent_false_exclusion'].append((problem.n_pareto_systems - n_correct_select) / problem.n_pareto_systems)
         metrics['percent_false_inclusion'].append(n_false_select / (problem.n_systems - problem.n_pareto_systems))
         metrics['percent_misclassification'].append(((problem.n_pareto_systems - n_correct_select) + n_false_select) / problem.n_systems)
-
-    return metrics
 
 
 class MORS_Tester(object):
