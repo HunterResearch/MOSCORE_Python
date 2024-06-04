@@ -21,6 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
+import scipy.stats
 
 from mrg32k3a.mrg32k3a import MRG32k3a
 
@@ -556,6 +557,19 @@ class MORS_Tester(object):
         list of terminal statistics from each macroreplication
     all_metrics : list of dict
         list of statistics over time from each macroreplication
+    per_mrep_outcomes : dict
+        ``"MCI_bools"``
+            list of list of float, boolean for MCI event on each given point on each sequential solver macroreplication
+        ``"MCE_bools"``
+            list of list of float, boolean for MCE event on each given point on each sequential solver macroreplication
+        ``"MC_bools"``
+            list of list of float, boolean for MC event on each given point on each sequential solver macroreplication
+        ``"false_exclusion_percents"``
+            list of list of float, percentage of MCIs on each given point on each sequential solver macroreplication
+        ``"false_inclusion_percents"``
+            list of list of float, percentage of MCEs on each given point on each sequential solver macroreplication
+        ``"misclassification_percents"``
+            list of list of float, percentage of MCs on each given point on each sequential solver macroreplication
     rates : dict
         ``"MCI_rate"``
         list of float, empirical MCI rate at a given point across sequential solver macroreplications
@@ -655,19 +669,39 @@ class MORS_Tester(object):
         # TODO: Write helper function that does the double list comprehension and takes
         # the key as an argument.
         # Calculate misclassification rates over time (aggregated over macroreplications).
-        MCI_rate = [np.mean([self.all_metrics[macro_idx]["MCI_bool"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
-        MCE_rate = [np.mean([self.all_metrics[macro_idx]["MCE_bool"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
-        MC_rate = [np.mean([self.all_metrics[macro_idx]["MC_bool"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
-        avg_percent_false_exclusion = [np.mean([self.all_metrics[macro_idx]["percent_false_exclusion"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
-        avg_percent_false_inclusion = [np.mean([self.all_metrics[macro_idx]["percent_false_inclusion"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
-        avg_percent_misclassification = [np.mean([self.all_metrics[macro_idx]["percent_misclassification"][budget_idx] for macro_idx in range(self.n_macroreps)]) for budget_idx in range(n_budgets)]
-        self.rates = {'MCI_rate': MCI_rate,
-                      'MCE_rate': MCE_rate,
-                      'MC_rate': MC_rate,
-                      'avg_percent_false_exclusion': avg_percent_false_exclusion,
-                      'avg_percent_false_inclusion': avg_percent_false_inclusion,
-                      'avg_percent_misclassification': avg_percent_misclassification
+        MCI_bools = [[self.all_metrics[macro_idx]["MCI_bool"][budget_idx] for macro_idx in range(self.n_macroreps)] for budget_idx in range(n_budgets)]
+        MCE_bools = [[self.all_metrics[macro_idx]["MCE_bool"][budget_idx] for macro_idx in range(self.n_macroreps)] for budget_idx in range(n_budgets)]
+        MC_bools = [[self.all_metrics[macro_idx]["MC_bool"][budget_idx] for macro_idx in range(self.n_macroreps)] for budget_idx in range(n_budgets)]
+        false_exclusion_percents = [[self.all_metrics[macro_idx]["percent_false_exclusion"][budget_idx] for macro_idx in range(self.n_macroreps)] for budget_idx in range(n_budgets)]
+        false_inclusion_percents = [[self.all_metrics[macro_idx]["percent_false_inclusion"][budget_idx] for macro_idx in range(self.n_macroreps)] for budget_idx in range(n_budgets)]
+        misclassification_percents = [[self.all_metrics[macro_idx]["percent_misclassification"][budget_idx] for macro_idx in range(self.n_macroreps)] for budget_idx in range(n_budgets)]
+        self.per_mrep_outcomes = {'MCI_bool': MCI_bools,
+                                  'MCE_bool': MCE_bools,
+                                  'MC_bool': MC_bools,
+                                  'false_exclusion_percent': false_exclusion_percents,
+                                  'false_inclusion_percent': false_inclusion_percents,
+                                  'misclassification_percent': misclassification_percents
+                                  }
+        MCI_rate = [np.mean(MCI_bools[budget_idx]) for budget_idx in range(n_budgets)]
+        MCE_rate = [np.mean(MCE_bools[budget_idx]) for budget_idx in range(n_budgets)]
+        MC_rate = [np.mean(MC_bools[budget_idx]) for budget_idx in range(n_budgets)]
+        avg_percent_false_exclusion = [np.mean(false_exclusion_percents[budget_idx]) for budget_idx in range(n_budgets)]
+        avg_percent_false_inclusion = [np.mean(false_inclusion_percents[budget_idx]) for budget_idx in range(n_budgets)]
+        avg_percent_misclassification = [np.mean(misclassification_percents[budget_idx]) for budget_idx in range(n_budgets)]
+        self.rates = {'MCI_bool': MCI_rate,
+                      'MCE_bool': MCE_rate,
+                      'MC_bool': MC_rate,
+                      'false_exclusion_percent': avg_percent_false_exclusion,
+                      'false_inclusion_percent': avg_percent_false_inclusion,
+                      'misclassification_percent': avg_percent_misclassification
                       }
+        # self.rates = {'MCI_rate': MCI_rate,
+        #         'MCE_rate': MCE_rate,
+        #         'MC_rate': MC_rate,
+        #         'avg_percent_false_exclusion': avg_percent_false_exclusion,
+        #         'avg_percent_false_inclusion': avg_percent_false_inclusion,
+        #         'avg_percent_misclassification': avg_percent_misclassification
+        #         }
 
     def record_tester_results(self):
         """
@@ -706,12 +740,12 @@ def make_rate_plots(testers):
     testers : `list` [`MORS_Tester`]
         list of testers for comparison
     """
-    plot_types = ['MCI_rate',
-                  'MCE_rate',
-                  'MC_rate',
-                  'avg_percent_false_exclusion',
-                  'avg_percent_false_inclusion',
-                  'avg_percent_misclassification'
+    plot_types = ['MCI_bool',
+                  'MCE_bool',
+                  'MC_bool',
+                  'false_exclusion_percent',
+                  'false_inclusion_percent',
+                  'misclassification_percent'
                   ]
     y_axis_labels = [r"$\hat{P}$(MCI)",
                      r"$\hat{P}$(MCE)",
@@ -732,16 +766,73 @@ def make_rate_plots(testers):
         plt.ylabel(y_axis_labels[plot_idx], size=14)
         solver_curve_handles = []
         # Plot rate curve for each solver.
-        for tester_idx in range(len(testers)):
-            tester = testers[tester_idx]
-            solver_curve_handle, = plt.plot(tester.intermediate_budgets,
-                                            tester.rates[plot_type],
-                                            color="C" + str(tester_idx),
-                                            marker=marker_list[tester_idx],
-                                            linestyle="-",
-                                            linewidth=2
-                                            )
-            solver_curve_handles.append(solver_curve_handle)
+        if plot_type in {'MCI_bool', 'MCE_bool', 'MC_bool'}:
+            for tester_idx in range(len(testers)):
+                tester = testers[tester_idx]
+                # Plot means for rates dictionary.
+                solver_curve_handle, = plt.plot(tester.intermediate_budgets,
+                                                tester.rates[plot_type],
+                                                color="C" + str(tester_idx),
+                                                marker=marker_list[tester_idx],
+                                                markersize = 4,
+                                                linestyle="-",
+                                                linewidth=2
+                                                )
+                solver_curve_handles.append(solver_curve_handle)
+                # Plot score confidence intervals (from Devore 8th ed., pg. 280)
+                # ptilde +/- z_alpha/2 sqrt(phat * qhat / n + (zalpha/2)^2 / 4n^2) / (1 + (zalpha/2)^2 / n)
+                alpha = 0.10
+                zalpha2 = scipy.stats.norm.ppf(1 - alpha/2)
+                n = tester.n_macroreps
+                phat_vec = tester.rates[plot_type]
+                CI_midpoint_vec = [(phat + zalpha2**2 / (2 * n)) / (1 + zalpha2**2 / n) for phat in phat_vec]
+                CI_offset_vec = [zalpha2 * (np.sqrt(phat * (1 - phat) / n + zalpha2**2 / (4 * n**2)) / (1 + zalpha2**2 / n)) for phat in phat_vec]
+                CI_lb_vec = [CI_midpoint_vec[budget_idx] - CI_offset_vec[budget_idx] for budget_idx in range(len(tester.intermediate_budgets))] 
+                CI_ub_vec = [CI_midpoint_vec[budget_idx] + CI_offset_vec[budget_idx] for budget_idx in range(len(tester.intermediate_budgets))] 
+                plt.plot(tester.intermediate_budgets,
+                         CI_lb_vec,
+                         color="C" + str(tester_idx),
+                         #marker=marker_list[tester_idx],
+                         linestyle="--",
+                         linewidth=1
+                         )
+                plt.plot(tester.intermediate_budgets,
+                         CI_ub_vec,
+                         color="C" + str(tester_idx),
+                         #marker=marker_list[tester_idx],
+                         linestyle="--",
+                         linewidth=1
+                         )
+        elif plot_type in {'false_exclusion_percent', 'false_inclusion_percent', 'misclassification_percent'}:
+            for tester_idx in range(len(testers)):
+                tester = testers[tester_idx]
+                # Compute and plot 25th, 50th, and 75th percentile for percentages.
+                percentile25 = [np.quantile(a=tester.per_mrep_outcomes[plot_type][budget_idx], q=0.25) for budget_idx in range(len(tester.intermediate_budgets))]
+                percentile50 = [np.quantile(a=tester.per_mrep_outcomes[plot_type][budget_idx], q=0.50) for budget_idx in range(len(tester.intermediate_budgets))]
+                percentile75 = [np.quantile(a=tester.per_mrep_outcomes[plot_type][budget_idx], q=0.75) for budget_idx in range(len(tester.intermediate_budgets))]
+                solver_curve_handle, = plt.plot(tester.intermediate_budgets,
+                                                percentile50,
+                                                color="C" + str(tester_idx),
+                                                marker=marker_list[tester_idx],
+                                                markersize = 4,
+                                                linestyle="-",
+                                                linewidth=2
+                                                )
+                solver_curve_handles.append(solver_curve_handle)
+                plt.plot(tester.intermediate_budgets,
+                        percentile25,
+                        color="C" + str(tester_idx),
+                        #marker=marker_list[tester_idx],
+                        linestyle="--",
+                        linewidth=1
+                        )
+                plt.plot(tester.intermediate_budgets,
+                        percentile75,
+                        color="C" + str(tester_idx),
+                        #marker=marker_list[tester_idx],
+                        linestyle="--",
+                        linewidth=1
+                        )
         # Add a legend.
         # Assume solver allocation rules are unique.
         solver_names = [tester.solver.allocation_rule for tester in testers]
@@ -799,7 +890,8 @@ def make_phantom_rate_plots(testers):
         solver_curve_handle, = plt.plot(tester.intermediate_budgets,
                                         tester.rates["phantom_rate_50pct"],
                                         color="C" + str(tester_idx),
-                                        marker=marker_list[tester_idx],
+                                        #marker=marker_list[tester_idx],
+                                        #markersize = 4,
                                         linestyle="-",
                                         linewidth=2
                                         )
@@ -807,14 +899,14 @@ def make_phantom_rate_plots(testers):
         plt.plot(tester.intermediate_budgets,
                  tester.rates["phantom_rate_25pct"],
                  color="C" + str(tester_idx),
-                 marker=marker_list[tester_idx],
+                 #marker=marker_list[tester_idx],
                  linestyle=":",
                  linewidth=2
                  )
         plt.plot(tester.intermediate_budgets,
                  tester.rates["phantom_rate_75pct"],
                  color="C" + str(tester_idx),
-                 marker=marker_list[tester_idx],
+                 #marker=marker_list[tester_idx],
                  linestyle=":",
                  linewidth=2
                  )

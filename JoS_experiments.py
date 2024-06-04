@@ -41,7 +41,7 @@ from base import MO_Alloc_Problem
 n_problems = 10
 
 d = 3  # Number of objectives
-r = 10000  # Number of systems
+r = 500  # Number of systems
 p = 10  # Number of Pareto systems
 
 #rules = ["Brute Force", "Phantom", "MOSCORE", "Brute Force Ind", "iMOSCORE", "Equal"]

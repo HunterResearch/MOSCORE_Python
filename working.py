@@ -10,22 +10,24 @@ A script for interacting with the MORS Problem, Solver, and Tester classes.
 from mrg32k3a.mrg32k3a import MRG32k3a
 
 from base import MORS_Problem, MORS_Solver, MORS_Tester, make_rate_plots, make_phantom_rate_plots
-from example import TestProblem, TestProblem2, TestProblem3
+from example import TestProblem, TestProblem2, TestProblem3, create_mocba_problem
 from allocate import allocate
 
 myproblem = TestProblem()
+#myproblem = create_mocba_problem("ind")
+
 
 myrng = MRG32k3a()
 myproblem.attach_rng(myrng)
 
 myproblem.rng_states = [myrng._current_state] * myproblem.n_systems
 
-system_indices = [0, 0]
-objs = myproblem.bump(system_indices = system_indices)
+# system_indices = [0, 0]
+# objs = myproblem.bump(system_indices = system_indices)
 
-myproblem.update_statistics(system_indices = system_indices, objs=objs)
+# myproblem.update_statistics(system_indices = system_indices, objs=objs)
 
-mysolver = MORS_Solver(budget=200,
+mysolver = MORS_Solver(budget=500,
                        n0=5,
                        delta=10,
                        allocation_rule="MOSCORE",
@@ -34,9 +36,9 @@ mysolver = MORS_Solver(budget=200,
                        )
 
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
-mytester.run(n_macroreps=10)
+mytester.run(n_macroreps=20)
 
-mysolver2 = MORS_Solver(budget=200,
+mysolver2 = MORS_Solver(budget=500,
                        n0=5,
                        delta=10,
                        allocation_rule="Equal",
@@ -44,11 +46,12 @@ mysolver2 = MORS_Solver(budget=200,
                        crn_across_solns=False
                        )
 mytester2 = MORS_Tester(solver=mysolver2, problem=myproblem)
-mytester2.run(n_macroreps=5)
+mytester2.run(n_macroreps=20)
 
+# make_rate_plots(testers=[mytester2])
+# make_phantom_rate_plots(testers=[mytester2])
 
 make_rate_plots(testers=[mytester, mytester2])
-
 make_phantom_rate_plots(testers=[mytester, mytester2])
 
 # # START OF OLD CODE.
