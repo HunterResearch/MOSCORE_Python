@@ -119,6 +119,7 @@ def is_pareto_efficient(costs, return_mask=True):
     else:
         return is_efficient
 
+
 def get_nondom(edict):
     """
     Generate the non-dominated points of a set.
@@ -145,6 +146,7 @@ def get_nondom(edict):
     Mpts, Mobjs = front(newpts, newvals)
     return set(Mpts)
 
+
 def argsort(seq):
     """
     Generate the sorted arguments of a collection of values
@@ -159,6 +161,7 @@ def argsort(seq):
         list of keys sorted by value
     """
     return sorted(range(len(seq)), key=seq.__getitem__)
+
 
 def front(points, objs):
     """
@@ -180,14 +183,14 @@ def front(points, objs):
         return points, objs
     elif cardP > 1:
         nondom = set()
-        halfind = int(cardP/2)
+        halfind = int(cardP / 2)
         Tpts, Tobjs = front(points[0:halfind], objs[0:halfind])
         Bpts, Bobjs = front(points[halfind:cardP], objs[halfind:cardP])
         brange = range(len(Bpts))
         for i in brange:
             pt = Bpts[i]
             gvals = Bobjs[i]
-            delz = [0]*len(gvals)
+            delz = [0] * len(gvals)
             pt_nondom = True
             j = 0
             while j < len(Tpts) and pt_nondom:
@@ -198,6 +201,7 @@ def front(points, objs):
                 Tpts.append(pt)
                 Tobjs.append(gvals)
         return Tpts, Tobjs
+
 
 def does_dominate(g1, g2, delta1, delta2):
     """
@@ -233,6 +237,7 @@ def does_dominate(g1, g2, delta1, delta2):
         if is_equal:
             is_dom = False
     return is_dom
+
 
 def find_phantoms(paretos, n_objectives):
     """Find the phantom pareto set.

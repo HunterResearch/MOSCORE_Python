@@ -37,7 +37,7 @@ from base import MO_Alloc_Problem
 #     print("Z^ph(alpha) x 10^5:", round(z_ph * 10**5, 4))
 #     print("\n")
 
-# Repeat fixed-Pareto experiments from Figures 3.
+# Repeat fixed-Pareto experiments from Table 3.
 n_problems = 10
 
 d = 3  # Number of objectives

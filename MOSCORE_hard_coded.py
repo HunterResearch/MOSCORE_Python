@@ -10,10 +10,6 @@ from cvxopt import matrix, solvers
 import numpy as np
 
 
-
-
-
-
 def SCORE_1d(Gobj,Jobj, CovJ):
     """parameters:
                 Gobj: numpy array, objective vals of a pareto system or a phantom
@@ -195,20 +191,11 @@ def score_four_d_plus(phantom_objectives,obj_j, cov_j):
     #print(Lambda)
     
     Lambda[Lambda>tol] = 1
-    
     Lambda[Lambda<=tol] = np.inf
-    
-    
+
+
     #gonna confess here, I'm not certain what this does
     binds = score*Lambda
-    
+
     return score, binds
-    
-    
-        
-        
-        
-        
-        
-        
         

@@ -110,6 +110,51 @@ class TestProblem3(MORS_Problem):
         return obj
 
 
+class MOCBA_25_Problem(MORS_Problem):
+    """Generate the MOCBA 25 example problem."""
+    def __init__(self, cov_type):
+        self.n_objectives = 3
+        self.n_systems = 25
+        self.systems = [(idx,) for idx in range(self.n_systems)]
+        self.true_means = [[8, 36, 60], [12, 32, 52], [14, 38, 54], [16, 46, 48], [4, 42, 56],
+                           [18, 40, 62], [10, 44, 58], [20, 34, 64], [22, 28, 68], [24, 40, 62],
+                           [26, 38, 64], [28, 40, 66], [30, 42, 62], [32, 44, 64], [26, 40, 66],
+                           [28, 42, 64], [32, 38, 66], [30, 40, 62], [34, 42, 64], [26, 44, 60],
+                           [28, 38, 66], [32, 40, 62], [30, 46, 64], [32, 44, 66], [30, 40, 64]]
+        if cov_type == "ind":
+            # Each objective has a variance of 64.
+            self.true_covs = [[[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]] for _ in range(self.n_systems)]
+        elif cov_type == "pos":
+            # Positive correlation of 0.8 between all objectives.
+            # 0.8 * 8 * 8 = 51.2
+            self.true_covs = [[[64.0, 51.2, 51.2], [51.2, 64.0, 51.2], [51.2, 51.2, 64.0]] for _ in range(self.n_systems)]
+        elif cov_type == "neg":
+            # Negative correlation of -0.4 between all objectives.
+            # -0.4 * 8 * 8 = -25.6
+            self.true_covs = [[[64.0, -25.6, -25.6], [-25.6, 64.0, -25.6], [-25.6, -25.6, 64.0]] for _ in range(self.n_systems)]
+        else:
+            raise ValueError("Invalid covtype. Valid choices are ind, pos, and neg.")
+        super().__init__()
+
+    def g(self, x):
+        """Perform a single replication at a given system.
+        Obtain a noisy estimate of its objectives.
+
+        Parameters
+        ----------
+        x : tuple
+            tuple of values (possibly non-numerical) of inputs
+            characterizing the simulatable system
+
+        Returns
+        -------
+        obj : tuple
+            tuple of estimates of the objectives
+        """
+        obj = tuple(self.rng.mvnormalvariate(self.true_means[x[0]], self.true_covs[x[0]]))
+        return obj
+
+
 class Random_MORS_Problem(MORS_Problem):
     """MORS_Problem subclass used for example problems.
 
@@ -480,41 +525,3 @@ def create_test_problem_2():
     for key in obj.keys():
         covs[key] = np.identity(len(obj[key]))
     return MO_Alloc_Problem(obj_vals=obj, obj_vars=covs)
-
-# TODO: Function below has not been updated.
-
-# def allocation_to_sequential(allocation_problem, rng, crnflag = False, simpar = 1):
-#     """Create an oracle object that produces a multivariate normal objective value
-#     with the "true" mean and variance structure provided.
-
-#     Parameters
-#     ----------
-#     allocation_problem : dict
-
-#             allocation_problem['obj'] is a dictionary of numpy arrays, indexed by system number,
-#                 each of which corresponds to the objective values of a system
-#             allocation_problem['var'] is a dictionary of 2d numpy arrays, indexed by system number,
-#                 each of which corresponds to the covariance matrix of a system
-#             allocation_problem['inv_var'] is a dictionary of 2d numpy, indexed by system number,
-#                 each of which corresponds to the inverse covariance matrix of a system
-#             allocation_problem['pareto_indices'] is a list of pareto systems ordered by the first objective
-#             allocation_problem['non_pareto_indices'] is a list of pareto systems ordered by the first objective
-
-#     rng : a pymoso.prng.MRG32k3a object
-
-#     crnflag : bool
-#         if true, the oracle will utilize common random numbers
-
-#     simpar : int
-#         the number of parallel processes used in taking simulation replications
-
-#     Returns
-#     -------
-#     allocation_problem : dict
-#         identical to input
-
-#     mors_problem : Random_MORS_Problem object
-#         inherits from oracle
-#     """
-#     mors_problem = Random_MORS_Problem(allocation_problem.obj, allocation_problem.var, rng, crnflag=crnflag, simpar=simpar)
-#     return allocation_problem, mors_problem

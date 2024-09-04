@@ -64,7 +64,7 @@ def smart_allocate(method, alloc_problem, warm_start=None, resolve=False):
     if method == "Equal":
         return equal_allocation(alloc_problem)
     elif method == "iMOSCORE":
-        return allocate(method="iMOSCORE", systems=alloc_problem, warm_start=warm_start, resolve=resolve)
+        return allocate(method="iMOSCORE", alloc_problem=alloc_problem, warm_start=warm_start, resolve=resolve)
     elif method == "MOSCORE":
         # If more than 3 objectives, use  iMOSCORE allocation as a warmer-start solution.
         if len(alloc_problem.obj[0]) > 3:

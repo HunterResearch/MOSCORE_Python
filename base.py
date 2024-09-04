@@ -843,7 +843,7 @@ def make_rate_plots(testers):
 
 
 def make_phantom_rate_plots(testers):
-    """Make plots of MCI/MCE/MC and average percentage misclassification rates.
+    """Make plots of phantom rates.
 
     Parameters
     ----------
