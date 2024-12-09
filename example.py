@@ -9,7 +9,7 @@ allocation problems.
 """
 
 import numpy as np
-
+import scipy.stats as ss
 
 from utils import nearestSPD, is_pareto_efficient
 from base import MO_Alloc_Problem, MORS_Problem
@@ -39,12 +39,12 @@ class TestProblem(MORS_Problem):
 
         Returns
         -------
-        obj : tuple
+        objs : tuple
             tuple of estimates of the objectives
         """
         obj1 = x[0] + self.rng.normalvariate(0, 1)
         obj2 = x[1] + self.rng.normalvariate(0, 1)
-        obj = (obj1, obj2)
+        objs = (obj1, obj2)
         return obj
 
 
@@ -70,13 +70,13 @@ class TestProblem2(MORS_Problem):
 
         Returns
         -------
-        obj : tuple
+        objs : tuple
             tuple of estimates of the objectives
         """
         obj1 = x[0] + self.rng.normalvariate(0, 1)
         obj2 = x[1] + self.rng.normalvariate(0, 1)
-        obj = (obj1, obj2)
-        return obj
+        objs = (obj1, obj2)
+        return objs
 
 
 class TestProblem3(MORS_Problem):
@@ -101,18 +101,18 @@ class TestProblem3(MORS_Problem):
 
         Returns
         -------
-        obj : tuple
+        objs : tuple
             tuple of estimates of the objectives
         """
         obj1 = x[0] + self.rng.normalvariate(0, 1)
         obj2 = x[1] + self.rng.normalvariate(0, 1)
-        obj = (obj1, obj2)
-        return obj
+        objs = (obj1, obj2)
+        return objs
 
 
 class MOCBA_25_Problem(MORS_Problem):
     """Generate the MOCBA 25 example problem."""
-    def __init__(self, cov_type):
+    def __init__(self, cov_type="ind"):
         self.n_objectives = 3
         self.n_systems = 25
         self.systems = [(idx,) for idx in range(self.n_systems)]
@@ -148,11 +148,106 @@ class MOCBA_25_Problem(MORS_Problem):
 
         Returns
         -------
-        obj : tuple
+        objs : tuple
             tuple of estimates of the objectives
         """
-        obj = tuple(self.rng.mvnormalvariate(self.true_means[x[0]], self.true_covs[x[0]]))
-        return obj
+        objs = tuple(self.rng.mvnormalvariate(self.true_means[x[0]], self.true_covs[x[0]]))
+        return objs
+    
+class MOCBA_25_Copula_Problem(MOCBA_25_Problem):
+    def __init__(self, common_var=64, common_corr=0.0, marginal_dist="normal"):
+        """Generate the MOCBA 25 example problem."""
+        self.n_objectives = 3
+        self.n_systems = 25
+        self.systems = [(idx,) for idx in range(self.n_systems)]
+        self.true_means = [[8, 36, 60], [12, 32, 52], [14, 38, 54], [16, 46, 48], [4, 42, 56],
+                           [18, 40, 62], [10, 44, 58], [20, 34, 64], [22, 28, 68], [24, 40, 62],
+                           [26, 38, 64], [28, 40, 66], [30, 42, 62], [32, 44, 64], [26, 40, 66],
+                           [28, 42, 64], [32, 38, 66], [30, 40, 62], [34, 42, 64], [26, 44, 60],
+                           [28, 38, 66], [32, 40, 62], [30, 46, 64], [32, 44, 66], [30, 40, 64]]
+        self.copula_cov = [[1.0, common_corr, common_corr], [common_corr, 1.0, common_corr], [common_corr, common_corr, 1.0]]
+        # self.true_covs is only accurate for the case with multivariate normal objectives
+        true_cov_diag = common_var
+        true_cov_offdiag = common_corr * np.sqrt(common_var) * np.sqrt(common_var)
+        self.true_covs =[[[true_cov_diag, true_cov_offdiag, true_cov_offdiag],
+                          [true_cov_offdiag, true_cov_diag, true_cov_offdiag],
+                          [true_cov_offdiag, true_cov_offdiag, true_cov_diag]] for _ in range(self.n_systems)]
+        self.marginal_dist = marginal_dist
+        super().__init__()
+
+    def g(self, x):
+        """Perform a single replication at a given system.
+        Obtain a noisy estimate of its objectives.
+
+        Parameters
+        ----------
+        x : tuple
+            tuple of values (possibly non-numerical) of inputs
+            characterizing the simulatable system
+
+        Returns
+        -------
+        objs : tuple
+            tuple of estimates of the objectives
+        """
+        if self.marginal_dist == "normal":
+            # Skip Gaussian copula approach and directly generate MVN according to self.true_covs.
+            objs = tuple(self.rng.mvnormalvariate(self.true_means[x[0]], self.true_covs[x[0]]))
+        else:
+            # x[0] is equivalent to self.systems.index(x)
+            system_idx = x[0]
+            # Generate normals having variance 1 and specified correlation.
+            Zs = tuple(self.rng.mvnormalvariate(mean_vec=[0, 0, 0], cov=self.copula_cov))
+            # Transform the correlated normals into correlated uniforms.
+            Us = [ss.norm.cdf(Z, loc=0, scale=1) for Z in Zs]
+            # Transform each uniform via the inverse marginal cdf for each objective.
+            objs = [self.inverse_marginal_cdf(U, system_idx, obj_idx) for (obj_idx, U) in enumerate(Us)]
+        return objs
+
+#     def inverse_marginal_cdf(self, U, system_idx, obj_idx):
+#         """ Obtain a noisy estimate of a given objective of a given system.
+
+#         Parameters
+#         ----------
+#         U : float
+#             a Uniform(0, 1) random variate
+#         system_idx : int
+#             index of system
+#         obj_idx : int
+#             index of objective
+
+#         Returns
+#         -------
+#         obj : tuple
+#             estimates of the objective
+#         """
+#         if self.marginal_dist == "t":
+#             # Generate correlated t random variables via a Gaussian copula.
+#                 # t dist can have variance and dof
+#             obj = ss.t.ppf(U, df=self.dof, loc=self.true_means[system_idx], scale=np.sqrt(self.true_covs([system_idx][obj_idx][obj_idx])))
+#         elif self.marginal_dist == "lognormal":
+#             obj = ss.lognorm.ppf(U, ??? loc=self.true_means[system_idx], scale=np.sqrt(self.true_covs([system_idx][obj_idx][obj_idx]))
+#         else:
+#             print("Invalid marginal distribution specified. Supported types include `normal', `t', or `lognormal`.")
+#         return obj
+#         #raise NotImplementedError
+    
+# class MOCBA_25_T_Copula_Problem(MOCBA_25_Copula_Problem):
+#     def __init__(self, dof):
+#         super().__init__()
+#         self.dof = dof
+
+#     def inverse_marginal_cdf(self, U, system_idx, obj_idx):
+#         return obj
+
+# class MOCBA_25_Lognormal_Copula_Problem(MOCBA_25_Copula_Problem):
+#     def __init__(self, ???):
+#         super().__init__()
+#         self.??? = ???
+
+#     def inverse_marginal_cdf(self, U, system_idx, obj_idx):
+#         obj = ss.lognorm.ppf(U, loc=self.true_means[system_idx]???, scale=np.sqrt(self.true_covs([system_idx][obj_idx][obj_idx])???))
+#         return obj
 
 
 class Random_MORS_Problem(MORS_Problem):
@@ -220,14 +315,14 @@ class Random_MORS_Problem(MORS_Problem):
 
         Returns
         -------
-        obj : tuple
+        objs : tuple
             tuple of estimates of the objectives
         """
         system_idx = self.systems.index(x)
-        obj = self.rng.mvnormalvariate(mean_vec=self.obj[system_idx],
+        objs = self.rng.mvnormalvariate(mean_vec=self.obj[system_idx],
                                        cov=self.var[system_idx],
                                        factorized=False)
-        return tuple(obj)
+        return tuple(objs)
 
 
 def create_fixed_pareto_random_problem(n_systems, n_objectives, n_paretos, sigma=1, corr=None, center=100, radius=6, minsep=0.0001):
@@ -472,56 +567,37 @@ def create_variable_pareto_random_problem(n_systems, n_objectives, sigma=1, corr
     return MO_Alloc_Problem(obj_vals=objectives, obj_vars=variances)
 
 
-def create_mocba_problem(covtype):
-    """Generate the MOCBA 25 example problem.
+# def create_mocba_problem(covtype):
+#     """Generate the MOCBA 25 example problem.
 
-    Parameters
-    ----------
-    covtype : str
-        "ind" sets objectives to be independent
-        "pos" sets all objectives to have parwise correlation of 0.4
-        "neg" sets all objectives to have pairwise correlation of -0.4
+#     Parameters
+#     ----------
+#     covtype : str
+#         "ind" sets objectives to be independent
+#         "pos" sets all objectives to have parwise correlation of 0.4
+#         "neg" sets all objectives to have pairwise correlation of -0.4
 
-    Returns
-    -------
-    alloc_problem : base.MO_Alloc_Problem
-        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
-    """
-    n_objectives = 3
-    obj = {0: [8, 36, 60], 1: [12, 32, 52], 2: [14, 38, 54], 3: [16, 46, 48], 4: [4, 42, 56],
-           5: [18, 40, 62], 6: [10, 44, 58], 7: [20, 34, 64], 8: [22, 28, 68], 9: [24, 40, 62],
-           10: [26, 38, 64], 11: [28, 40, 66], 12: [30, 42, 62], 13: [32, 44, 64], 14: [26, 40, 66],
-           15: [28, 42, 64], 16: [32, 38, 66], 17: [30, 40, 62], 18: [34, 42, 64], 19: [26, 44, 60],
-           20: [28, 38, 66], 21: [32, 40, 62], 22: [30, 46, 64], 23: [32, 44, 66], 24: [30, 40, 64]}
-    covs = {}
+#     Returns
+#     -------
+#     alloc_problem : base.MO_Alloc_Problem
+#         Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
+#     """
+#     n_objectives = 3
+#     objs = {0: [8, 36, 60], 1: [12, 32, 52], 2: [14, 38, 54], 3: [16, 46, 48], 4: [4, 42, 56],
+#            5: [18, 40, 62], 6: [10, 44, 58], 7: [20, 34, 64], 8: [22, 28, 68], 9: [24, 40, 62],
+#            10: [26, 38, 64], 11: [28, 40, 66], 12: [30, 42, 62], 13: [32, 44, 64], 14: [26, 40, 66],
+#            15: [28, 42, 64], 16: [32, 38, 66], 17: [30, 40, 62], 18: [34, 42, 64], 19: [26, 44, 60],
+#            20: [28, 38, 66], 21: [32, 40, 62], 22: [30, 46, 64], 23: [32, 44, 66], 24: [30, 40, 64]}
+#     covs = {}
 
-    if covtype == "ind":
-        cov = np.identity(n_objectives) * 8
-    elif covtype == "pos":
-        cov = np.array([[64, 0.4 * 8 * 8, 0.4 * 8 * 8], [0.4 * 8 * 8, 64, 0.4 * 8 * 8], [0.4 * 8 * 8, 0.4 * 8 * 8, 64]])
-    elif covtype == "neg":
-        cov = np.array([[64, -0.4 * 8 * 8, -0.4 * 8 * 8], [-0.4 * 8 * 8, 64, -0.4 * 8 * 8], [-0.4 * 8 * 8, -0.4 * 8 * 8, 64]])
-    else:
-        raise ValueError("Invalid covtype. Valid choices are ind, pos, and neg.")
-    for key in obj.keys():
-        covs[key] = cov
-    return MO_Alloc_Problem(obj_vals=obj, obj_vars=covs)
-
-
-def create_test_problem_2():
-    """Generate Test Problem 2 from **insert citation**.
-
-    Returns
-    -------
-    problem : base.MO_Alloc_Problem
-        Details of allocation problem: objectives, variances, inverse variances, indices of Pareto/non-Pareto systems.
-    """
-    # Read in problem details (objectives) from a file.
-    obj_array = np.genfromtxt('TP2_Objs.csv', delimiter=',')
-    obj = {}
-    for i in range(len(obj_array[:, 0])):
-        obj[i] = list(obj_array[i, :])
-    covs = {}
-    for key in obj.keys():
-        covs[key] = np.identity(len(obj[key]))
-    return MO_Alloc_Problem(obj_vals=obj, obj_vars=covs)
+#     if covtype == "ind":
+#         cov = np.identity(n_objectives) * 8
+#     elif covtype == "pos":
+#         cov = np.array([[64, 0.4 * 8 * 8, 0.4 * 8 * 8], [0.4 * 8 * 8, 64, 0.4 * 8 * 8], [0.4 * 8 * 8, 0.4 * 8 * 8, 64]])
+#     elif covtype == "neg":
+#         cov = np.array([[64, -0.4 * 8 * 8, -0.4 * 8 * 8], [-0.4 * 8 * 8, 64, -0.4 * 8 * 8], [-0.4 * 8 * 8, -0.4 * 8 * 8, 64]])
+#     else:
+#         raise ValueError("Invalid covtype. Valid choices are ind, pos, and neg.")
+#     for key in obj.keys():
+#         covs[key] = cov
+#     return MO_Alloc_Problem(obj_vals=objs, obj_vars=covs)

@@ -1,0 +1,20 @@
+The file outputs/Figure3_results.txt contains the results for the following experiment: 
+
+Running experiment with d = 3 and r = 10.
+
+MORS Problem # 1 of 1:
+
+
+Results for MOSCORE rule:
+----------------------------
+Allocation (alpha) = [0.24984005417214292, 1.6889836968250749e-18, 0.6155199527119443, 0.09249996877968765, 0.0, 0.001134941749007771, 0.01927154416367257, 0.006413470137638285, 0.013496439700650202, 0.001823628585256401].
+Brute force convergence rate, Z^bf(alpha) x 10^5 = -0.0.
+Phantom rate (z^ph(alpha)) x 10^5 = -0.0.
+Solve time = 0.6434 s.
+
+Results for iMOSCORE rule:
+----------------------------
+Allocation (alpha) = [0.4097166156984385, 0.16409847365535565, 0.1731644715963875, 0.03719931306725168, 0.17052648408360294, 0.0006710945275330667, 0.021545654702968188, 0.006436573592829074, 0.015089067437459818, 0.0015522516381735513].
+Brute force convergence rate, Z^bf(alpha) x 10^5 = 88.36060955932031.
+Phantom rate (z^ph(alpha)) x 10^5 = 88.36060955932031.
+Solve time = 0.2775 s.

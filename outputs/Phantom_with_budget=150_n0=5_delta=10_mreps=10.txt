@@ -1,0 +1,49 @@
+The file outputs/Phantom_with_budget=150_n0=5_delta=10_mreps=10.pickle contains the MORS Tester object for the following experiment: 
+
+MORS Problem:
+	number of objectives = 3
+	number of systems = 25
+
+	system 0 has true means [8, 36, 60] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 1 has true means [12, 32, 52] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 2 has true means [14, 38, 54] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 3 has true means [16, 46, 48] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 4 has true means [4, 42, 56] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 5 has true means [18, 40, 62] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 6 has true means [10, 44, 58] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 7 has true means [20, 34, 64] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 8 has true means [22, 28, 68] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 9 has true means [24, 40, 62] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 10 has true means [26, 38, 64] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 11 has true means [28, 40, 66] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 12 has true means [30, 42, 62] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 13 has true means [32, 44, 64] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 14 has true means [26, 40, 66] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 15 has true means [28, 42, 64] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 16 has true means [32, 38, 66] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 17 has true means [30, 40, 62] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 18 has true means [34, 42, 64] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 19 has true means [26, 44, 60] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 20 has true means [28, 38, 66] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 21 has true means [32, 40, 62] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 22 has true means [30, 46, 64] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 23 has true means [32, 44, 66] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+	system 24 has true means [30, 40, 64] and covariance matrix [[64.0, 0, 0], [0, 64.0, 0], [0, 0, 64.0]]
+
+MORS Solver:
+	allocation rule = Phantom
+	budget = 150
+	n0 = 5
+	delta = 10
+
+10 macroreplications were run:
+	macroreplication 0: avg time per allocation call = 16.706162 s
+	macroreplication 1: avg time per allocation call = 8.424713 s
+	macroreplication 2: avg time per allocation call = 11.737814 s
+	macroreplication 3: avg time per allocation call = 11.222991 s
+	macroreplication 4: avg time per allocation call = 31.948396 s
+	macroreplication 5: avg time per allocation call = 53.056230 s
+	macroreplication 6: avg time per allocation call = 27.592220 s
+	macroreplication 7: avg time per allocation call = 12.539930 s
+	macroreplication 8: avg time per allocation call = 19.853707 s
+	macroreplication 9: avg time per allocation call = 13.705565 s

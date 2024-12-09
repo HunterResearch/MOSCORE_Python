@@ -14,7 +14,7 @@ from example import TestProblem, TestProblem2, TestProblem3, create_mocba_proble
 from allocate import allocate
 
 myproblem = TestProblem()
-#myproblem = create_mocba_problem("ind")
+#myproblem = MOCBA_25_Problem()
 
 
 myrng = MRG32k3a()

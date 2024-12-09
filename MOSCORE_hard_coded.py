@@ -163,14 +163,16 @@ def score_four_d_plus(phantom_objectives,obj_j, cov_j):
     n_objectives = len(phantom_objectives)
     
     inv_cov_j = np.linalg.inv(cov_j)
-    
-    P = matrix(inv_cov_j)
+    #print(type(inv_cov_j))
+
+    #print(inv_cov_j)
+    P = matrix(1*inv_cov_j)
     
     q = matrix(-1*inv_cov_j@obj_j)
     
     G = matrix(np.identity(n_objectives))
     
-    h = matrix(phantom_objectives)
+    h = matrix(1*phantom_objectives)
     
     solvers.options['show_progress'] = False
     res = solvers.qp(P,q,G,h, options=opts)
