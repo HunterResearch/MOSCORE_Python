@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 import scipy.stats
+from multiprocessing import Pool
 
 from mrg32k3a.mrg32k3a import MRG32k3a
 
@@ -191,7 +192,7 @@ class MORS_Problem(object):
                             (self.sums_of_products[system_idx][obj_idx1][obj_idx2] / self.sample_sizes[system_idx] - self.sample_means[system_idx][obj_idx1] * self.sample_means[system_idx][obj_idx2])
         # TODO: Make more efficient by only recomputing stats outside the for loop.
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 
@@ -214,7 +215,7 @@ class MORS_Problem(object):
                                        factorized=False)
         return tuple(obj)
 
-    def bump(self, system_indices):
+    def batch_replicate(self, system_indices):
         """Obtain replications from a list of systems.
 
         Parameters
@@ -232,7 +233,7 @@ class MORS_Problem(object):
             # Re-seed random number generator.
             self.rng.seed(self.rng_states[system_idx])
             # Simulate a replication and record outputs.
-            objs.append(self.g(x=self.systems[system_idx]))
+            objs.append(self.replicate(x=self.systems[system_idx]))
             # Advance rng to start of next subsubstream and record new state.
             self.rng.advance_subsubstream()
             self.rng_states[system_idx] = self.rng._current_state
@@ -369,7 +370,7 @@ class MORS_Solver(object):
         # Simulate n0 replications at each system. Initial allocation is equal.
         alpha_hat = np.array([1 / problem.n_systems for _ in range(problem.n_systems)])
         system_indices = list(range(problem.n_systems)) * self.n0
-        objs = problem.bump(system_indices=system_indices)
+        objs = problem.batch_replicate(system_indices=system_indices)
         problem.update_statistics(system_indices=system_indices, objs=objs)
         budget_expended = self.n0 * problem.n_systems
 
@@ -443,7 +444,7 @@ class MORS_Solver(object):
                     # alpha_hat = None
 
             # Simulate selected systems.
-            objs = problem.bump(system_indices=systems_to_sample)
+            objs = problem.batch_replicate(system_indices=systems_to_sample)
             problem.update_statistics(system_indices=systems_to_sample, objs=objs)
             budget_expended = sum(problem.sample_sizes)
 
@@ -606,8 +607,6 @@ class MORS_Tester(object):
         self.solver = solver
         # Initialize tracking of statistics for each macroreplication.
         self.intermediate_budgets = [solver.n0 * problem.n_systems + i * solver.delta for i in range(int(np.ceil((solver.budget - solver.n0 * problem.n_systems) / solver.delta) + 1))]
-        self.all_outputs = []
-        self.all_metrics = []
 
     def setup_rng_states(self):
         """Setup rng states for each system based on whether solver uses CRN.
@@ -623,7 +622,7 @@ class MORS_Tester(object):
                 self.problem.rng.advance_substream()
         self.problem.rng_states = rng_states
 
-    def run(self, n_macroreps):
+    def test_run(self, n_macroreps):
         """Run n_macroreps of the solver on the problem.
 
         Parameters
@@ -631,34 +630,71 @@ class MORS_Tester(object):
         n_macroreps : int
             number of macroreplications run
         """
+        print(f"Running Solver {self.solver.allocation_rule}.")
         self.n_macroreps = n_macroreps
+        self.all_outputs = [[] for _ in range(n_macroreps)]
+        self.all_metrics = [[] for _ in range(n_macroreps)]
         # Create, initialize, and attach random number generators.
         #       Stream 0: solver rng
+        #           Substreams 0, 1, 2: sampling on macroreplication 1, 2, ...
         #       Streams 1, 2, ...: sampling on macroreplication 1, 2, ...
         #           Substreams 0, 1, 2: sampling at system 1, 2, ...
         #               Subsubstreams 0, 1, 2: sampling replication 1, 2, ...
-        solver_rng = MRG32k3a()  # Stream 0
-        self.solver.attach_rng(solver_rng)
-        problem_rng = MRG32k3a(s_ss_sss_index=[1, 0, 0])  # Stream 1
-        self.problem.attach_rng(problem_rng)
-        self.setup_rng_states()
-        print(f"Running MORS Solver with allocation rule {self.solver.allocation_rule} with budget={self.solver.budget}, n0={self.solver.n0}, and delta={self.solver.delta}.")
-        # Run n_macroreps of the solver on the problem and record results.
-        for mrep in range(self.n_macroreps):
-            print(f"Running macroreplication {mrep + 1} of {self.n_macroreps}.")
-            outputs, metrics = self.solver.solve(problem=self.problem)
-            self.all_outputs.append(outputs)
-            self.all_metrics.append(metrics)
-            # Reset sample statistics
-            self.problem.reset_statistics()
-            # Advance random number generators in preparation for next macroreplication.
-            self.solver.rng.advance_substream()  # Not strictly necessary.
-            self.problem.rng.advance_stream()
-            self.setup_rng_states()
+        print("Starting macroreplications in parallel.")
+        with Pool() as process_pool:
+            # Start the macroreplications in parallel (async)
+            result = process_pool.map_async(
+                self.test_run_multithread, range(n_macroreps)
+            )
+            # Wait for the results to be returned (or 1 second)
+            while not result.ready():
+                # Update status bar here
+                result.wait(1)
+            print(
+                f"Finished running {n_macroreps} macroreplications."
+            )
+            # Grab all the data out of the result
+            for mrep in range(n_macroreps):
+                (self.all_outputs[mrep], self.all_metrics[mrep]) = result.get()[mrep]
         # Aggregate metrics across macroreplications.
         self.aggregate_metrics()
         # Record results to .txt file and save MORS_Tester object in .pickle file.
         self.record_tester_results()
+
+    def test_run_multithread(self, mrep):
+        """Run a single macroreplication of the solver on the problem.
+
+        Parameters
+        ----------
+        mrep : int
+            Index of the macroreplication.
+
+        Returns
+        -------
+        tuple
+            Tuple of outputs and metrics obtained from the macroreplication.
+        """
+        print(f"Starting Macroreplication {mrep + 1} of Solver {self.solver.allocation_rule}.")
+        # Create, initialize, and attach RNGs used for solver random sampling 
+        # and simulating solutions.
+        # Create a new RNGs for the solver based on the current macroreplication.
+        # Set RNG to macroreplication-indexed substream.
+        solver_rng = MRG32k3a(s_ss_sss_index=[0, mrep, 0])  # Stream 0, Substream mrep
+        self.solver.attach_rng(solver_rng)
+        # Create a new RNG for the solver based on the current macroreplication.
+        # Set RNG to macroreplication-indexed stream.
+        problem_rng = MRG32k3a(s_ss_sss_index=[mrep + 1, 0, 0])  # Stream mrep + 1
+        self.problem.attach_rng(problem_rng)
+        # Set up substreams depending on whether using CRN across solutions.
+        self.setup_rng_states()
+        #print(f"For Macroreplication {mrep + 1}, the solver RNG triplet was {self.solver.rng.s_ss_sss_index} \
+        #      the problem RNG triplet was {self.problem.rng.s_ss_sss_index} with states {self.problem.rng_states}.")
+        # Run the solver.
+        outputs, metrics = self.solver.solve(problem=self.problem)
+        #self.problem.reset_statistics()
+        print(f"Finished Macroreplication {mrep + 1} of Solver {self.solver.allocation_rule}.")
+        # Return tuple (outputs, metrics)
+        return (outputs, metrics)
 
     def aggregate_metrics(self):
         """Aggregate run-time statistics over macroreplications, e.g., calculate

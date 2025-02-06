@@ -421,9 +421,9 @@ class ConvexOptAllocAlg(object):
         #                    )
         #                    options = {'disp': False}
         #                    options = {'gtol': 10**-12, 'xtol': 10**-12, 'maxiter': 10000}
-        print("Optimization success?", res.success)
-        print("Termination status:", res.status)
-        print("Termination message:", res.message)
+        # print("Optimization success?", res.success)
+        # print("Termination status:", res.status)
+        # print("Termination message:", res.message)
         # print("Number of iterations:", res.nit)
         # print("Maximum constraint violation:", res.maxcv)
         # print("Max constraint violation:", res.constr_violation)

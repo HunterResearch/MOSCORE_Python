@@ -27,7 +27,7 @@ class TestProblem(MORS_Problem):
         self.true_covs = [[[1, 0], [0, 1]] for _ in range(self.n_systems)]
         super().__init__()
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 
@@ -58,7 +58,7 @@ class TestProblem2(MORS_Problem):
         self.true_covs = [[[1, 0], [0, 1]] for _ in range(self.n_systems)]
         super().__init__()
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 
@@ -89,7 +89,7 @@ class TestProblem3(MORS_Problem):
         self.true_covs = [[[1.0, 0.5], [0.5, 1.0]] for _ in range(self.n_systems)]
         super().__init__()
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 
@@ -136,7 +136,7 @@ class MOCBA_25_Problem(MORS_Problem):
             raise ValueError("Invalid covtype. Valid choices are ind, pos, and neg.")
         super().__init__()
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 
@@ -175,7 +175,7 @@ class MOCBA_25_Copula_Problem(MOCBA_25_Problem):
         self.marginal_dist = marginal_dist
         super().__init__()
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 
@@ -303,7 +303,7 @@ class Random_MORS_Problem(MORS_Problem):
     def __init__(self):
         super().__init__()
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 

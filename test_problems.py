@@ -67,7 +67,7 @@ class Random_MORS_Problem(MORS_Problem):
     def __init__(self):
         super().__init__()
 
-    def g(self, x):
+    def replicate(self, x):
         """Perform a single replication at a given system.
         Obtain a noisy estimate of its objectives.
 

@@ -36,7 +36,7 @@ mysolver = MORS_Solver(budget=500,
                        )
 
 mytester = MORS_Tester(solver=mysolver, problem=myproblem)
-mytester.run(n_macroreps=20)
+mytester.test_run(n_macroreps=20)
 
 mysolver2 = MORS_Solver(budget=500,
                        n0=5,
@@ -46,7 +46,7 @@ mysolver2 = MORS_Solver(budget=500,
                        crn_across_solns=False
                        )
 mytester2 = MORS_Tester(solver=mysolver2, problem=myproblem)
-mytester2.run(n_macroreps=20)
+mytester2.test_run(n_macroreps=20)
 
 # make_rate_plots(testers=[mytester2])
 # make_phantom_rate_plots(testers=[mytester2])
