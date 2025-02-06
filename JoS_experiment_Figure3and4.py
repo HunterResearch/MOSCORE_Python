@@ -44,7 +44,7 @@ if __name__ == '__main__':
     #                              )
 
     equal_tester = MORS_Tester(solver=equal_solver, problem=test_problem)
-    equal_tester.test_run(n_macroreps=10)  # 5000 mreps in the paper
+    equal_tester.test_run(n_macroreps=10, do_parallel=True)  # 5000 mreps in the paper
 
     # MOSCORE_tester = MORS_Tester(solver=MOSCORE_solver, problem=test_problem)
     # MOSCORE_tester.test_run(n_macroreps=10)  # 5000 mreps in the paper

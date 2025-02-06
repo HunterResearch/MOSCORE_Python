@@ -622,7 +622,7 @@ class MORS_Tester(object):
                 self.problem.rng.advance_substream()
         self.problem.rng_states = rng_states
 
-    def test_run(self, n_macroreps):
+    def test_run(self, n_macroreps, do_parallel=False):
         """Run n_macroreps of the solver on the problem.
 
         Parameters
@@ -630,32 +630,46 @@ class MORS_Tester(object):
         n_macroreps : int
             number of macroreplications run
         """
-        print(f"Running Solver {self.solver.allocation_rule}.")
+        # print(f"Running Solver {self.solver.allocation_rule}.")
+        print(f"Running MORS Solver with allocation rule {self.solver.allocation_rule} with budget={self.solver.budget}, n0={self.solver.n0}, and delta={self.solver.delta}.")
         self.n_macroreps = n_macroreps
-        self.all_outputs = [[] for _ in range(n_macroreps)]
-        self.all_metrics = [[] for _ in range(n_macroreps)]
-        # Create, initialize, and attach random number generators.
+        # Random number generator schema.
         #       Stream 0: solver rng
         #           Substreams 0, 1, 2: sampling on macroreplication 1, 2, ...
         #       Streams 1, 2, ...: sampling on macroreplication 1, 2, ...
         #           Substreams 0, 1, 2: sampling at system 1, 2, ...
         #               Subsubstreams 0, 1, 2: sampling replication 1, 2, ...
-        print("Starting macroreplications in parallel.")
-        with Pool() as process_pool:
-            # Start the macroreplications in parallel (async)
-            result = process_pool.map_async(
-                self.test_run_multithread, range(n_macroreps)
-            )
-            # Wait for the results to be returned (or 1 second)
-            while not result.ready():
-                # Update status bar here
-                result.wait(1)
-            print(
-                f"Finished running {n_macroreps} macroreplications."
-            )
-            # Grab all the data out of the result
-            for mrep in range(n_macroreps):
-                (self.all_outputs[mrep], self.all_metrics[mrep]) = result.get()[mrep]
+        if do_parallel:  # Run macroreplications in parallel.
+            self.all_outputs = [[] for _ in range(n_macroreps)]
+            self.all_metrics = [[] for _ in range(n_macroreps)]
+            print("Starting macroreplications in parallel.")
+            with Pool() as process_pool:
+                # Start the macroreplications in parallel (async).
+                result = process_pool.map_async(self.test_run_multithread, range(n_macroreps))
+                # Grab all the data out of the result.
+                for mrep in range(n_macroreps):
+                    (self.all_outputs[mrep], self.all_metrics[mrep]) = result.get()[mrep]
+            print(f"Finished running {n_macroreps} macroreplications.")
+        else:  # Do macroreplications in serial.
+            self.all_outputs = []
+            self.all_metrics = []
+            solver_rng = MRG32k3a()  # Stream 0
+            self.solver.attach_rng(solver_rng)
+            problem_rng = MRG32k3a(s_ss_sss_index=[1, 0, 0])  # Stream 1
+            self.problem.attach_rng(problem_rng)
+            self.setup_rng_states()
+            # Run n_macroreps of the solver on the problem and record results.
+            for mrep in range(self.n_macroreps):
+                print(f"Running macroreplication {mrep + 1} of {self.n_macroreps}.")
+                outputs, metrics = self.solver.solve(problem=self.problem)
+                self.all_outputs.append(outputs)
+                self.all_metrics.append(metrics)
+                # Reset sample statistics.
+                self.problem.reset_statistics()
+                # Advance random number generators in preparation for next macroreplication.
+                self.solver.rng.advance_substream()
+                self.problem.rng.advance_stream()
+                self.setup_rng_states()
         # Aggregate metrics across macroreplications.
         self.aggregate_metrics()
         # Record results to .txt file and save MORS_Tester object in .pickle file.
