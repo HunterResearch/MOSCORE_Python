@@ -23,6 +23,7 @@ import pickle
 import time
 import scipy.stats
 from multiprocessing import Pool
+import copy
 
 from mrg32k3a.mrg32k3a import MRG32k3a
 
@@ -130,6 +131,9 @@ class MORS_Problem(object):
 
     rng_states : list
         states of random number generators (i.e., substream) for each system
+
+    rng_s_ss_sss_indices : list
+        stream indices for random number generators for each system
     """
     def __init__(self):
         self.n_systems = len(self.systems)
@@ -215,29 +219,80 @@ class MORS_Problem(object):
                                        factorized=False)
         return tuple(obj)
 
-    def batch_replicate(self, system_indices):
+    def batch_replicate(self, system_indices, do_parallel):
         """Obtain replications from a list of systems.
 
         Parameters
         ----------
         system_indices : list
             list of indices of systems to simulate (allows repetition)
+        do_parallel : bool
+            indicates whether replications in a batch are to be run in parallel (True) or not (False)
 
         Returns
         -------
         objs : list
-            list of estimates of objectives returned by reach replication
+            list of estimates of objectives returned by each replication
         """
-        objs = []
-        for system_idx in system_indices:
-            # Re-seed random number generator.
-            self.rng.seed(self.rng_states[system_idx])
-            # Simulate a replication and record outputs.
-            objs.append(self.replicate(x=self.systems[system_idx]))
-            # Advance rng to start of next subsubstream and record new state.
-            self.rng.advance_subsubstream()
-            self.rng_states[system_idx] = self.rng._current_state
+        if do_parallel: # Obtain replications in parallel.
+            batch_size = len(system_indices)
+            objs = [[] for _ in range(batch_size)]
+            # Pre-compute rng states for all replications in the batch.
+            preset_rng_states = []
+            preset_rng_s_ss_sss_indices = []
+            for system_idx in system_indices:
+                self.rng.seed(self.rng_states[system_idx])
+                self.rng.s_ss_sss_index = self.rng_s_ss_sss_indices[system_idx]
+                preset_rng_states.append(copy.copy(self.rng._current_state))
+                preset_rng_s_ss_sss_indices.append(copy.copy(self.rng_s_ss_sss_indices[system_idx]))
+                # Advance rng to start of next subsubstream and record new state.
+                self.rng.advance_subsubstream()
+                self.rng_states[system_idx] = self.rng._current_state
+                self.rng_s_ss_sss_indices[system_idx] = self.rng.s_ss_sss_index
+            # Simulate replications
+            #print(preset_rng_s_ss_sss_indices)
+            with Pool() as process_pool:
+                # Start the macroreplications in parallel (async)
+                result = process_pool.map_async(self.replicate_multithread, zip(system_indices, preset_rng_states, preset_rng_s_ss_sss_indices))
+                # Grab all the data out of the result
+                for rep in range(batch_size):
+                    objs[rep] = result.get()[rep]
+        else:  # Obtain replications serially.
+            objs = []
+            #print(self.rng_s_ss_sss_indices)
+            for system_idx in system_indices:
+                # Re-seed random number generator.
+                self.rng.seed(self.rng_states[system_idx])
+                self.rng.s_ss_sss_index = self.rng_s_ss_sss_indices[system_idx]
+                #print(f"Non-Parallel: Simulating system {system_idx} using s_ss_sss = {self.rng.s_ss_sss_index}.")
+                # Simulate a replication and record outputs.
+                objs.append(self.replicate(x=self.systems[system_idx]))
+                # Advance rng to start of next subsubstream and record new state.
+                self.rng.advance_subsubstream()
+                self.rng_states[system_idx] = self.rng._current_state
+                self.rng_s_ss_sss_indices[system_idx] = self.rng.s_ss_sss_index
         return objs
+
+    def replicate_multithread(self, rep_info):
+        """Perform a single replication at a given system.
+        Obtain a noisy estimate of its objectives.
+
+        Parameters
+        ----------
+        rep_info : tuple
+            (system index to simulation, rng state, and rng stream indices)
+
+        Returns
+        -------
+        obj : tuple
+            tuple of estimates of the objectives
+        """
+        # print(rep_info)
+        (system_idx, rng_state, s_ss_sss_index) = rep_info
+        self.rng.seed(rng_state)
+        #print(f"Parallel: Simulating system {system_idx} using s_ss_sss = {s_ss_sss_index}.")
+        obj = self.replicate(x=self.systems[system_idx])
+        return obj
 
 
 class MORS_Solver(object):
@@ -281,7 +336,7 @@ class MORS_Solver(object):
         """
         self.rng = rng
 
-    def solve(self, problem):
+    def solve(self, problem, do_parallel=False):
         """Solve a given MORS problem - one macroreplication.
 
         Notes
@@ -294,6 +349,9 @@ class MORS_Solver(object):
         ----------
         problem : base.MORS_Problem object
             multi-objective R&S problem to solve
+        do_parallel : bool
+            indicates whether replications in a batch are to be run in parallel (True) or not (False)
+
 
         Returns
         -------
@@ -370,7 +428,7 @@ class MORS_Solver(object):
         # Simulate n0 replications at each system. Initial allocation is equal.
         alpha_hat = np.array([1 / problem.n_systems for _ in range(problem.n_systems)])
         system_indices = list(range(problem.n_systems)) * self.n0
-        objs = problem.batch_replicate(system_indices=system_indices)
+        objs = problem.batch_replicate(system_indices=system_indices, do_parallel=do_parallel)
         problem.update_statistics(system_indices=system_indices, objs=objs)
         budget_expended = self.n0 * problem.n_systems
 
@@ -444,7 +502,7 @@ class MORS_Solver(object):
                     # alpha_hat = None
 
             # Simulate selected systems.
-            objs = problem.batch_replicate(system_indices=systems_to_sample)
+            objs = problem.batch_replicate(system_indices=systems_to_sample, do_parallel=do_parallel)
             problem.update_statistics(system_indices=systems_to_sample, objs=objs)
             budget_expended = sum(problem.sample_sizes)
 
@@ -609,18 +667,25 @@ class MORS_Tester(object):
         self.intermediate_budgets = [solver.n0 * problem.n_systems + i * solver.delta for i in range(int(np.ceil((solver.budget - solver.n0 * problem.n_systems) / solver.delta) + 1))]
 
     def setup_rng_states(self):
-        """Setup rng states for each system based on whether solver uses CRN.
+        """Setup rng states and stream indices for each system based on whether solver uses CRN.
         """
         if self.solver.crn_across_solns:
+            print("CRN")
             # Using CRN --> all systems based on common substream
-            rng_states = [self.problem.rng._current_state for _ in range(self.problem.n_systems)]
+            rng_states = [copy.copy(self.problem.rng._current_state) for _ in range(self.problem.n_systems)]
+            rng_s_ss_sss_indices = [copy.copy(self.problem.rng.s_ss_sss_index) for _ in range(self.problem.n_systems)]
         else:
+            print("no CRN")
             # Not using CRN --> each system uses different substream
             rng_states = []
+            rng_s_ss_sss_indices = []
             for _ in range(self.problem.n_systems):
-                rng_states.append(self.problem.rng._current_state)
+                rng_states.append(copy.copy(self.problem.rng._current_state))
+                rng_s_ss_sss_indices.append(copy.copy(self.problem.rng.s_ss_sss_index))
                 self.problem.rng.advance_substream()
         self.problem.rng_states = rng_states
+        self.problem.rng_s_ss_sss_indices = rng_s_ss_sss_indices
+        print(self.problem.rng_s_ss_sss_indices)
 
     def test_run(self, n_macroreps, do_parallel=False):
         """Run n_macroreps of the solver on the problem.
@@ -629,6 +694,8 @@ class MORS_Tester(object):
         ----------
         n_macroreps : int
             number of macroreplications run
+        do_parallel : bool
+            indicates whether macroreplications are to be run in parallel (True) or not (False)
         """
         # print(f"Running Solver {self.solver.allocation_rule}.")
         print(f"Running MORS Solver with allocation rule {self.solver.allocation_rule} with budget={self.solver.budget}, n0={self.solver.n0}, and delta={self.solver.delta}.")
@@ -689,7 +756,7 @@ class MORS_Tester(object):
             Tuple of outputs and metrics obtained from the macroreplication.
         """
         print(f"Starting Macroreplication {mrep + 1} of Solver {self.solver.allocation_rule}.")
-        # Create, initialize, and attach RNGs used for solver random sampling 
+        # Create, initialize, and attach RNGs used for solver random sampling
         # and simulating solutions.
         # Create a new RNGs for the solver based on the current macroreplication.
         # Set RNG to macroreplication-indexed substream.
@@ -824,7 +891,7 @@ def make_rate_plots(testers):
                                                 tester.rates[plot_type],
                                                 color="C" + str(tester_idx),
                                                 marker=marker_list[tester_idx],
-                                                markersize = 4,
+                                                markersize=4,
                                                 linestyle="-",
                                                 linewidth=2
                                                 )
@@ -832,13 +899,13 @@ def make_rate_plots(testers):
                 # Plot score confidence intervals (from Devore 8th ed., pg. 280)
                 # ptilde +/- z_alpha/2 sqrt(phat * qhat / n + (zalpha/2)^2 / 4n^2) / (1 + (zalpha/2)^2 / n)
                 alpha = 0.10
-                zalpha2 = scipy.stats.norm.ppf(1 - alpha/2)
+                zalpha2 = scipy.stats.norm.ppf(1 - alpha / 2)
                 n = tester.n_macroreps
                 phat_vec = tester.rates[plot_type]
                 CI_midpoint_vec = [(phat + zalpha2**2 / (2 * n)) / (1 + zalpha2**2 / n) for phat in phat_vec]
                 CI_offset_vec = [zalpha2 * (np.sqrt(phat * (1 - phat) / n + zalpha2**2 / (4 * n**2)) / (1 + zalpha2**2 / n)) for phat in phat_vec]
-                CI_lb_vec = [CI_midpoint_vec[budget_idx] - CI_offset_vec[budget_idx] for budget_idx in range(len(tester.intermediate_budgets))] 
-                CI_ub_vec = [CI_midpoint_vec[budget_idx] + CI_offset_vec[budget_idx] for budget_idx in range(len(tester.intermediate_budgets))] 
+                CI_lb_vec = [CI_midpoint_vec[budget_idx] - CI_offset_vec[budget_idx] for budget_idx in range(len(tester.intermediate_budgets))]
+                CI_ub_vec = [CI_midpoint_vec[budget_idx] + CI_offset_vec[budget_idx] for budget_idx in range(len(tester.intermediate_budgets))]
                 plt.plot(tester.intermediate_budgets,
                          CI_lb_vec,
                          color="C" + str(tester_idx),
@@ -864,25 +931,25 @@ def make_rate_plots(testers):
                                                 percentile50,
                                                 color="C" + str(tester_idx),
                                                 marker=marker_list[tester_idx],
-                                                markersize = 4,
+                                                markersize=4,
                                                 linestyle="-",
                                                 linewidth=2
                                                 )
                 solver_curve_handles.append(solver_curve_handle)
                 plt.plot(tester.intermediate_budgets,
-                        percentile25,
-                        color="C" + str(tester_idx),
-                        #marker=marker_list[tester_idx],
-                        linestyle="--",
-                        linewidth=1
-                        )
+                         percentile25,
+                         color="C" + str(tester_idx),
+                         #marker=marker_list[tester_idx],
+                         linestyle="--",
+                         linewidth=1
+                         )
                 plt.plot(tester.intermediate_budgets,
-                        percentile75,
-                        color="C" + str(tester_idx),
-                        #marker=marker_list[tester_idx],
-                        linestyle="--",
-                        linewidth=1
-                        )
+                         percentile75,
+                         color="C" + str(tester_idx),
+                         #marker=marker_list[tester_idx],
+                         linestyle="--",
+                         linewidth=1
+                         )
         # Add a legend.
         # Assume solver allocation rules are unique.
         solver_names = [tester.solver.allocation_rule for tester in testers]
